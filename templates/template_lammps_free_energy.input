@@ -1,0 +1,232 @@
+# Using scaled soft core potentials for free energy calculations
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style      full
+
+# Define bond, angle, and dihedral style
+
+{%if set.style.bond|length > 0%}bond_style    {{set.style.bond|join(' ')}}{%- endif %}
+{%if set.style.angle|length > 0%}angle_style    {{set.style.angle|join(' ')}}{%- endif %}
+{%if set.style.dihedral|length > 0%}dihedral_style    {{set.style.dihedral|join(' ')}}{%- endif %}
+
+# Define pair style and further settings
+
+pair_style {{set.style.pair_style}}
+pair_modify mix {{set.style.mixing}} tail {{set.style.tail}}
+
+# Define neighbor list settings
+
+neighbor 2.0 bin
+neigh_modify every 1 delay 0 check yes
+
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj {{set.sp_bond.vdw|join(' ')}}  coul {{set.sp_bond.coulomb|join(' ')}}
+
+# Define if new simulation (0) or read restart (1)
+
+variable restart equal {{set.restart}}
+
+if "${restart} == 1" then "read_restart {{set.restart_file}}" else "read_data       {{set.data_file}}"
+
+# Van der Waals interactions
+{% for p in set.style.pairs %}
+pair_coeff  {{p.i}} {{p.j}}  mie/cut {{p.epsilon}} {{p.sigma}} {{p.m}} 6.0 # {{p.name}}
+{%- endfor %}
+
+# Interactions of solute with solute
+{% for p in set.style.pairs %}
+{%- if p.i in set.free_energy.coupled_atom_list and p.j in set.free_energy.coupled_atom_list%}
+pair_coeff  {{p.i}} {{p.j}}  mie/cut/soft {{p.epsilon}} {{p.sigma}} {{p.lambda_lj}}
+{%- endif %}
+{%- endfor %}
+
+# Interactions of solution with solution
+{% for p in pairs %}
+{%- if p.i not in set.free_energy.coupled_atom_list and p.j not in set.free_energy.coupled_atom_list%}
+pair_coeff  {{p.i}} {{p.j}}  mie/cut {{p.epsilon}} {{p.sigma}}
+{%- endif %}
+{%- endfor %}
+
+# Cross interactions between solute and solution
+{% for p in pairs %}
+{% if (i in set.free_energy.coupled_atom_list and j not in set.free_energy.coupled_atom_list) or (i not in set.free_energy.coupled_atom_list and j in set.free_energy.coupled_atom_list) %}
+pair_coeff  {{p.i}} {{p.j}}  lj/cut/soft {{p.epsilon}} {{p.sigma}} {{p.lambda_lj}}
+{% endif %}
+{%- endfor %}
+
+{%if not set.style.uncharged %}
+# Coulombic interactions
+
+pair_coeff  * * coul/long
+
+# Prevent scaling of intramolecular charge interaction for solute 
+{%- set first_index = set.free_energy.coupled_atom_list|first %}
+{%- set last_index = set.free_energy.coupled_atom_list|last %}
+pair_coeff {{first_index}}*{{last_index}} {{first_index}}*{{last_index}} coul/cut/soft {{set.free_energy.lamda_overlay}}
+
+# Long range coulombic interaction solver
+
+kspace_style pppm 1.0e-4
+
+# Set initial charges 
+{% for i, p in set.free_energy.coupled_atom_list|zip(set.free_energy.charge_list) %}
+set type {{i}} charge {{p}}
+{%- endfor %}
+
+{%- endif %}
+
+# ============= INITIAL SYSTEM SETUP AND EQUILIBRATION =============
+
+# ------------- general ---------------
+
+variable  timestep            equal       {{set.timestep}}
+
+timestep  ${timestep}
+
+# ------------- set ensemble settings ---------------
+
+# seed value should be passed as variable in job file
+variable  seed                index       12345                                      
+variable  temperature         equal       {{set.temperature}}
+variable  pressure            equal       {{set.pressure}}
+
+# ------------- generate velocities ---------------
+
+if "${restart} == 0" then "velocity        all create ${temperature} ${seed} rot yes dist gaussian"
+
+{%- if set.shake.values()|map('length')|select('>', 0)|first %}
+# ------------- shake algorithm ---------------
+
+fix rigid all shake 0.001 100 0 {%- for s in set.shake %}{%- if set.shake[s]|length > 0%} {{s}} {{set.shake[s]|join(' ')}} {%- endif %}{%- endfor %} 
+{%- endif %}
+
+# ------------- set integration settings ---------------
+
+{% if set.ensemble == 'NVT' %}
+fix             int_nvt all nvt temp ${temperature} ${temperature} $(100.0*v_timestep) 
+{%- elif set.ensemble == 'NPT' %}
+fix             int_npt all npt temp ${temperature} ${temperature} $(100.0*v_timestep)  iso ${pressure} ${pressure} $(1000.0*v_timestep)
+{%- endif %}
+
+# ------------- equilibrate system ---------------
+
+thermo          10000
+run             {{set.equiltime}}
+if "${restart} == 0" then "write_restart   {{set.restart_file}} "
+reset_timestep  0 
+
+# ============= FREE ENERGY CALCULATION SETTINGS ===============
+
+# Scaling parameters for van der Waals or Coulomb interactions
+
+variable lambda equal {{set.free_energy.couple_lambda}}
+
+# ------------- Computations for free energy calculation ---------------
+{% if set.free_energy.method == "TI" %}
+# perturbation is the small to compute dU/dlambda = ( U(lambda+dlambda)-U(lambda) )/d_lambda
+{%- else %}
+# perturbation is difference between current lambda and next lambda; Aim is to compute  U(lambda_i+1)-U(lambda_i)
+{%- endif %}
+
+# Perform a backward (ik) and a forward (ij) perturbation
+variable dlambda_rev equal {{set.free_energy.lambda_perturbation[0]}}
+variable dlambda_for equal {{set.free_energy.lambda_perturbation[1]}}
+
+{%- if set.free_energy.couple_interaction == "vdw" %}
+{% if set.free_energy.lambda_perturbation[0] != 0.0%}
+compute FEPik all fep {{temperature}} &
+  pair mie/cut/soft lambda {{first_index}}*{{last_index}} {{last_index+1}}* v_dlambda_rev &
+  tail yes &
+  volume yes
+{%- endif %}
+{% if set.free_energy.lambda_perturbation[1] != 0.0%}
+compute FEPij all fep {{temperature}} &
+  pair mie/cut/soft lambda {{first_index}}*{{last_index}} {{last_index+1}}* v_dlambda_for &
+  tail yes &
+  volume yes
+{%- endif %}
+{%- else %}
+
+# To prevent influence of solute-solute interactions while changing the atom charges of the solute, the coul/cut/soft overlay lambda needs to be adapted accordingly 
+
+variable dl_coul_rev equal "-1/v_lambda^2 * ( 2*v_lambda*v_dlambda_rev + v_dlambda_rev^2) / ( v_dlambda_rev + v_lambda )^2"
+variable dl_coul_for equal "-1/v_lambda^2 * ( 2*v_lambda*v_dlambda_for + v_dlambda_for^2) / ( v_dlambda_for + v_lambda )^2"
+
+{% if set.free_energy.lambda_perturbation[0] != 0.0%}
+{% for i, p in set.free_energy.coupled_atom_list|zip(set.free_energy.charge_list) %}
+variable dq{{i}}_rev equal {{p}}*v_dlambda_rev
+{%- endfor %}
+{%- endif %}
+{% if set.free_energy.lambda_perturbation[1] != 0.0%}
+{% for i, p in set.free_energy.coupled_atom_list|zip(set.free_energy.charge_list) %}
+variable dq{{i}}_for equal {{p}}*v_dlambda_for
+{%- endfor %}
+{%- endif %}
+
+compute FEPik all fep {{temperature}} &
+  pair coul/cut/soft lambda {{first_index}}*{{last_index}} {{first_index}}*{{last_index}} v_dl_coul_rev &
+  {%- for i in set.free_energy.coupled_atom_list %}
+  atom charge {{i}} v_dq{{i}}_rev &
+  {%- endfor %}
+  volume yes
+{%- endif %}
+{%- endif %}
+compute FEPij all fep {{temperature}} &
+  pair coul/cut/soft lambda {{first_index}}*{{last_index}} {{first_index}}*{{last_index}} v_dl_coul_for &
+  {%- for i in set.free_energy.coupled_atom_list %}
+  atom charge {{i}} v_dq{{i}}_for &
+  {%- endfor %}
+  volume yes
+{%- endif %}
+
+# ============= VARIABLES ===============
+
+# ------------- general ---------------
+
+variable  run_time            equal       {{set.runtime}}
+
+# ------------- output ---------------
+
+variable  sample_frequency    equal       {{set.sample_frequency}}
+variable  sample_number       equal       {{set.sample_number}}
+variable  to_file_every       equal       ${sample_frequency*sample_number}
+variable  to_screen_every     equal       $(to_file_every*10)
+      
+# ------------- values ---------------
+
+variable step equal step
+
+# ============= SAMPLING CONDITIONS ============= 
+
+thermo          ${to_screen_every}
+{%- if set.free_energy.couple_interaction == "vdw" %}
+thermo_style    custom step temp press pe v_lambda v_dlambda v_dl_coul density vol
+{%- else %}
+thermo_style    custom step temp press pe v_lambda v_dlambda density vol
+{%- endif %}
+
+# Sample fep compute
+
+{% if set.free_energy.lambda_perturbation[0] != 0.0 %}
+fix FEPik all ave/time ${sample_frequency} ${sample_number} ${to_file_every} c_FEPik[*] file {{set.free_energy.output_files[0]}}
+{%- endif %}
+{% if set.free_energy.lambda_perturbation[1] != 0.0 %}
+fix FEPij all ave/time ${sample_frequency} ${sample_number} ${to_file_every} c_FEPij[*] file {{set.free_energy.output_files[1]}}
+{%- endif %}
+
+# Pressure, mass density, and potential energy sampling
+
+variable press equal press
+variable mass_dens equal density
+variable pot_eng equal pe
+
+fix sampling all ave/time ${sample_frequency} ${sample_number} ${to_file_every} v_press v_mass_dens v_pot_eng file values.sampling
+
+# ============= RUN CONDITIONS =============
+
+run             ${run_time}

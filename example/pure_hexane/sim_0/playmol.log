@@ -1,0 +1,81 @@
+Adding variable rho with parameters 0.6163099999999999
+Adding variable seed with parameters 954589
+Including file ../playmol_ff.playmol
+Adding atom type CH3_alkane with parameters mie/cut 0.2709 3.6034 14.0 6.0
+Adding diameter CH3_alkane with parameters 3.6034
+Adding mass CH3_alkane with parameters 15.035
+Adding charge CH3_alkane with parameters 0.0
+Adding atom type CH2_alkane with parameters mie/cut 0.1051 4.04 14.0 6.0
+Adding diameter CH2_alkane with parameters 4.04
+Adding mass CH2_alkane with parameters 14.027
+Adding charge CH2_alkane with parameters 0.0
+Adding bond type CH2_alkane CH3_alkane with parameters harmonic 1000.0 1.74
+Adding bond type CH2_alkane CH2_alkane with parameters harmonic 1000.0 1.54
+Adding angle type CH2_alkane CH2_alkane CH3_alkane with parameters harmonic 62.1001 114.0
+Adding angle type CH2_alkane CH2_alkane CH2_alkane with parameters harmonic 62.1001 114.0
+Adding dihedral type CH2_alkane CH2_alkane CH2_alkane CH3_alkane with parameters opls 0.0 1.411 -0.271 3.145
+Adding dihedral type CH2_alkane CH2_alkane CH2_alkane CH2_alkane with parameters opls 0.0 1.411 -0.271 3.145
+Adding atom CH3_alkane1 with parameters CH3_alkane
+Adding charge CH3_alkane1 with parameters 0.0
+Adding molecule CH3_alkane1 with parameters 1
+Adding atom CH2_alkane2 with parameters CH2_alkane
+Adding charge CH2_alkane2 with parameters 0.0
+Adding molecule CH2_alkane2 with parameters 2
+Adding atom CH2_alkane3 with parameters CH2_alkane
+Adding charge CH2_alkane3 with parameters 0.0
+Adding molecule CH2_alkane3 with parameters 3
+Adding atom CH2_alkane4 with parameters CH2_alkane
+Adding charge CH2_alkane4 with parameters 0.0
+Adding molecule CH2_alkane4 with parameters 4
+Adding atom CH2_alkane5 with parameters CH2_alkane
+Adding charge CH2_alkane5 with parameters 0.0
+Adding molecule CH2_alkane5 with parameters 5
+Adding atom CH3_alkane6 with parameters CH3_alkane
+Adding charge CH3_alkane6 with parameters 0.0
+Adding molecule CH3_alkane6 with parameters 6
+Adding bond CH3_alkane1 CH2_alkane2
+Fusing molecule 2 to molecule 1
+Lowering indices of molecules 3 to 6
+Adding bond CH2_alkane2 CH2_alkane3
+Fusing molecule 2 to molecule 1
+Lowering indices of molecules 3 to 5
+Adding bond CH2_alkane3 CH2_alkane4
+Fusing molecule 2 to molecule 1
+Lowering indices of molecules 3 to 4
+Adding bond CH2_alkane4 CH2_alkane5
+Fusing molecule 2 to molecule 1
+Lowering indices of molecules 3 to 3
+Adding bond CH2_alkane5 CH3_alkane6
+Fusing molecule 2 to molecule 1
+Reading geometric data from file ../hexane.xyz...
+Number of data to be read: 6
+1 : CH3_alkane1 3.1709 0.2369 -0.0001
+2 : CH2_alkane2 1.8649 -0.5413 -0.0114
+3 : CH2_alkane3 0.6558 0.3935 0.0001
+4 : CH2_alkane4 -0.6558 -0.3932 0.0227
+5 : CH2_alkane5 -1.865 0.5414 0.0001
+6 : CH3_alkane6 -3.1709 -0.2372 -0.0115
+Number of provided geometric data: 6
+Processing 6 geometric data for molecule 1:
+Data provided for atom CH3_alkane1 : 3.1709 0.2369 -0.0001
+Data provided for atom CH2_alkane2 : 1.8649 -0.5413 -0.0114
+Data provided for atom CH2_alkane3 : 0.6558 0.3935 0.0001
+Data provided for atom CH2_alkane4 : -0.6558 -0.3932 0.0227
+Data provided for atom CH2_alkane5 : -1.865 0.5414 0.0001
+Data provided for atom CH3_alkane6 : -3.1709 -0.2372 -0.0115
+Adding coordinate CH3_alkane1 with parameters 3.17090011 0.236900002 -9.99999975E-05
+Adding coordinate CH2_alkane2 with parameters 1.86489999 -0.541299999 -1.14000002E-02
+Adding coordinate CH2_alkane3 with parameters 0.655799985 0.393500000 9.99999975E-05
+Adding coordinate CH2_alkane4 with parameters -0.655799985 -0.393200010 2.27000006E-02
+Adding coordinate CH2_alkane5 with parameters -1.86500001 0.541400015 9.99999975E-05
+Adding coordinate CH3_alkane6 with parameters -3.17090011 -0.237200007 -1.15000000E-02
+Defining box density as 0.371150523
+Setting packmol seed to 954589
+Setting packmol retry parameter to 0.95
+Adding packmol option pack with parameters mol(CH3_alkane1) 500
+Packmol invoked with action <execute>
+Box lengths are 48.7834053 48.7834053 48.7834053
+Executing Packmol with scaling factor 1.00000000. Please wait...
+Packmol converged with scaling factor 1.00000000
+Writing data to file pure_hexane_0.xyz in xyz format...
+Writing data to file pure_hexane_0.log in summary format...

@@ -1,0 +1,51 @@
+define rho as 0.6163099999999999
+define seed as 954589
+
+include ../playmol_ff.playmol
+
+# Definition of atoms
+# atoms force_field_type charge
+
+atom  CH3_alkane1  CH3_alkane 0.0
+atom  CH2_alkane2  CH2_alkane 0.0
+atom  CH2_alkane3  CH2_alkane 0.0
+atom  CH2_alkane4  CH2_alkane 0.0
+atom  CH2_alkane5  CH2_alkane 0.0
+atom  CH3_alkane6  CH3_alkane 0.0
+
+# Definiton of covalent bonds. Playmol automatically detects angles and dihedrals.
+# bond A1 A2
+
+bond  CH3_alkane1  CH2_alkane2
+bond  CH2_alkane2  CH2_alkane3
+bond  CH2_alkane3  CH2_alkane4
+bond  CH2_alkane4  CH2_alkane5
+bond  CH2_alkane5  CH3_alkane6
+
+# Include the xyz structure of each component
+
+build ../hexane.xyz
+
+# Box density in Da/AA³ ... with Da=Dalton, AA=Angstrom
+box density {0.602214*$rho}
+
+# Important: when the box density is specified, Playmol will 
+# automatically calculate the box side lengths when necessary. 
+# For this, it will sweep the whole list of molecular structures
+# defined via build and packmol commands in order to determine
+# the total mass of the system. Playmol will not perform any unit
+# conversion. Consequently, the specified density value must be
+# consistent with the mass and length units used in other commands. For 
+# instance, if LAMMPS real units are considered (mass in g/mol and lengths in AA),
+# then the density must be provided in Da/AA³ (Daltons per cubic Angstrom).
+# In this case, values originally in g/cm³ must be multiplied by 0.60221413.
+
+# Add the number of molecules per component
+
+packmol seed $seed retry 0.95
+packmol pack mol(CH3_alkane1) 500
+packmol action execute
+
+# Formatting and storage
+write    xyz pure_hexane_0.xyz
+write    summary pure_hexane_0.log

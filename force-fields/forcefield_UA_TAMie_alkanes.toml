@@ -1,0 +1,55 @@
+[atoms.CH3_alkane]
+name = "CH3_alkane"
+mass = 15.035
+epsilon = 0.2709
+sigma = 3.6034
+m = 14.0
+cut = 14.0
+charge = 0.0
+style = "hybrid Mie/cut coul/long"
+
+[atoms.CH2_alkane]
+name = "CH2_alkane"
+mass = 14.027
+epsilon = 0.1051
+sigma = 4.04
+m = 14.0
+cut = 14.0
+charge = 0.0
+style = "hybrid Mie/cut coul/long"
+
+[bonds."[CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane",]
+type = 1
+p = [ 1.74, 1000.0,]
+style = "harmonic"
+
+[bonds."[CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane",]
+type = 1
+p = [ 1.54, 1000.0,]
+style = "harmonic"
+
+[angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+type = 2
+p = [ 114.0, 62.1001,]
+style = "harmonic"
+
+[angles."[CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+type = 2
+p = [ 114.0, 62.1001,]
+style = "harmonic"
+
+[torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+type = 1
+p = [ 0.0, 1.411, -0.271, 3.145, 0.0,]
+style = "opls"
+
+[torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+type = 1
+p = [ 0.0, 1.411, -0.271, 3.145, 0.0,]
+style = "opls"
