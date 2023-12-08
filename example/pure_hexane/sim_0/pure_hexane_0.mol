@@ -1,5 +1,5 @@
-define rho as 0.6163099999999999
-define seed as 954589
+define rho as 0.48160000000000003
+define seed as 277969
 
 include ../playmol_ff.playmol
 

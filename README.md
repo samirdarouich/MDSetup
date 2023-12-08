@@ -98,9 +98,9 @@ LAMMPS_class.prepare_playmol_input( playmol_template = playmol_force_field_templ
 # 1: Define general settings for each system
 # Temperatures [K], pressures [bar] (if wanted, otherwise use 0.0) and initial denisties [kg/m^3] for each system. Also define the number of molecules per component.
 
-temperatures     = [ 335.0 ]
-pressures        = [ 1.0 ]
-densities        = [ 616.31 ]
+temperatures     = [ 450.0 ]
+pressures        = [ 13.1 ]
+densities        = [ 481.60 ]
 molecule_numbers = [ 500 ]
 
 # Simulation path

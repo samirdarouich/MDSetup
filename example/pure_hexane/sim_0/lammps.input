@@ -36,6 +36,7 @@ if "${restart} == 1" then "read_restart equil.restart" else "read_data       lam
 # Van der Waals interactions
 
 pair_coeff  1 1  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  1 2  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
 pair_coeff  2 2  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
 
 
@@ -52,8 +53,8 @@ timestep  ${timestep}
 
 # seed value should be passed as variable in job file
 variable  seed                index       12345                                      
-variable  temperature         equal       335.0
-variable  pressure            equal       0.9869232667160128
+variable  temperature         equal       450.0
+variable  pressure            equal       12.928694793979767
 
 # ------------- generate velocities ---------------
 
@@ -67,7 +68,7 @@ fix             int_npt all npt temp ${temperature} ${temperature} $(100.0*v_tim
 # ------------- equilibrate system ---------------
 
 thermo          10000
-run             2000000
+run             4000000
 if "${restart} == 0" then "write_restart   equil.restart "
 reset_timestep  0 
 
@@ -75,14 +76,14 @@ reset_timestep  0
 
 # ------------- general ---------------
 
-variable  run_time            equal       4000000
+variable  run_time            equal       2000000
 
 # ------------- output ---------------
 
 variable  sample_frequency    equal       20
 variable  sample_number       equal       50
-variable  to_file_every       equal       ${sample_frequency*sample_number}
-variable  to_screen_every     equal       $(to_file_every*10)
+variable  to_file_every       equal       $(v_sample_frequency*v_sample_number)
+variable  to_screen_every     equal       $(v_to_file_every*10)
       
 # ------------- values ---------------
 

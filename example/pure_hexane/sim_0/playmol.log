@@ -1,5 +1,5 @@
-Adding variable rho with parameters 0.6163099999999999
-Adding variable seed with parameters 954589
+Adding variable rho with parameters 0.48160000000000003
+Adding variable seed with parameters 277969
 Including file ../playmol_ff.playmol
 Adding atom type CH3_alkane with parameters mie/cut 0.2709 3.6034 14.0 6.0
 Adding diameter CH3_alkane with parameters 3.6034
@@ -9,8 +9,8 @@ Adding atom type CH2_alkane with parameters mie/cut 0.1051 4.04 14.0 6.0
 Adding diameter CH2_alkane with parameters 4.04
 Adding mass CH2_alkane with parameters 14.027
 Adding charge CH2_alkane with parameters 0.0
-Adding bond type CH2_alkane CH3_alkane with parameters harmonic 1000.0 1.74
-Adding bond type CH2_alkane CH2_alkane with parameters harmonic 1000.0 1.54
+Adding bond type CH2_alkane CH3_alkane with parameters harmonic 200.0 1.74
+Adding bond type CH2_alkane CH2_alkane with parameters harmonic 200.0 1.54
 Adding angle type CH2_alkane CH2_alkane CH3_alkane with parameters harmonic 62.1001 114.0
 Adding angle type CH2_alkane CH2_alkane CH2_alkane with parameters harmonic 62.1001 114.0
 Adding dihedral type CH2_alkane CH2_alkane CH2_alkane CH3_alkane with parameters opls 0.0 1.411 -0.271 3.145
@@ -69,12 +69,12 @@ Adding coordinate CH2_alkane3 with parameters 0.655799985 0.393500000 9.99999975
 Adding coordinate CH2_alkane4 with parameters -0.655799985 -0.393200010 2.27000006E-02
 Adding coordinate CH2_alkane5 with parameters -1.86500001 0.541400015 9.99999975E-05
 Adding coordinate CH3_alkane6 with parameters -3.17090011 -0.237200007 -1.15000000E-02
-Defining box density as 0.371150523
-Setting packmol seed to 954589
+Defining box density as 0.290026248
+Setting packmol seed to 277969
 Setting packmol retry parameter to 0.95
 Adding packmol option pack with parameters mol(CH3_alkane1) 500
 Packmol invoked with action <execute>
-Box lengths are 48.7834053 48.7834053 48.7834053
+Box lengths are 52.9634628 52.9634628 52.9634628
 Executing Packmol with scaling factor 1.00000000. Please wait...
 Packmol converged with scaling factor 1.00000000
 Writing data to file pure_hexane_0.xyz in xyz format...

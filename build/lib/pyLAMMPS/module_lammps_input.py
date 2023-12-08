@@ -586,8 +586,8 @@ class LAMMPS_input():
                         # Get Coulomb parameter (charges and cut off)
                         charges  = [ self.ff["atoms"][atom_key]["charge"] for atom_key in ff_keys ]
                         
-                        # Distances evaluated ±70% around r0.
-                        r_eval   = np.linspace( 0.3*r0, 1.7*r0, evaluation_steps )
+                        # Distances evaluated ±30% around r0.
+                        r_eval   = np.linspace( 0.7*r0, 1.3*r0, evaluation_steps )
                         
                         # Compute bonded interaction 
                         u_bond, f_bond  = calc_bond( r_eval, r0, K, "energy"), calc_bond( r_eval, r0, K, "force")
@@ -600,7 +600,11 @@ class LAMMPS_input():
 
 
                     # Evaluate the Mie interaction for the special 1-4 pair in the reparametrized torsion, as well as Coulomb.
-                    elif mol.get_distance(*sbi) == 3 and all( p in ff_keys for p in pair ):
+                    # Furthermore for all intramolecular interactions with a higher bond distance than 3. (Since LAMMPS tabled bonds alter the
+                    # understanding of the molecule. Thus, if a tabled bond of a 1-4 pair is introduced, the 1-5 interaction do not longer have a bond distance of 4,
+                    # rather it now only has a distance of 2. Hence, LAMMPS will not compute non bonded interactions, and therefore they needed to be presented as tabled
+                    # bonds as well)
+                    elif ( mol.get_distance(*sbi) == 3 and all( p in ff_keys for p in pair ) ) or ( mol.get_distance(*sbi) > 3 ):
 
                         # Get Coulomb and vdW parameter (charges, epsilon, sigma and repulsive exponent)
                         charges  = [ self.ff["atoms"][atom_key]["charge"] for atom_key in ff_keys ]
@@ -611,7 +615,7 @@ class LAMMPS_input():
                         # Use mixing Lorentz-Berthelot mixing rule for sigma and epsilon, as well as an arithmetic mean for the repulsive exponent
                         n        = np.mean( ns )
                         sigma    = np.mean( sigmas )
-                        epsilon  = np.sqrt(np.prod(epsilons))
+                        epsilon  = np.sqrt( np.prod( epsilons ) )
 
                         # Evaluated distances 
                         r_eval   = np.concatenate( [np.linspace( 0.01*cut_off, 0.3*cut_off, n1), np.linspace( 0.301*cut_off, cut_off, n2)] )
@@ -626,7 +630,7 @@ class LAMMPS_input():
                         u_total, f_total     = u_mie + u_coulomb, f_mie + f_coulomb
                     
 
-                    # Evaluate only the Coulomb interaction
+                    # Evaluate only the Coulomb interaction (in the case for all 1-3 interactions)
                     else:
                         
                         # Get Coulomb parameter (charges and cut off)
@@ -793,8 +797,8 @@ class LAMMPS_input():
             for j,jatom in zip(self.atom_numbers_ges[i-1:], self.nonbonded[i-1:]):
 
                 # If decoupling is wanted, no mixture rule can be utilized --> the i j pair interactions need to defined in here
-                # Otherwise only the i i pair interactions need to be defined, and thus any i j pair can be skipped.
-                if i != j and not self.decoupling:
+                # Also if a hybrid command in used as pair_style, as these it is not recommended to use LAMMPS mixing.
+                if i != j and not self.decoupling and not "hybrid" in self.settings["style"]["pair_style"]:
                     continue
                 
                 # If decoupling is wanted, the intramolecular interactions of the coupling molecule need to be activated,

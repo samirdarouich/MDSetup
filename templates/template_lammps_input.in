@@ -98,8 +98,8 @@ variable  run_time            equal       {{set.runtime}}
 
 variable  sample_frequency    equal       {{set.sample_frequency}}
 variable  sample_number       equal       {{set.sample_number}}
-variable  to_file_every       equal       ${sample_frequency*sample_number}
-variable  to_screen_every     equal       $(to_file_every*10)
+variable  to_file_every       equal       $(v_sample_frequency*v_sample_number)
+variable  to_screen_every     equal       $(v_to_file_every*10)
       
 # ------------- values ---------------
 

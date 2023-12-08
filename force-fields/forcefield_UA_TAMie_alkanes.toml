@@ -21,13 +21,13 @@ style = "hybrid Mie/cut coul/long"
 [bonds."[CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane",]
 type = 1
-p = [ 1.74, 1000.0,]
+p = [ 1.74, 200.0,]
 style = "harmonic"
 
 [bonds."[CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane",]
 type = 1
-p = [ 1.54, 1000.0,]
+p = [ 1.54, 200.0,]
 style = "harmonic"
 
 [angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]

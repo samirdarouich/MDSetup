@@ -15,8 +15,8 @@ charge CH2_alkane  0.0
 
 # Bonds
 
-bond_type  CH2_alkane  CH3_alkane  harmonic  1000.0  1.74
-bond_type  CH2_alkane  CH2_alkane  harmonic  1000.0  1.54
+bond_type  CH2_alkane  CH3_alkane  harmonic  200.0  1.74
+bond_type  CH2_alkane  CH2_alkane  harmonic  200.0  1.54
 
 
 # Angles
