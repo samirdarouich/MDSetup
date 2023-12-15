@@ -37,7 +37,14 @@ special_bonds lj 0 0 0  coul 0 0 0
 
 pair_coeff  1 1  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
 pair_coeff  1 2  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
+pair_coeff  1 3  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  1 4  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
 pair_coeff  2 2  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
+pair_coeff  2 3  mie/cut 0.1687 3.8217 14.0 6.0 # CH2_alkane  CH3_alkane
+pair_coeff  2 4  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
+pair_coeff  3 3  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  3 4  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
+pair_coeff  4 4  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
 
 
 
@@ -53,8 +60,8 @@ timestep  ${timestep}
 
 # seed value should be passed as variable in job file
 variable  seed                index       12345                                      
-variable  temperature         equal       450.0
-variable  pressure            equal       12.929
+variable  temperature         equal       343.0
+variable  pressure            equal       4.255
 
 # ------------- generate velocities ---------------
 

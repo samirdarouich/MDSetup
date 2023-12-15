@@ -92,11 +92,14 @@ def assign_coos_via_distance_mat_local( coos_list: np.ndarray, distance_matrix: 
                 idx.append(i)
                 break
             
-    idx = np.array(idx)
+    if not bool(idx):
+        raise KeyError("Molecules could not be matched!\n")
     
-    print("""\n\nWARNING:
-    Assign_coos_via_distance_mat is not mature yet.
-    Double-check your results!!! \n \n""")
+    idx = np.array(idx)
+
+    #print("""\n\nWARNING:
+    #Assign_coos_via_distance_mat is not mature yet.
+    #Double-check your results!!! \n \n""")
     
     return coos_list[idx], idx 
 
@@ -203,7 +206,7 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         with open(template_xyz) as file:
             template = Template(file.read())
 
-        rendered = template.render( atno  = raw_atom_number[-1], 
+        rendered = template.render( atno  = len(raw_atom_number), 
                                     atoms = zip( final_atomtyp, final_coordinate ) )
 
         with open(xyz_destination, "w") as fh:

@@ -42,6 +42,12 @@ type = 2
 p = [ 114.0, 62.1001,]
 style = "harmonic"
 
+[torsions."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+type = 1
+p = [ 0.0, 1.411, -0.271, 3.145, 0.0,]
+style = "opls"
+
 [torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
 type = 1

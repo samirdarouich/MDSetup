@@ -3,7 +3,7 @@ from setuptools import setup
 
 VERSION = '0.0.1'
 DESCRIPTION = 'This module enables users to perform molecular dynamics simulations utilizing LAMMPS with \
-               the any force field. The process begins with a SMILES and graph representation of each component, \
+               any force field. The process begins with a SMILES and graph representation of each component, \
                where PLAYMOL constructs initial systems at specific densities. The moleculegraph software and supplementary Python code \
                are then used to generate a LAMMPS data and input file via jinja2 templates.'
 
@@ -21,7 +21,7 @@ setup(
                       'toml',
                       'jinja2',
                       'scipy',
-                      #'moleculegraph'
+                      'Pubchempy'
                       ],
 
     classifiers=[

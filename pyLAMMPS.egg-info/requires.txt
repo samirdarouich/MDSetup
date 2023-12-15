@@ -2,3 +2,4 @@ numpy
 toml
 jinja2
 scipy
+Pubchempy

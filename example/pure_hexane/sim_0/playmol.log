@@ -1,5 +1,5 @@
 Adding variable rho with parameters 0.48160000000000003
-Adding variable seed with parameters 277969
+Adding variable seed with parameters 100968
 Including file ../playmol_ff.playmol
 Adding atom type CH3_alkane with parameters mie/cut 0.2709 3.6034 14.0 6.0
 Adding diameter CH3_alkane with parameters 3.6034
@@ -70,7 +70,7 @@ Adding coordinate CH2_alkane4 with parameters -0.655799985 -0.393200010 2.270000
 Adding coordinate CH2_alkane5 with parameters -1.86500001 0.541400015 9.99999975E-05
 Adding coordinate CH3_alkane6 with parameters -3.17090011 -0.237200007 -1.15000000E-02
 Defining box density as 0.290026248
-Setting packmol seed to 277969
+Setting packmol seed to 100968
 Setting packmol retry parameter to 0.95
 Adding packmol option pack with parameters mol(CH3_alkane1) 500
 Packmol invoked with action <execute>

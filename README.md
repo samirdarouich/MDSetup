@@ -43,25 +43,39 @@ The following example will demonstrate how to setup MD simulations (this is also
 
 ```python
 # 1: Path tho force field toml
-force_field_path     = "force-fields/forcefield_lammps.toml"
+force_field_path     = "force-fields/forcefield_UA_TAMie_alkanes.toml"
 
 # 2: Names, SMILES, and graphs of molecules (further examples on constructing molecule graphs available at https://github.com/maxfleck/moleculegraph)
 
-system_name          = "pure_hexane"
+system_name          = "mixture_butane_hexane"
 
-molecule_name1       = "hexane"
-molecule_graph1      = "[CH3_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"
-molecule_smiles1     = "CCCCCC"
+molecule_name1       = "butane"
+molecule_graph1      = "[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"
+molecule_smiles1     = "CCCC"
 
-molecule_name_list   = [ molecule_name1 ]
-molecule_graph_list  = [ molecule_graph1 ]
-molecule_smiles_list = [ molecule_smiles1 ]
+molecule_name2       = "hexane"
+molecule_graph2      = "[CH3_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"
+molecule_smiles2     = "CCCCCC"
 
+molecule_name_list   = [ molecule_name1, molecule_name2 ]
+molecule_graph_list  = [ molecule_graph1, molecule_graph2 ]
+molecule_smiles_list = [ molecule_smiles1, molecule_smiles2 ]
+
+# Template paths
+# xyz templates
+template_xyz         = "templates/template_write_xyz.xyz"
+
+# PLAYMOL templates
+playmol_force_field_template = "templates/template_playmol_forcefield.playmol"
+playmol_input_template       = "templates/template_playmol_input.mol"
+
+# LAMMPS templates
+LAMMPS_data_template         = "templates/template_lammps_data.data"
+LAMMPS_input_template        = "templates/template_lammps_input.in"
+
+# System paths
 # Path to working folder
 working_folder       = f"example/{system_name}"
-
-# Path to xyz template
-template_xyz         = "templates/template_write_xyz.xyz"
 
 # Define output path for final xyz files
 xyz_destinations     = [ f"{working_folder}/%s.xyz"%name for name in molecule_name_list ]
@@ -69,7 +83,6 @@ xyz_destinations     = [ f"{working_folder}/%s.xyz"%name for name in molecule_na
 # Get the single molecule coordinates for each component
 get_molecule_coordinates( molecule_name_list = molecule_name_list, molecule_graph_list = molecule_graph_list, molecule_smiles_list = molecule_smiles_list,
                           xyz_destinations = xyz_destinations, template_xyz = template_xyz, verbose = False )
-
 
 # 3: Call the LAMMPS input class
 LAMMPS_class        = LAMMPS_input( mol_str = molecule_graph_list, ff_path = force_field_path )
@@ -81,7 +94,6 @@ LAMMPS_class        = LAMMPS_input( mol_str = molecule_graph_list, ff_path = for
 
 ```python
 # 1: PLAYMOL force field file
-playmol_force_field_template    = "templates/template_playmol_forcefield.playmol"
 playmol_force_field_destination = f"{working_folder}/playmol_ff.playmol"
 
 LAMMPS_class.prepare_playmol_input( playmol_template = playmol_force_field_template, playmol_ff_path = playmol_force_field_destination )
@@ -96,40 +108,43 @@ LAMMPS_class.prepare_playmol_input( playmol_template = playmol_force_field_templ
 
 ```python
 # 1: Define general settings for each system
-# Temperatures [K], pressures [bar] (if wanted, otherwise use 0.0) and initial denisties [kg/m^3] for each system. Also define the number of molecules per component.
+# Temperatures [K], pressures [bar] (if wanted, otherwise use 0.0) and initial denisties [kg/m^3] for each system.
 
-temperatures     = [ 450.0 ]
-pressures        = [ 13.1 ]
-densities        = [ 481.60 ]
-molecule_numbers = [ 500 ]
+temperatures     = [ 343.0 ]
+pressures        = [ 4.311 ]
+densities        = [ 573.282 ]
+
+# Define the total number of molecules in the simulation and the compositions per statepoint
+molecule_number  = 500
+compositions     = [ [ 0.5, 0.5 ] ]
 
 # Simulation path
 simulation_path  = f"{working_folder}/sim_%d"
 
 # Define if PLAYMOL should be executed and further settings
-build_playmol             = True
-molecule_xyz_files        = [ "../%s.xyz"%name for name in molecule_name_list ]
-relative_playmol_ff_path  = "../playmol_ff.playmol"
-playmol_input_template    = "templates/template_playmol_input.mol"
+build_playmol    = True
 
-# Define LAMMPS template paths
-LAMMPS_data_template      = "templates/template_lammps_data.data"
-LAMMPS_input_template     = "templates/template_lammps_input.in"
 
-for i, (temp, press, dens) in enumerate( zip( temperatures, pressures, densities ) ):
+for i, (temp, press, dens, composition) in enumerate( zip( temperatures, pressures, densities, compositions ) ):
 
     # Create the simulation folder (if not already done)
     os.makedirs( simulation_path%i, exist_ok = True )
 
     # Prepare LAMMPS with molecules numbers and density of the system
-    LAMMPS_class.prepare_lammps_data (nmol_list = molecule_numbers, densitiy = dens )
+    # Get the molecule numbers according to the mixture composition (utilize closing condition for first component) 
+    remaining_numbers = ( np.array(composition[1:]) * molecule_number ).astype("int")
+    molecule_numbers  = [ molecule_number - sum(remaining_numbers), *(remaining_numbers if sum(remaining_numbers) > 0 else []) ]
+
+    LAMMPS_class.prepare_lammps_data (nmol_list = molecule_numbers, density = dens )
 
     # 2: Write PLAYMOL input and execute (if wanted.)
     if build_playmol:
         playmol_input_destination = simulation_path%i + f"/{system_name}_{i}.mol"
-        
+        playmol_relative_ff_path  = os.path.relpath(playmol_force_field_destination, os.path.dirname(playmol_input_destination))
+        playmol_relative_xyz_path = [ os.path.relpath(xyz, os.path.dirname(playmol_input_destination)) for xyz in xyz_destinations ]
+
         LAMMPS_class.write_playmol_input( playmol_template = playmol_input_template, playmol_path = playmol_input_destination, 
-                                          playmol_ff_path = relative_playmol_ff_path, xyz_paths = molecule_xyz_files )
+                                          playmol_ff_path = playmol_relative_ff_path, xyz_paths = playmol_relative_xyz_path )
 
     # 3: Write LAMMPS data file from generated xyz file
     system_xyz              = simulation_path%i + f"/{system_name}_{i}.xyz"
@@ -139,11 +154,11 @@ for i, (temp, press, dens) in enumerate( zip( temperatures, pressures, densities
 
     # 4: Write LAMMPS input file
     LAMMPS_input_destination  = simulation_path%i + "/lammps.input"
-    relative_LAMMPS_data_path = LAMMPS_data_destination[ LAMMPS_data_destination.rfind(simulation_path%i) + len(simulation_path%i) + 1 : ]
+    relative_LAMMPS_data_path = os.path.relpath(LAMMPS_data_destination, os.path.dirname(LAMMPS_input_destination))
    
-     LAMMPS_class.prepare_lammps_input( pair_style = "hybrid/overlay mie/cut 14", mixing_rule = "arithmetic", sb_dict = {"vdw":[0,0,0],"coulomb":[0,0,0]} )
+    LAMMPS_class.prepare_lammps_input( pair_style = "hybrid/overlay mie/cut 14", mixing_rule = "arithmetic", sb_dict = {"vdw":[0,0,0],"coulomb":[0,0,0]} )
     LAMMPS_class.write_lammps_input( input_path = LAMMPS_input_destination, template_path = LAMMPS_input_template, data_file = relative_LAMMPS_data_path,
-                                     temperature = temp, pressure = press, equilibration_time = 2e6, production_time = 4e6 )
+                                     temperature = temp, pressure = press, equilibration_time = 4e6, production_time = 2e6 )
 ```
 
 ## 🚑 Help

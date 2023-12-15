@@ -30,8 +30,9 @@ class LAMMPS_input():
         """
 
         # Save moleclue graphs of both components class wide
-        self.mol_str  = mol_str
-        self.mol_list = [ moleculegraph.molecule(mol) for mol in mol_str ]
+        self.mol_str    = mol_str
+        self.mol_list   = [ moleculegraph.molecule(mol) for mol in mol_str ]
+        self.decoupling = decoupling
 
         # Read in force field toml file
         with open(ff_path) as ff_toml_file:
@@ -341,22 +342,20 @@ class LAMMPS_input():
         
         return 
     
-    def prepare_lammps_data(self, nmol_list: List, densitiy: float, decoupling: bool=False):
+    def prepare_lammps_data(self, nmol_list: List, density: float):
         """
-        Function that prepares the LAMMPS data file at a given density for a given force field and system. In the case decoupling is wanted, then the first component will be decoupled
-        to all other mixture components.
+        Function that prepares the LAMMPS data file at a given density for a given force field and system.
 
         Args:
             nmol_list (list): List containing the number of molecules per component
-            densitiy (float): Mass density of the component/mixture at that state [kg/m^3]
+            density (float): Mass density of the component/mixture at that state [kg/m^3]
         """
         
         #### System specific settings ####
 
         # Variables defined here are used class wide 
         self.nmol_list      = nmol_list
-        self.density        = densitiy
-        self.decoupling     = decoupling
+        self.density        = density
 
         # This is used to write the header of the data file for the 
         # Zip objects has to be refreshed for every system since its only possible to loop over them once
@@ -439,7 +438,7 @@ class LAMMPS_input():
         lmp_torsion_list = []
 
         # Read in the specified coordinates --> the atom names are also read in (these are the atom names given in playmol setup. Double check if they match the force field type you expect!)
-        coordinates      = moleculegraph.funcs.read_xyz(xyz_path)
+        coordinates      = moleculegraph.general_utils.read_xyz(xyz_path)
         
         # Get the number of atoms per component as list
         component_atom_numbers = [mol.atom_number for mol in self.mol_list] 
@@ -777,7 +776,7 @@ class LAMMPS_input():
 
         # Set thermodynamic conditions (convert bar into atm for LAMMPS)
         self.settings["temperature"] = temperature
-        self.settings["pressure"]    = pressure / 1.01325
+        self.settings["pressure"]    = round( pressure / 1.01325, 3 )
 
         # Set restart / data / sampling file options
         self.settings["restart"]      = int(restart)
@@ -790,21 +789,16 @@ class LAMMPS_input():
         # Van der Waals
         pair_interactions = []
 
-        # Define the atom numbers of the coupling molecule (this is always component one)
-        atom_list_coulped_molecule = np.arange( len(self.mol_list[0].unique_atom_keys) ) + 1
+        # Define the atom numbers of the coupling molecule (this is always component one) -> if no decoupling is used, then this list is empty
+        atom_list_coulped_molecule = np.arange( len(self.mol_list[0].unique_atom_keys) ) + 1 if self.decoupling else []
 
         for i,iatom in zip(self.atom_numbers_ges, self.nonbonded):
             for j,jatom in zip(self.atom_numbers_ges[i-1:], self.nonbonded[i-1:]):
-
-                # If decoupling is wanted, no mixture rule can be utilized --> the i j pair interactions need to defined in here
-                # Also if a hybrid command in used as pair_style, as these it is not recommended to use LAMMPS mixing.
-                if i != j and not self.decoupling and not "hybrid" in self.settings["style"]["pair_style"]:
-                    continue
                 
                 # If decoupling is wanted, the intramolecular interactions of the coupling molecule need to be activated,
                 # while the intermolecular interactions need to be scaled. This is done using a lambda_ij.
                 # Activated: lambda_ij = 1.0, coupled: 0.0 < lambda_ij < 1.0, deactiavted: lambda_ij = 0.0
-                if all( np.isin( np.array([i,j]), atom_list_coulped_molecule) ):
+                if all( np.isin( [ i, j ], atom_list_coulped_molecule) ):
                     lambda_ij = 1.0 
                 elif (i in atom_list_coulped_molecule and not j in atom_list_coulped_molecule) or (not i in atom_list_coulped_molecule and j in atom_list_coulped_molecule):
                     lambda_ij = lambda_vdw
@@ -840,14 +834,13 @@ class LAMMPS_input():
         self.settings["free_energy"]["coupled_atom_list"]   = atom_list_coulped_molecule
 
         # Coulomb
-        # If coupling is not wanted, long range coulomb interactions are evaluated for every charged atom in the system. 
-        # If coupling is wanted, the charges of all all atoms in the coupled molecule need to be scaled accordingly (with lambda_coulomb).
+        # If coupling is wanted, the charges of all all atoms in the coupled molecule need to be scaled accordingly (this is done in the template with lambda_coulomb).
         # In case vdW interactions are investiagted, scale the charges to closely 0 (1e-9), and overlay a 2nd Coulomb potential to maintain unaltered intramolecular Coulomb interactions.
-        # In case Coulomb interactions are investiaged, scale the charges accordignly, and also overlay the 2nd Coulomb potential.
-        self.settings["free_energy"]["charge_list"]         = [ iatom["charge"] * lambda_coulomb for iatom in np.array( self.nonbonded )[ atom_list_coulped_molecule-1 ] ]
+        # In case Coulomb interactions are investiaged, scale the charges accordingly, and also overlay the 2nd Coulomb potential.
+        self.settings["free_energy"]["charge_list"]         = [ (i+1,iatom["charge"]) for i,iatom in enumerate( np.array( self.nonbonded )[ atom_list_coulped_molecule - 1 ] ) ] if self.decoupling else []
 
-        # Define the overlay between all atoms of the coupled molecule (defined in https://doi.org/10.1007/s10822-020-00303-3)
-        self.settings["free_energy"]["lamda_overlay"]       = ( 1 - lambda_coulomb**2 ) / lambda_coulomb**2
+        # Define the overlay lambda between all atoms of the coupled molecule (defined in https://doi.org/10.1007/s10822-020-00303-3)
+        self.settings["free_energy"]["lambda_overlay"]      = ( 1 - lambda_coulomb**2 ) / lambda_coulomb**2
 
         # Define if vdW or Coulomb interactions is decoupled.
         self.settings["free_energy"]["couple_lambda"]       = lambda_vdw if np.isclose( lambda_coulomb, 0 ) else lambda_coulomb
@@ -866,7 +859,7 @@ class LAMMPS_input():
         with open(template_path) as file_: 
             template = Template(file_.read())
 
-        rendered = template.render( set = self.settings )
+        rendered = template.render( settings = self.settings )
 
         # Create folder (if necessary) where the input file should be writen to
         os.makedirs( os.path.dirname(input_path), exist_ok=True )
