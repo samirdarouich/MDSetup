@@ -9,23 +9,19 @@ from scipy.constants import Avogadro
 from typing import Any, List, Dict, Callable
 
 
-from .utils import get_local_dipol, calc_mie, calc_coulomb, calc_bond
-
 class LAMMPS_input():
     """
     This class can be used to build initial systems using Playmol (Packmol) and simple xyz for each component. Furthermore, it writes LAMMPS data files from the produced system xyz, 
     as welll as LAMMPS input files. For every writing task, jinja2 templates are utilized. The LAMMPS input template can be adjusted as necessary.
     """
 
-    def __init__(self, mol_str: List[str], ff_path: str, table_path: str="", charge_group_approach: bool=False):
+    def __init__(self, mol_str: List[str], ff_path: str):
         """
-        Initilizing LAMMPS input class. Save system independent force field parameters (bonds, angles, torsions).
+        Initilizing LAMMPS input class with read provided force field.
 
         Args:
             mol_list (List[str]): List containing moleculegraph strings for the component(s). These will be transalted into moleculegraph objects
             ff_path (str): Path to toml file containing used force-field readable format by moleculegraph.
-            charge_group_approach (bool, optional): If the charge group approach should be utilized. Defaults to False.
-            table_path (str, optional): Provide a (relative) path to the table containing all tabled bonds (these include the nonbonded interactions evaluated in the charge group approach).                      
         """
 
         # Save moleclue graphs of both components class wide
@@ -36,24 +32,18 @@ class LAMMPS_input():
         with open(ff_path) as ff_toml_file:
             self.ff = toml.load(ff_toml_file)
 
-        # If the charge group approach should be utilized, the force field as well as the molecule graph objects are altered to consider two local dipols within a molecule
-        if charge_group_approach: 
-            print("\nCharge group approach is utilized. Scan for local dipols:\n")
-            self.apply_charge_group_approach( table_path )
+        ## Map force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions) ##
 
-
-        ## Specify force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions)
-
-        # Get (unique) atom types and parameters #
+        # Get (unique) atom types and parameters
         self.nonbonded = [j for sub in [molecule.map_molecule( molecule.unique_atom_keys, self.ff["atoms"] ) for molecule in self.mol_list] for j in sub]
         
-        # Get (unique) bond types and parameters #
+        # Get (unique) bond types and parameters
         self.bonds     = [j for sub in [molecule.map_molecule( molecule.unique_bond_keys, self.ff["bonds"] ) for molecule in self.mol_list] for j in sub]
         
-        # Get (unique) angle types and parameters #     
+        # Get (unique) angle types and parameters
         self.angles    = [j for sub in [molecule.map_molecule( molecule.unique_angle_keys, self.ff["angles"] ) for molecule in self.mol_list] for j in sub]
         
-        # Get (unique) torsion types and parameters #
+        # Get (unique) torsion types and parameters 
         self.torsions  = [j for sub in [molecule.map_molecule( molecule.unique_torsion_keys, self.ff["torsions"] ) for molecule in self.mol_list] for j in sub]
         
         if not all( [ all(self.nonbonded), all(self.bonds), all(self.angles), all(self.torsions) ] ):
@@ -63,6 +53,11 @@ class LAMMPS_input():
         # Get nonbonded force field for all atom types not only the unique one. This is later used to extract the charge of each atom in the system while writing the LAMMPS data file.
         self.ff_all    = np.array([j for sub in [molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) for molecule in self.mol_list] for j in sub])
 
+
+    def prepare_lammps_force_field(self):
+        """
+        Save force field parameters (atoms, bonds, angles, torsions) used for LAMMPS input.
+        """
 
         #### Define general settings that are not system size dependent ####
 
@@ -158,57 +153,6 @@ class LAMMPS_input():
         self.renderdict["torsion_type_number"] = len(self.torsion_numbers_ges)
         
         return
-
-    def apply_charge_group_approach(self, table_path: str):
-        """
-        Function that applies the charge group approach to the components. This function alters the bond entries in the moleculegraph objects, as well as the force field saved within this class.
-
-        Args:
-            table_path (str): Path where the tabled potential are written to or already exist.
-        """
-
-        self.dipol_lists = [ get_local_dipol(mol,self.ff) for mol in self.mol_list ]
-
-        for j,(dipol_list, mol) in enumerate(zip( self.dipol_lists, self.mol_list )):
-            
-            # If dipol list is empty or only contains one local dipol, skip !
-            if len(dipol_list) < 2: continue
-
-            print("\nCharge group approach is applied to molecule: %s"%(self.mol_str[j]))
-
-            dipol_names = [ "Local dipol n°%d: "%i + " ".join(mol.atom_names[np.array(dipol)]) for i,dipol in enumerate(dipol_list)] 
-            
-            print("\nThese are the local dipols identified:\n%s\n"%("\n".join(dipol_names)))
-            
-            # Use the dipol list, to create a special bond list, as well as the corresponding moleculegraph representation of it.
-            # This means matching the correct force field types to each of the atoms in the special bonds list.
-            special_bond_indexes = np.array( np.meshgrid( dipol_list[0], dipol_list[1] ) ).T.reshape(-1, 2)
-            special_bond_names   = mol.atom_names[special_bond_indexes]
-            special_bond_keys    = [ "[special]"+ moleculegraph.make_graph( moleculegraph.sort_force_fields(x) ) for x in special_bond_names ]
-
-            # Delete unnecessary standard bonds. Checks which standard bonds also exist in the special bonds and therefore remove them
-            idx             = np.array( [ i for i,entry in enumerate(mol.bond_list) if tuple(entry) not in set(map(tuple,special_bond_indexes)) ] )
-
-            # Overwrite the bonding information of the moleculegraph object with the new bonds including the special bonds!
-            mol.bond_list   = np.concatenate( [mol.bond_list[idx], special_bond_indexes], axis=0 )
-            mol.bond_names  = np.concatenate( [mol.bond_names[idx], special_bond_names], axis=0 )
-            mol.bond_keys   = np.concatenate( [mol.bond_keys[idx], special_bond_keys], axis=0 )
-
-            mol.unique_bond_keys, mol.unique_bond_indexes, mol.unique_bond_inverse = moleculegraph.molecule_utils.unique_sort( mol.bond_keys, return_inverse=True )
-            mol.unique_bond_names   = mol.bond_names[ mol.unique_bond_indexes ]
-            mol.unique_bond_numbers = mol.bond_list[ mol.unique_bond_indexes ]    
-
-            # Add the force field information for special bonds
-            special_bond_keys_unique, uidx = np.unique(special_bond_keys, return_index=True)
-            special_bond_names_unique      = special_bond_names[uidx]
-
-            print("\nThese are the unique special bonds that are added for intramolecular interaction:\n%s\n"%("\n".join( " ".join(sb) for sb in special_bond_names_unique )))
-            
-            # Jinja2 template uses p[1] as first entry and p[0] as second --> thats why at first the key then the table name.
-            for ( bkey, bname ) in zip(special_bond_keys_unique, special_bond_names_unique):
-                self.ff["bonds"][bkey] = { "list": list(bname), "p":  [ bkey, table_path ], "style": "table", "type": -1}
-        
-        return 
 
     def prepare_playmol_input(self, playmol_template: str, playmol_ff_path: str):
         """
@@ -541,127 +485,6 @@ class LAMMPS_input():
         with open(data_path, "w") as fh:
             fh.write(rendered)
 
-        return
-
-
-    def write_tabled_bond( self, torsion_pairs: List[List], table_path: str, table_template: str, evaluation_steps: int = 1000 ):
-        """
-        This function writes an input table for the LAMMPS bond style "table". The charge group approach is used, to include the 1.4-Mie interaction of the special torsion pair provided,
-        as well as the evaluation of all coulombic interactions between local dipols. In the case two atoms of different local dipols are bonded, also evaluate the bonded potential.
-
-        Args:
-            torsion_pairs (List[List]): List with Lists containing the force field keys for the special torsion pair under investigation. Should match the lenght of components provided.
-            table_path (str): Path where the table should be written to.
-            table_template (str): Path to the Jinja2 template to write the table.
-            steps_nonbonded (int, optional): Number of evaluation points for all special bonds. Defaults to 1000.
-        """
-
-        tabled_dict_list = []
-
-        # As the gradient of the Coulomb and Mie potential is quiete high at low distances, use more 50% of the intermediates in the first 30% of the cut off range. 
-        # And less intermediates for the distances higher than 30% of the cut off.
-        n1              = int( 0.5 * evaluation_steps )
-        n2              = int( evaluation_steps - n1 )
-
-        # Get overall cutoff used in the simulation
-        cut_off         = max( p["cut"] for _,p in self.ff["atoms"].items() )
-
-        # Loop through every molecule and check if there are special bonds
-        for mol, pair in zip( self.mol_list, torsion_pairs ):
-            for sbi,sbk in zip( mol.bond_list, mol.bond_keys ):
-
-                # Check if it is a special bond and if the special bond is already evaluted. In that case, skip the reevaluation.
-                if "special" in sbk and not sbk in [ td["list"] for td in tabled_dict_list ]:
-
-                    # Extract the force field keys of the atoms in this bond.
-                    ff_keys = re.findall(r'\[(.*?)\]', sbk)[1:]
-
-                    # Evalute the bonded interaction for every bonded special bond and the Coulomb interaction
-                    if mol.get_distance(*sbi) == 1:
-
-                        # K is given in Kcal/mol/Angstrom^2, r0 in Angstrom
-                        r0, K    = self.ff["bonds"][moleculegraph.make_graph( ff_keys )]["p"]
-
-                        # Get Coulomb parameter (charges and cut off)
-                        charges  = [ self.ff["atoms"][atom_key]["charge"] for atom_key in ff_keys ]
-                        
-                        # Distances evaluated ±30% around r0.
-                        r_eval   = np.linspace( 0.7*r0, 1.3*r0, evaluation_steps )
-                        
-                        # Compute bonded interaction 
-                        u_bond, f_bond  = calc_bond( r_eval, r0, K, "energy"), calc_bond( r_eval, r0, K, "force")
-
-                        # Compute Coulomb interaction
-                        u_coulomb, f_coulomb = calc_coulomb( r_eval, *charges, "energy"), calc_coulomb( r_eval, *charges, "force")
-
-                        # Get total energy and force
-                        u_total, f_total     = u_bond + u_coulomb, f_bond + f_coulomb
-
-
-                    # Evaluate the Mie interaction for the special 1-4 pair in the reparametrized torsion, as well as Coulomb.
-                    # Furthermore for all intramolecular interactions with a higher bond distance than 3. (Since LAMMPS tabled bonds alter the
-                    # understanding of the molecule. Thus, if a tabled bond of a 1-4 pair is introduced, the 1-5 interaction do not longer have a bond distance of 4,
-                    # rather it now only has a distance of 2. Hence, LAMMPS will not compute non bonded interactions, and therefore they needed to be presented as tabled
-                    # bonds as well)
-                    elif ( mol.get_distance(*sbi) == 3 and all( p in ff_keys for p in pair ) ) or ( mol.get_distance(*sbi) > 3 ):
-
-                        # Get Coulomb and vdW parameter (charges, epsilon, sigma and repulsive exponent)
-                        charges  = [ self.ff["atoms"][atom_key]["charge"] for atom_key in ff_keys ]
-                        epsilons = [ self.ff["atoms"][atom_key]["epsilon"] for atom_key in ff_keys ]
-                        sigmas   = [ self.ff["atoms"][atom_key]["sigma"] for atom_key in ff_keys ]
-                        ns       = [ self.ff["atoms"][atom_key]["m"] for atom_key in ff_keys ]
-
-                        # Use mixing Lorentz-Berthelot mixing rule for sigma and epsilon, as well as an arithmetic mean for the repulsive exponent
-                        n        = np.mean( ns )
-                        sigma    = np.mean( sigmas )
-                        epsilon  = np.sqrt( np.prod( epsilons ) )
-
-                        # Evaluated distances 
-                        r_eval   = np.concatenate( [np.linspace( 0.01*cut_off, 0.3*cut_off, n1), np.linspace( 0.301*cut_off, cut_off, n2)] )
-                        
-                        # Compute Mie interaction up to the cut off radius
-                        u_mie, f_mie         = calc_mie( r_eval, sigma, epsilon, n, 6, "energy"), calc_mie( r_eval, sigma, epsilon, n, 6, "force")
-
-                        # Compute Coulomb interaction up to the cut off radius. 
-                        u_coulomb, f_coulomb = calc_coulomb( r_eval, *charges, "energy"), calc_coulomb( r_eval, *charges, "force")
-
-                        # Get total energy and force
-                        u_total, f_total     = u_mie + u_coulomb, f_mie + f_coulomb
-                    
-
-                    # Evaluate only the Coulomb interaction (in the case for all 1-3 interactions)
-                    else:
-                        
-                        # Get Coulomb parameter (charges and cut off)
-                        charges  = [ self.ff["atoms"][atom_key]["charge"] for atom_key in ff_keys ]
-
-                        # Evaluated distances 
-                        r_eval   = np.concatenate( [np.linspace( 0.01*cut_off, 0.3*cut_off, n1), np.linspace( 0.301*cut_off, cut_off, n2)] )
-
-                        # Compute Coulomb interaction up to the cut off radius. 
-                        u_coulomb, f_coulomb = calc_coulomb( r_eval, *charges, "energy"), calc_coulomb( r_eval, *charges, "force")
-
-                        # Get total energy and force
-                        u_total, f_total     = u_coulomb, f_coulomb
-
-                    # Save the evaluated distance, energy and force into the table dict
-                    tabled_dict_list.append( { "list": sbk, 
-                                               "N": len(r_eval), 
-                                               "p": list( zip( range(1, evaluation_steps + 1), r_eval, u_total, f_total ) )
-                                             } )
-  
-        # Write the table using Jinja2 template
-        with open(table_template) as file_: 
-            template = Template(file_.read())
-
-        rendered = template.render( rd = tabled_dict_list )
-
-        # Create folder (if necessary) where table should be writen to
-        os.makedirs( os.path.dirname(table_path), exist_ok=True )
-
-        with open(table_path, "w") as fh:
-            fh.write(rendered) 
-        
         return
 
     def prepare_lammps_input(self, timestep: int=1, sample_frequency: int=20, sample_number: int=50, 
