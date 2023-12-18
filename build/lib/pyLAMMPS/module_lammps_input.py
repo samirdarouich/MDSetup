@@ -17,15 +17,13 @@ class LAMMPS_input():
     as welll as LAMMPS input files. For every writing task, jinja2 templates are utilized. The LAMMPS input template can be adjusted as necessary.
     """
 
-    def __init__(self, mol_str: List[str], ff_path: str, decoupling: bool=False, table_path: str="", charge_group_approach: bool=False):
+    def __init__(self, mol_str: List[str], ff_path: str, table_path: str="", charge_group_approach: bool=False):
         """
         Initilizing LAMMPS input class. Save system independent force field parameters (bonds, angles, torsions).
 
         Args:
             mol_list (List[str]): List containing moleculegraph strings for the component(s). These will be transalted into moleculegraph objects
             ff_path (str): Path to toml file containing used force-field readable format by moleculegraph.
-            decoupling (bool,optional): This will decouple the first component (should just be one molecule) from all other components.
-                                        This mean that the intermolecular interactions with all other components will be coupled using a lambda parameter. Defaults to False.
             charge_group_approach (bool, optional): If the charge group approach should be utilized. Defaults to False.
             table_path (str, optional): Provide a (relative) path to the table containing all tabled bonds (these include the nonbonded interactions evaluated in the charge group approach).                      
         """
@@ -33,7 +31,6 @@ class LAMMPS_input():
         # Save moleclue graphs of both components class wide
         self.mol_str    = mol_str
         self.mol_list   = [ moleculegraph.molecule(mol) for mol in mol_str ]
-        self.decoupling = decoupling
 
         # Read in force field toml file
         with open(ff_path) as ff_toml_file:
