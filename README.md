@@ -87,6 +87,9 @@ get_molecule_coordinates( molecule_name_list = molecule_name_list, molecule_grap
 
 # 3: Call the LAMMPS input class
 LAMMPS_class        = LAMMPS_input( mol_str = molecule_graph_list, ff_path = force_field_path )
+
+# Prepare LAMMPS force field with the given molecules
+LAMMPS_class.prepare_lammps_force_field()
 ```
 
 ## 2. Write system size independent files ##
