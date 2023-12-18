@@ -1,0 +1,13 @@
+# Van der Waals interactions
+
+
+pair_coeff  1 1  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  1 2  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
+pair_coeff  1 3  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  1 4  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
+pair_coeff  2 2  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
+pair_coeff  2 3  mie/cut 0.1687 3.8217 14.0 6.0 # CH2_alkane  CH3_alkane
+pair_coeff  2 4  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane
+pair_coeff  3 3  mie/cut 0.2709 3.6034 14.0 6.0 # CH3_alkane  CH3_alkane
+pair_coeff  3 4  mie/cut 0.1687 3.8217 14.0 6.0 # CH3_alkane  CH2_alkane
+pair_coeff  4 4  mie/cut 0.1051 4.04 14.0 6.0 # CH2_alkane  CH2_alkane

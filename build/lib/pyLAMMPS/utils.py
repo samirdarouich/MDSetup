@@ -345,4 +345,66 @@ def calc_bond(r: np.ndarray, r0: float, K: float, key = "energy"):
         bf = -K * 2 * ( r - r0 )
         
     return bf
+    
+
+## External functions for LAMMPS input ##
+
+def write_pair_ff(settings: Dict[str, str | List | Dict], atom_numbers_ges: List[int], nonbonded: List[Dict[str,str]], 
+                  ff_template: str="", lammps_ff_path: str="", relative_lammps_ff_path: str=""):
+    """
+    This function prepares LAMMPS understandable van der Waals pair interactions. If wanted these are written to a seperated force field file, or are added to the settings input dictionary.
+
+    Args:
+        settings (Dict[str, str  |  List  |  Dict]): Settings dictionary which will be used to render the LAMMPS input template. 
+        atom_numbers_ges (List[int]): List with the unique force field type identifiers used in LAMMPS
+        nonbonded (List[Dict[str,str]]): List with the unique force field dictionaries containing: sigma, epsilon, name, m 
+        ff_template (str, optional): Path to the force field template if it should be written to an external file instead into the LAMMPS input file. Defaults to "".
+        lammps_ff_path (str, optional): Destination of the external force field file. Defaults to "".
+        relative_lammps_ff_path (str, optional): Relative path to the external force field file from the lammps input file. Defaults to "".
+
+    Raises:
+        KeyError: If the settings dictionary do not contain the subdictionary "style".
+    """
+
+    if not "style" in settings.keys():
+        raise KeyError("Settings dictionary do not contain the style subdictionary!")
+    
+    # Van der Waals pair interactions
+    pair_interactions = []
+
+    for i,iatom in zip(atom_numbers_ges, nonbonded):
+        for j,jatom in zip(atom_numbers_ges[i-1:], nonbonded[i-1:]):
+            
+            name_ij   = f"{iatom['name']}  {jatom['name']}"
+
+            if settings["style"]["mixing"] == "arithmetic": 
+                sigma_ij   = ( iatom["sigma"] + jatom["sigma"] ) / 2
+                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
+
+            elif settings["style"]["mixing"] ==  "geometric":
+                sigma_ij   = np.sqrt( iatom["sigma"] * jatom["sigma"] )
+                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
+
+            elif settings["style"]["mixing"] ==  "sixthpower": 
+                sigma_ij   = ( 0.5 * ( iatom["sigma"]**6 + jatom["sigma"]**6 ) )**( 1 / 6 ) 
+                epsilon_ij = 2 * np.sqrt( iatom["epsilon"] * jatom["epsilon"] ) * iatom["sigma"]**3 * jatom["sigma"]**3 / ( iatom["sigma"]**6 + jatom["sigma"]**6 )
+
+            n_ij  = ( iatom["m"] + jatom["m"] ) / 2
+            
+            pair_interactions.append( { "i": i, "j": j, "sigma": round( sigma_ij, 4 ) , "epsilon": round( epsilon_ij, 4 ),  "m": n_ij, "name": name_ij } ) 
+
+    # If provided write pair interactions as external LAMMPS force field file.
+    if ff_template and lammps_ff_path and relative_lammps_ff_path:
+        with open(ff_template) as file_:
+            template = Template(file_.read())
         
+        rendered = template.render( pair_interactions = pair_interactions )
+
+        with open(lammps_ff_path, "w") as fh:
+            fh.write(rendered) 
+
+        settings["style"]["pairs_path"] = relative_lammps_ff_path
+
+    else:
+        # Otherwise add pair interactions in the style section
+        settings["style"]["pairs"] = pair_interactions

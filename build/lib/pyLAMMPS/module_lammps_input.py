@@ -1,11 +1,12 @@
 import os
 import re
 import toml
+import inspect
 import numpy as np
 import moleculegraph
-from typing import List, Dict
 from jinja2 import Template
 from scipy.constants import Avogadro
+from typing import Any, List, Dict, Callable
 
 
 from .utils import get_local_dipol, calc_mie, calc_coulomb, calc_bond
@@ -322,6 +323,8 @@ class LAMMPS_input():
                                     rho  = str(self.density / 1000),
                                     seed = np.random.randint(1,1e6) )
         
+        os.makedirs( os.path.dirname(playmol_path), exist_ok = True)
+
         with open(playmol_path, "w") as fh:
             fh.write(rendered) 
 
@@ -667,10 +670,12 @@ class LAMMPS_input():
     def prepare_lammps_input(self, timestep: int=1, sample_frequency: int=20, sample_number: int=50, 
                              pair_style: str="hybrid/overlay mie/cut 14 coul/long 14", mixing_rule: str="arithmetic", 
                              tail_correction: bool=True, sb_dict: Dict={"vdw":[0,0,0],"coulomb":[0,0,0]}, 
-                             shake_dict: Dict={"atoms":[],"bonds":[],"angles":[]}, n_eval: int=1000 ):
+                             shake_dict: Dict={"atoms":[],"bonds":[],"angles":[]}, n_eval: int=1000,
+                             external_input: List[Dict[str, Any]]=[] ):
         """
         This function initialize the needed input for LAMMPS. Here special bonds to scale 1-2, 1-3, and 1-4 pair vdW / Coulomb interactions can be defined, as well as possible force field types for the
-        shake algorithm. Furthermore, this function defines the types of bonds, angles, and dihedrals used, as well as the pair style.
+        shake algorithm. Furthermore, this function defines the types of bonds, angles, and dihedrals used, as well as the pair style. As external input a list of dictionaries can be passed,
+        that can be used in the jinja2 template.
 
         Args:
             timestep (int, optional): Timestep in fs. Defaults to 1.
@@ -685,6 +690,8 @@ class LAMMPS_input():
             shake_dict (dict, optional): Keys for atoms, bonds or angles that should be constrained using the SHAKE algorithm. Input arguments are the force field types, which will be mapped back to the
                                         corresponding force field index. Defaults to {"atoms":[],"bonds":[],"angles":[]}.
             n_eval (int, optional): If tabled bond potentials are used, how many node points should be utilized for the spline interpolation.
+            external_input (Any, optional): List with dictionaries containing arbitrary input that will be directly added to the settings dictionary and 
+                                            thus be accessed in the template under "settings.*"
         """
         
         
@@ -723,8 +730,9 @@ class LAMMPS_input():
 
         # Charged system
         self.settings["style"]["uncharged"] = all( [charge==0 for charge in np.unique([p["charge"] for p in self.nonbonded])] )
-        if "coul" in  pair_style and self.settings["style"]["uncharged"]: 
-            raise KeyError("\n!!! Coulomb pair style is choosen, eventhough system is uncharged !!!\n")
+
+        if "coul" in pair_style and self.settings["style"]["uncharged"]: 
+            raise KeyError("!!! Coulomb pair style is choosen, eventhough system is uncharged !!!\n")
 
         
         ## Define special bonds and SHAKE algorithm ##
@@ -745,13 +753,19 @@ class LAMMPS_input():
 
         self.settings["shake"] = {"t":key_at, "b":key_b, "a":key_an}
 
+        ## Add external input to settings dictionary ##
+
+        for external_inp in external_input:
+            self.settings.update( external_inp )
+
+
         return
 
     def write_lammps_input(self, input_path: str, template_path: str, data_file: str, temperature: float, pressure: float=0.0, equilibration_time: int=5e6, production_time: int=3e6,
-                           restart: bool=False, restart_file = "equil.restart", lambda_vdw: float=1.0, lambda_coulomb: float=1.0,
-                           free_energy_method: str="TI", dlambda: List=[-0.001,0.001], free_energy_output_files: List=["fep.fep01","fep.fep12"]):
+                           restart: bool=False, restart_file = "equil.restart", external_functions: List[Callable]=[], external_function_input: List[Dict]=[]):
         """
-        Function that writes a LAMMPS input file using Jinja2 template
+        Function that writes a LAMMPS input file using Jinja2 template. External functions and inputs can be passed that work with the class attributes to prepare further input.
+        The input arguments should match the naming of the class attributes.
 
         Args:
             input_path (str): Path where the input file will be created.
@@ -763,6 +777,8 @@ class LAMMPS_input():
             production_time (int, optional): Production time of the system. All fix commands will output their values in this time. Defaults to 3e6.
             restart (bool, optional): If simulation should start from a restart rather than from a data file. Defaults to False.
             restart_file (str, optional): File name of restart file, either for writing a restart file it self, or for reading a restart file in. Defaults to "equil.restart".
+            external_functions (List[Callable], optional): List with external callable functions that takes inputs from this class as well as external input.
+            external_function_input: (List[Dict], optional): List with several dictionaries specifing the external inputs for each external function.
         """
 
         ## Define general settings ##
@@ -783,77 +799,19 @@ class LAMMPS_input():
         self.settings["restart_file"] = restart_file
         self.settings["data_file"]    = data_file
 
+        ## Call external functions ##
 
-        ## Define pair interactions ##
+        # Get all attributes of the class as a dictionary
+        all_attributes = vars(self)  
 
-        # Van der Waals
-        pair_interactions = []
+        for external_function, external_input in zip( external_functions, external_function_input ):
 
-        # Define the atom numbers of the coupling molecule (this is always component one) -> if no decoupling is used, then this list is empty
-        atom_list_coulped_molecule = np.arange( len(self.mol_list[0].unique_atom_keys) ) + 1 if self.decoupling else []
+            # Filter class attributes based on the external function's signature
+            function_args = inspect.signature(external_function).parameters
 
-        for i,iatom in zip(self.atom_numbers_ges, self.nonbonded):
-            for j,jatom in zip(self.atom_numbers_ges[i-1:], self.nonbonded[i-1:]):
-                
-                # If decoupling is wanted, the intramolecular interactions of the coupling molecule need to be activated,
-                # while the intermolecular interactions need to be scaled. This is done using a lambda_ij.
-                # Activated: lambda_ij = 1.0, coupled: 0.0 < lambda_ij < 1.0, deactiavted: lambda_ij = 0.0
-                if all( np.isin( [ i, j ], atom_list_coulped_molecule) ):
-                    lambda_ij = 1.0 
-                elif (i in atom_list_coulped_molecule and not j in atom_list_coulped_molecule) or (not i in atom_list_coulped_molecule and j in atom_list_coulped_molecule):
-                    lambda_ij = lambda_vdw
-                else:
-                    lambda_ij = None
+            filtered_attributes = {key: all_attributes[key] for key in function_args if key in all_attributes}
 
-                name_ij   = "%s  %s"%( iatom["name"], jatom["name"] ) 
-
-                if self.settings["style"]["mixing"] == "arithmetic": 
-                    sigma_ij   = ( iatom["sigma"] + jatom["sigma"] ) / 2
-                    epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
-
-                elif self.settings["style"]["mixing"] == "geometric":
-                    sigma_ij   = np.sqrt( iatom["sigma"] * jatom["sigma"] )
-                    epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
-
-                elif self.settings["style"]["mixing"] == "sixthpower": 
-                    sigma_ij   = ( 0.5 * ( iatom["sigma"]**6 + jatom["sigma"]**6 ) )**( 1 / 6 ) 
-                    epsilon_ij = 2 * np.sqrt( iatom["epsilon"] * jatom["epsilon"] ) * iatom["sigma"]**3 * jatom["sigma"]**3 / ( iatom["sigma"]**6 + jatom["sigma"]**6 )
-
-                n_ij  = ( iatom["m"] + jatom["m"] ) / 2
-                
-                pair_interactions.append( { "i": i, "j": j, "sigma": round( sigma_ij, 4 ) , "epsilon": round( epsilon_ij, 4 ),  "m": n_ij, "name": name_ij, "lambda_vdw": lambda_ij } ) 
-
-        self.settings["style"]["pairs"] = pair_interactions
-
-
-        ## Save free energy (coupling) related settings ##
-
-        self.settings["free_energy"]                        = {}
-
-        # Save the atom types of the coupled molecule
-        self.settings["free_energy"]["coupled_atom_list"]   = atom_list_coulped_molecule
-
-        # Coulomb
-        # If coupling is wanted, the charges of all all atoms in the coupled molecule need to be scaled accordingly (this is done in the template with lambda_coulomb).
-        # In case vdW interactions are investiagted, scale the charges to closely 0 (1e-9), and overlay a 2nd Coulomb potential to maintain unaltered intramolecular Coulomb interactions.
-        # In case Coulomb interactions are investiaged, scale the charges accordingly, and also overlay the 2nd Coulomb potential.
-        self.settings["free_energy"]["charge_list"]         = [ (i+1,iatom["charge"]) for i,iatom in enumerate( np.array( self.nonbonded )[ atom_list_coulped_molecule - 1 ] ) ] if self.decoupling else []
-
-        # Define the overlay lambda between all atoms of the coupled molecule (defined in https://doi.org/10.1007/s10822-020-00303-3)
-        self.settings["free_energy"]["lambda_overlay"]      = ( 1 - lambda_coulomb**2 ) / lambda_coulomb**2
-
-        # Define if vdW or Coulomb interactions is decoupled.
-        self.settings["free_energy"]["couple_lambda"]       = lambda_vdw if np.isclose( lambda_coulomb, 0 ) else lambda_coulomb
-        self.settings["free_energy"]["couple_interaction"]  = "vdw" if np.isclose( lambda_coulomb, 0 ) else "coulomb"
-
-        # Define free energy method
-        self.settings["free_energy"]["method"]              = free_energy_method
-
-        # Define the lambda perpurtation that should be performed (backwards and forwards)
-        self.settings["free_energy"]["lambda_perturbation"] = dlambda
-
-        # Define output files for free energy computation
-        self.settings["free_energy"]["output_files"]        = free_energy_output_files
+            external_function( **filtered_attributes, **external_input )
 
         # Write the input file using Jinja2 template
         with open(template_path) as file_: 

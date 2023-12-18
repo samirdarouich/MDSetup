@@ -17,12 +17,12 @@ variable restart equal {{settings.restart}}
 
 if "${restart} == 1" then "read_restart {{settings.restart_file}}" else "read_data       {{settings.data_file}}"
 
-{{%- if settings.restart == 1 %}}
+{%- if settings.restart == 1 %}
 # Define bond, angle, and dihedral style (after restart)
 {%-if settings.style.bond|length > 0%}bond_style    {{settings.style.bond|join(' ')}}{%- endif %}
 {%-if settings.style.angle|length > 0%}angle_style    {{settings.style.angle|join(' ')}}{%- endif %}
 {%-if settings.style.dihedral|length > 0%}dihedral_style    {{settings.style.dihedral|join(' ')}}{%- endif %}
-{{%- endif %}}
+{%- endif %}
 
 # Define pair style and further settings
 
@@ -39,9 +39,13 @@ neigh_modify every 1 delay 0 check yes
 special_bonds lj {{settings.sp_bond.vdw|join(' ')}}  coul {{settings.sp_bond.coulomb|join(' ')}}
 
 # Van der Waals interactions
+{% if settings.style.pairs_path is defined %}
+include {{settings.style.pairs_path}}
+{%- else %}
 {% for p in settings.style.pairs %}
 pair_coeff  {{p.i}} {{p.j}}  mie/cut {{p.epsilon}} {{p.sigma}} {{p.m}} 6.0 # {{p.name}}
 {%- endfor %}
+{%- endif %}
 
 {%if not settings.style.uncharged %}
 # Coulombic interactions

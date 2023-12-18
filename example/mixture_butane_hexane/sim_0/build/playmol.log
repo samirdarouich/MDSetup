@@ -1,6 +1,6 @@
 Adding variable rho with parameters 0.5732820000000001
-Adding variable seed with parameters 714459
-Including file ../playmol_ff.playmol
+Adding variable seed with parameters 488579
+Including file ../../playmol_ff.playmol
 Adding atom type CH3_alkane with parameters mie/cut 0.2709 3.6034 14.0 6.0
 Adding diameter CH3_alkane with parameters 3.6034
 Adding mass CH3_alkane with parameters 15.035
@@ -72,7 +72,7 @@ Fusing molecule 3 to molecule 2
 Lowering indices of molecules 4 to 4
 Adding bond CH2_alkane9 CH3_alkane10
 Fusing molecule 3 to molecule 2
-Reading geometric data from file ../butane.xyz...
+Reading geometric data from file ../../butane.xyz...
 Number of data to be read: 4
 1 : CH3_alkane1 -1.9293 -0.1506 -0.0071
 2 : CH2_alkane2 -0.563 0.516 0.0071
@@ -88,7 +88,7 @@ Adding coordinate CH3_alkane1 with parameters -1.92929995 -0.150600001 -7.100000
 Adding coordinate CH2_alkane2 with parameters -0.563000023 0.515999973 7.10000005E-03
 Adding coordinate CH2_alkane3 with parameters 0.563000023 -0.515900016 7.10000005E-03
 Adding coordinate CH3_alkane4 with parameters 1.92939997 0.150500000 -7.10000005E-03
-Reading geometric data from file ../hexane.xyz...
+Reading geometric data from file ../../hexane.xyz...
 Number of data to be read: 6
 1 : CH3_alkane5 3.1709 0.2369 -0.0001
 2 : CH2_alkane6 1.8649 -0.5413 -0.0114
@@ -111,7 +111,7 @@ Adding coordinate CH2_alkane8 with parameters -0.655799985 -0.393200010 2.270000
 Adding coordinate CH2_alkane9 with parameters -1.86500001 0.541400015 9.99999975E-05
 Adding coordinate CH3_alkane10 with parameters -3.17090011 -0.237200007 -1.15000000E-02
 Defining box density as 0.345238447
-Setting packmol seed to 714459
+Setting packmol seed to 488579
 Setting packmol retry parameter to 0.95
 Adding packmol option pack with parameters mol(CH3_alkane1) 250
 Adding packmol option pack with parameters mol(CH3_alkane5) 250

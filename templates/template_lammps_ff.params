@@ -1,0 +1,5 @@
+# Van der Waals interactions
+
+{% for p in pair_interactions %}
+pair_coeff  {{p.i}} {{p.j}}  mie/cut {{p.epsilon}} {{p.sigma}} {{p.m}} 6.0 # {{p.name}}
+{%- endfor %}

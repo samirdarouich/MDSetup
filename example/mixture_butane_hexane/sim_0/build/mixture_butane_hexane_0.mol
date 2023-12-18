@@ -1,7 +1,7 @@
 define rho as 0.5732820000000001
-define seed as 714459
+define seed as 488579
 
-include ../playmol_ff.playmol
+include ../../playmol_ff.playmol
 
 # Definition of atoms
 # atoms force_field_type charge
@@ -31,8 +31,8 @@ bond  CH2_alkane9  CH3_alkane10
 
 # Include the xyz structure of each component
 
-build ../butane.xyz
-build ../hexane.xyz
+build ../../butane.xyz
+build ../../hexane.xyz
 
 # Box density in Da/AA³ ... with Da=Dalton, AA=Angstrom
 box density {0.602214*$rho}
