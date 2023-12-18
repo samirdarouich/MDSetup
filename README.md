@@ -152,8 +152,9 @@ for i, (temp, press, dens, composition) in enumerate( zip( temperatures, pressur
 
 
     # 2: Write PLAYMOL input and execute (if wanted.)
+    playmol_input_destination = simulation_path%i + f"/build/{system_name}_{i}.mol"
+
     if build_playmol:
-        playmol_input_destination = simulation_path%i + f"/build/{system_name}_{i}.mol"
         playmol_relative_ff_path  = os.path.relpath(playmol_force_field_destination, os.path.dirname(playmol_input_destination))
         playmol_relative_xyz_path = [ os.path.relpath(xyz, os.path.dirname(playmol_input_destination)) for xyz in xyz_destinations ]
 
