@@ -110,10 +110,10 @@ class LAMMPS_input():
         # To these indicies the number of preceeding atoms in the system will be added (in the write_lammps_data function).
         # Thus the direct list from molecule graph can be used, without further refinement. 
         # (E.g.: Bond_list for ethanediol: [ [1,2], [2,3], [3,4], [4,5], [5,6] ] )
-        self.bond_numbers            = np.concatenate( [mol.bond_list + 1 for mol in self.mol_list if mol.bond_list.size > 0], axis=0 ).astype("int")
+        self.bond_numbers            = np.concatenate( [mol.bond_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
 
         # This is just the name of each the bonds defined above. This is written as information that one knows what which bond is defined in the data file.
-        self.bond_names              = np.concatenate( [[[mol.atom_names[i] for i in bl] for bl in mol.bond_list] for mol in self.mol_list if mol.bond_list.size > 0], axis=0 )
+        self.bond_names              = np.concatenate( [[[mol.atom_names[i] for i in bl] for bl in mol.bond_list] for mol in self.mol_list], axis=0 )
 
         # Get the number of bonds per component. This will later be multiplied with the number of molecules per component to get the total number of bonds in the system
         self.number_of_bonds         = [ len(mol.bond_keys) for mol in self.mol_list ]
@@ -131,8 +131,8 @@ class LAMMPS_input():
 
         self.angles_running_number   = np.concatenate( [mol.unique_angle_inverse + add_angles[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
         self.angle_numbers_ges       = np.unique( self.angles_running_number )
-        self.angle_numbers           = np.concatenate( [mol.angle_list + 1 for mol in self.mol_list if mol.angle_list.size > 0], axis=0 ).astype("int")
-        self.angle_names             = np.concatenate( [[[mol.atom_names[i] for i in al] for al in mol.angle_list] for mol in self.mol_list if mol.angle_list.size > 0], axis=0 )
+        self.angle_numbers           = np.concatenate( [mol.angle_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
+        self.angle_names             = np.concatenate( [[[mol.atom_names[i] for i in al] for al in mol.angle_list] for mol in self.mol_list], axis=0 )
         self.number_of_angles        = [ len(mol.angle_keys) for mol in self.mol_list ]
 
         self.renderdict["angle_styles"]        = list( np.unique( [ p["style"] for p in self.angles] ) )
@@ -145,8 +145,8 @@ class LAMMPS_input():
         
         self.torsions_running_number = np.concatenate( [mol.unique_torsion_inverse + add_torsions[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
         self.torsion_numbers_ges     = np.unique( self.torsions_running_number )
-        self.torsion_numbers         = np.concatenate( [mol.torsion_list + 1 for mol in self.mol_list if mol.torsion_list.size > 0], axis=0 ).astype("int")
-        self.torsion_names           = np.concatenate( [[[mol.atom_names[i] for i in tl] for tl in mol.torsion_list] for mol in self.mol_list if mol.torsion_list.size > 0], axis=0 )
+        self.torsion_numbers         = np.concatenate( [mol.torsion_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
+        self.torsion_names           = np.concatenate( [[[mol.atom_names[i] for i in tl] for tl in mol.torsion_list] for mol in self.mol_list], axis=0 )
         self.number_of_torsions      = [ len(mol.torsion_keys) for mol in self.mol_list ]
 
         self.renderdict["torsion_styles"]      = list( np.unique( [ p["style"] for p in self.torsions ] ) )
@@ -225,13 +225,13 @@ class LAMMPS_input():
         atom_numbers  = list( np.concatenate( [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(mol_list) ] ) )
         
         # Get running bond numbers --> These are the corresponding atoms of each bond in each molecule. (In order to use the right atom index, the add_atom list is used)
-        bond_numbers  = list( np.concatenate( [mol.bond_list + add_atom[i] for i,mol in enumerate(mol_list) if mol.bond_list.size > 0], axis=0 ) )
+        bond_numbers  = list( np.concatenate( [mol.bond_list + add_atom[i] for i,mol in enumerate(mol_list)], axis=0 ) )
 
         # Get the force field type of each atom in each molecule.
         atom_names    = [j for sub in [molecule.atom_names for molecule in mol_list] for j in sub]
 
         # Get the names of each atom in each bond of each molecule. This is done to explain playmol which bond type they should use for this bond
-        playmol_bond_names = list(np.concatenate( [ [ [mol.atom_names[i] for i in bl] for bl in mol.bond_list ] for mol in mol_list if mol.bond_list.size > 0], axis=0 ))
+        playmol_bond_names = list(np.concatenate( [ [ [mol.atom_names[i] for i in bl] for bl in mol.bond_list ] for mol in mol_list], axis=0 ))
 
         # Playmol uses as atom input: atom_name force_field_type charge --> the atom_name is "force_field_type+atom_index"
         moldict["atoms"]   = list(zip( atom_numbers, atom_names, [self.ff_all[i]["charge"] for i,_ in enumerate(atom_names)] ) )
