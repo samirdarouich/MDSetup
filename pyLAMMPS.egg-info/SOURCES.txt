@@ -2,9 +2,14 @@ README.md
 setup.py
 pyLAMMPS/__init__.py
 pyLAMMPS/module_lammps_input.py
-pyLAMMPS/utils.py
 pyLAMMPS.egg-info/PKG-INFO
 pyLAMMPS.egg-info/SOURCES.txt
 pyLAMMPS.egg-info/dependency_links.txt
 pyLAMMPS.egg-info/requires.txt
 pyLAMMPS.egg-info/top_level.txt
+pyLAMMPS/analysis/__init__.py
+pyLAMMPS/analysis/general_analysis.py
+pyLAMMPS/analysis/mechanical_properties.py
+pyLAMMPS/tools/__init__.py
+pyLAMMPS/tools/general_utils.py
+pyLAMMPS/tools/utils.py

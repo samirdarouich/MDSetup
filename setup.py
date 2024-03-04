@@ -1,5 +1,5 @@
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 VERSION = '0.0.1'
 DESCRIPTION = 'This module enables users to perform molecular dynamics simulations utilizing LAMMPS with \
@@ -16,7 +16,7 @@ setup(
     author="Samir Darouich",
     author_email="samir.darouich@itt.uni-stuttgart.de",
     license_files = ('LICENSE'),
-    packages=["pyLAMMPS"],
+    packages=find_packages(),
     install_requires=['numpy',
                       'toml',
                       'jinja2',
