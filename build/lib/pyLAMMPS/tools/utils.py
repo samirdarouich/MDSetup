@@ -148,7 +148,7 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
             cleaned_bond_list.append(np.array(dummy1))
             cleaned_atomtypes.append(np.array(dummy2))
             if UA and verbose: print("\n")
-        print(cleaned_bond_list,cleaned_atomtypes)
+        
         if UA and verbose:
             print("\nUnited atom representation\n")
             for n,bl,bat in zip(molecule_name_list,cleaned_bond_list,cleaned_atomtypes):
