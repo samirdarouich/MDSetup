@@ -32,8 +32,8 @@ make
 
 # pyLAMMPS
 
-This module enables users to perform molecular dynamics simulations utilizing LAMMPS with the any force field provided as toml/json file. 
-There is the possiblity do provide data and LAMMPS compatible parameter files, or to build a system and write all necessary input using pyLAMMPS, PLAYMOL, and moleculegraph.
+This module enables users to perform molecular dynamics simulations utilizing LAMMPS with any force field provided as toml/json file. 
+There is the possiblity to provide data and LAMMPS compatible parameter files, or to build a system and write all necessary input using pyLAMMPS, PLAYMOL, and moleculegraph.
 
 1) Read in the YAML files to define the system and simulation/sampling settings.
 
