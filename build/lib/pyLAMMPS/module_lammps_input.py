@@ -6,6 +6,7 @@ from .tools import ( LAMMPS_molecules, write_lammps_ff, generate_initial_configu
 
 ## to do:
 # add analysis
+# add that lammps_ff callable takes correct arguments
 
 class LAMMPS_setup():
     """
@@ -69,7 +70,7 @@ class LAMMPS_setup():
             # Get bonded styles
             style_dict = lammps_molecules.get_bonded_styles()
             
-            # Write lammps ff file, either using the write_lammps_ff or any external provided function
+            # Write lammps ff file. Either using the write_lammps_ff or any external provided function
             if lammps_ff_callable is not None and callable(lammps_ff_callable):
                 print("External LAMMPS force field function is provided!\n")
                 lammps_ff_file = lammps_ff_callable(  )

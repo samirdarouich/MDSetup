@@ -1,5 +1,7 @@
 import os
 import toml
+import json
+import yaml
 import numpy as np
 import moleculegraph
 from jinja2 import Template
@@ -18,9 +20,19 @@ class LAMMPS_molecules():
         self.mol_str    = mol_str
         self.mol_list   = [ moleculegraph.molecule(mol) for mol in self.mol_str ]
 
-        # Read in force field toml file
-        with open(force_field_path) as ff_toml_file:
-            self.ff = toml.load(ff_toml_file)
+        # Read in force field file
+        if ".yaml" in force_field_path:
+            with open(force_field_path) as ff_toml_file:
+                self.ff = yaml.load(ff_toml_file)
+        elif ".json" in force_field_path:
+            with open(force_field_path) as ff_toml_file:
+                self.ff = json.load(ff_toml_file)
+        elif ".toml" in force_field_path:
+            with open(force_field_path) as ff_toml_file:
+                self.ff = toml.load(ff_toml_file)
+        else:
+            raise KeyError("Force field file is not supported. Please provide 'YAML', 'JSON', or 'TOML' file.")
+            
 
         ## Map force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions) ##
 
