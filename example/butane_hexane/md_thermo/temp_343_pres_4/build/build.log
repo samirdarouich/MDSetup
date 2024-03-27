@@ -1,0 +1,44 @@
+--------------------------------------------------------------------------------
+SUMMARY
+--------------------------------------------------------------------------------
+Specified:
+    2 atom types.
+    4 bond types.
+    3 angle types.
+    3 dihedral types.
+   10 atoms.
+    8 bonds.
+
+Detected:
+    6 angles.
+    4 dihedrals.
+    2 molecules.
+
+Effectively usable:
+    2 atom types.
+    4 bond types.
+    3 angle types.
+    3 dihedral types.
+
+Molecule[1]:
+- Amount: 500
+- Mass: 58.1240005
+- Charge: 0.00000000
+- Number of atoms: 4
+- Atoms: CH3_alkane1 CH2_alkane2 CH2_alkane3 CH3_alkane4
+
+Molecule[2]:
+- Amount: 500
+- Mass: 86.1780014
+- Charge: 0.00000000
+- Number of atoms: 6
+- Atoms: CH3_alkane5 CH2_alkane6 CH2_alkane7 CH2_alkane8 CH2_alkane9
+ CH3_alkane10
+
+System:
+- Molecules: 1000
+- Total mass: 72151.0000
+- Box lengths: 59.3437386 59.3437386 59.3437386
+- Box density: 0.345237255
+- Residual charge: 0.00000000
+--------------------------------------------------------------------------------

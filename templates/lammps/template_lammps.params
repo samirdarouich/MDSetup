@@ -1,0 +1,46 @@
+## LAMMPS force field file. Automaticly created by pyLAMMPS
+
+
+# Pair style 
+pair_style {{pair_style}}
+pair_modify mix {{mixing}} tail {{tail}}
+{%- if charged %}
+kspace_style {{kspace_style}}{%- endif %}
+
+
+# Van der Waals interactions
+{% for p in vdw_interactions %}
+pair_coeff  {{p|join(' ')}}
+{%- endfor %}
+
+{%- if charged %}
+
+# Coulomb interactions
+{% for p in coulomb_interactions %}
+pair_coeff  {{p|join(' ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if bond_paras|length > 0%}
+
+# Bonded interactions
+{% for p in bond_paras %}
+bond_coeff  {{p|join(' ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if angle_paras|length > 0%}
+
+# Angle interactions
+{% for p in angle_paras %}
+angle_coeff  {{p|join(' ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if torsion_paras|length > 0%}
+
+# Dihedral interactions
+{% for p in torsion_paras %}
+dihedral_coeff  {{p|join(' ')}}
+{%- endfor %}
+{%- endif %}

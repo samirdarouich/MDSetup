@@ -1,0 +1,45 @@
+# General definitions of the system
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example
+
+# System name
+name: butane_hexane
+
+# Define the components
+molecules:
+  - name: butane
+    graph: "[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"
+    smiles: "CCCC"
+    number: 500
+  - name: hexane
+    graph: "[CH3_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"
+    smiles: "CCCCCC"
+    number: 500
+
+# Define paths 
+paths:
+
+  # Force field toml
+  force_field_path: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/force-fields/forcefield_UA_TAMie_alkanes.toml
+
+  # Template files
+  template:
+    xyz_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/general/template_write.xyz
+    playmol_ff_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/template_playmol.playmol
+    playmol_input_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/template_playmol.mol
+    playmol_bash_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/build_system_pbs.sh
+    lammps_data_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.data
+    lammps_input_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.in
+    lammps_ff_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.params
+    job_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/bash/template_job_pbs.sh
+
+# Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied
+temperature:
+  - 343.15
+
+pressure:
+  - 4.311
+
+density:
+  - 573.28

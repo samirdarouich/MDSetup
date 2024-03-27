@@ -1,0 +1,20 @@
+# Define all sampling command along with their variables
+
+sampling:
+  energy:
+    variables:
+      - lammps: pe
+        out: potential_energy
+      - lammps: ke
+        out: kinetic_energy
+      - lammps: enthalpy
+        out: enthalpy
+      
+    computations:
+      - ""
+
+    command:
+      "fix ene all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &\n
+      c_thermo_temp v_potential_energy v_kinetic_energy v_enthalpy &\n
+      file ${project}.energy"
+    

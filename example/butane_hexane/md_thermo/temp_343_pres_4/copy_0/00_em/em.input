@@ -1,0 +1,96 @@
+# LAMMPS input file. Automaticly created by pyLAMMPS
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Define bond, angle, and dihedral style
+
+bond_style    harmonic
+angle_style    harmonic
+dihedral_style    opls
+
+read_data   ../../build/system.data
+
+# Include force field paramters
+
+include   ../../../force_field.params
+
+
+# Define the neighbor list settings
+
+neighbor 2.0 bin
+neigh_modify every 1 delay 0 check yes 
+
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj 0 0 0  coul 0 0 0
+
+
+# ============= INITIAL SYSTEM SETUP AND EQUILIBRATION =============
+
+# ------------- general ---------------
+
+variable  project             index       em
+variable  timestep            equal       1
+variable  run_time            equal       0
+
+timestep  ${timestep}
+
+# ------------- set integration settings ---------------
+
+
+variable temperature  equal 343.15
+
+variable  seed                index       66865       
+
+# ------------- generate velocities ---------------
+
+velocity        all create ${temperature} ${seed} rot yes dist gaussian
+
+thermo   10
+min_style   cg
+minimize   1e-10 1e-10 10000 10000
+
+# ============= VARIABLES ===============
+
+# ------------- output ---------------
+
+variable  sample_frequency    equal       10
+variable  sample_number       equal       100
+variable  to_file_every       equal       $(v_sample_frequency*v_sample_number)
+variable  to_screen_every     equal       $(v_to_file_every*10)
+      
+# ------------- values ---------------
+
+variable step equal step
+
+# ============= SAMPLING CONDITIONS ============= 
+
+thermo          ${to_screen_every}
+thermo_style    custom step temp press pe ke etotal enthalpy vol density 
+
+
+
+# Sample: energy
+
+# Define sample variables
+
+variable potential_energy  equal pe
+variable kinetic_energy  equal ke
+variable enthalpy  equal enthalpy
+
+fix ene all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ c_thermo_temp v_potential_energy v_kinetic_energy v_enthalpy &
+ file ${project}.energy
+
+# ============= RUN CONDITIONS =============
+
+run             ${run_time}
+
+# Write restart after successful simulation
+
+write_restart ${project}.restart

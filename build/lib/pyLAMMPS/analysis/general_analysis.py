@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -42,9 +43,11 @@ def mean_properties(file: str, keys: List[str]=[], fraction: float=0.7, average:
 
 
 def plot_data(datas: List[ List[List]], labels: List[str], colors: List[str],
-              path_out: str="", linestyle: List[str]=[], markerstyle: List[str]=[], ax_lim: List[List[float]]=[[],[]],
-              ticks: List[np.ndarray]=[np.array([]),np.array([])], label_size: int=24,
-              legend_size: int=18, tick_size: int=24, size: Tuple[float]=(8,6),lr: bool=False, fill: List[bool]=[]):
+              path_out: str="", linestyle: List[str]=[], markerstyle: List[str]=[], 
+              ax_lim: List[List[float]]=[[],[]], ticks: List[np.ndarray]=[np.array([]),np.array([])], 
+              label_size: int=24, legend_size: int=18, tick_size: int=24,
+              linewidth: int=0, markersize: int=0, size: Tuple[float]=(8,6),
+              lr: bool=False, fill: List[bool]=[]):
     
     """
     Function that plots data.
@@ -62,12 +65,19 @@ def plot_data(datas: List[ List[List]], labels: List[str], colors: List[str],
         label_size (int,optional): Size of axis labels (also influence the linewidth with factor 1/7). Defaults to 24.
         legend_size (int,optional): Size of labels in legend. Defaults to 18.
         tick_size (int,optional): Size of ticks on axis. Defaults to 24.
+        linewidth (int,optional): Linewidth, if not provided use 1/7 of the label size.
+        markersize (int,optional): Markersize, if not provided use 1/2 of the label size.
         size (Tuple[float, float],optional): Figure size. Defaults to (8,6).
-        lr (boolean,optional): If true, then the plot will have y ticks on both sides.
+        lr (bool,optional): If true, then the plot will have y ticks on both sides.
         fill (list of booleans): If entry i is True then a filled plot will be made. Therefore, datas[i][1] should contain 2 entries -> y_low,y_high instead of one -> y
     """
     
-    if not bool(fill): fill = [False for _ in datas]
+    if not fill: fill = [False for _ in datas]
+    # If no linewidth/markersize is presented, just use a portion of the label size to balance plot
+    if not linewidth:
+        linewidth = label_size/7
+    if not markersize:
+        markersize = label_size/2
 
     fig,ax = plt.subplots(figsize=size)
 
@@ -80,16 +90,15 @@ def plot_data(datas: List[ List[List]], labels: List[str], colors: List[str],
 
         ls       = linestyle[i] if len(linestyle)>0 else "solid"
         ms       = markerstyle[i] if len(markerstyle)>0 else "."
-        fill_bol = fill[i]
         error    = True if len(data) == 4 else False
 
-        if fill_bol:
+        if fill[i]:
             ax.fill_between(data[0],data[1][0],data[1][1], facecolor=color,alpha=0.3)
         elif error:
-            ax.errorbar(data[0],data[1],xerr=data[2],yerr=data[3],linestyle=ls,marker=ms,markersize=label_size/2,
-                        linewidth=label_size/7,elinewidth=label_size/7*0.7,capsize=label_size/5,color=color,label=label )
+            ax.errorbar(data[0],data[1],xerr=data[2],yerr=data[3],linestyle=ls,marker=ms,markersize=markersize,
+                        linewidth=linewidth,elinewidth=linewidth*0.7,capsize=linewidth*0.7,color=color,label=label )
         else:
-            ax.plot(data[0],data[1],linestyle=ls,marker=ms,markersize=label_size/2,linewidth=label_size/7,color=color,label=label)
+            ax.plot(data[0],data[1],linestyle=ls,marker=ms,markersize=markersize,linewidth=linewidth,color=color,label=label)
 
     # Plot legend if any label provided
     if any(labels[:-2]):
@@ -113,12 +122,21 @@ def plot_data(datas: List[ List[List]], labels: List[str], colors: List[str],
     ax.minorticks_on()
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-    ax.tick_params(which="major",labelsize=tick_size,direction="out",width=tick_size/9,length=tick_size/5,right=lr)
-    ax.tick_params(which="minor",labelsize=tick_size,direction="out",width=tick_size/12,length=tick_size/8,right=lr)
+    ax.tick_params( which = "major", labelsize = tick_size,
+                    direction = "out", width = tick_size/9,
+                    length = tick_size/5, right = lr )
+    ax.tick_params( which = "minor", labelsize = tick_size,
+                    direction = "out", width = tick_size/12,
+                    length = tick_size/8, right=lr )
+    
     ax.set_xlabel(labels[-2],fontsize=label_size)
     ax.set_ylabel(labels[-1],fontsize=label_size)
+    
     fig.tight_layout()
-    if bool(path_out): fig.savefig(path_out,dpi=400,bbox_inches='tight')
+
+    if path_out: 
+        os.makedirs( os.path.dirname(path_out), exist_ok=True)
+        fig.savefig( path_out, dpi=400, bbox_inches='tight')
     plt.show()
     plt.close()
     

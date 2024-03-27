@@ -12,4 +12,8 @@ pyLAMMPS/analysis/general_analysis.py
 pyLAMMPS/analysis/mechanical_properties.py
 pyLAMMPS/tools/__init__.py
 pyLAMMPS/tools/general_utils.py
+pyLAMMPS/tools/lammps_utils.py
+pyLAMMPS/tools/molecule_utils.py
+pyLAMMPS/tools/playmol_utils.py
+pyLAMMPS/tools/submission_utils.py
 pyLAMMPS/tools/utils.py

@@ -1,0 +1,123 @@
+# LAMMPS input file. Automaticly created by pyLAMMPS
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Define bond, angle, and dihedral style
+
+{%if style.bond|length > 0%}bond_style    {{style.bond|join(' ')}}{%- endif %}
+{%if style.angle|length > 0%}angle_style    {{style.angle|join(' ')}}{%- endif %}
+{%if style.dihedral|length > 0%}dihedral_style    {{style.dihedral|join(' ')}}{%- endif %}
+
+{% if restart_flag %}read_restart   {{data_file}}{% else %}read_data   {{data_file}}{%- endif %}
+
+{%- if restart_flag %}
+
+# Define bond, angle, and dihedral style again after reading restart. Necessary in case hybrid styles were used
+
+{%if style.bond|length > 0%}bond_style    {{style.bond|join(' ')}}{%- endif %}
+{%if style.angle|length > 0%}angle_style    {{style.angle|join(' ')}}{%- endif %}
+{%if style.dihedral|length > 0%}dihedral_style    {{style.dihedral|join(' ')}}{%- endif %}
+{%- endif %}
+
+# Include force field paramters
+
+include   {{force_field_file}}
+
+
+# Define the neighbor list settings
+
+neighbor 2.0 bin
+neigh_modify every 1 delay 0 check yes 
+
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj {{non_bonded.special_bonds.vdw|join(' ')}}  coul {{non_bonded.special_bonds.coulomb|join(' ')}}
+
+
+# ============= INITIAL SYSTEM SETUP AND EQUILIBRATION =============
+
+# ------------- general ---------------
+
+variable  project             index       {{ensemble_name}}
+variable  timestep            equal       {{system.dt}}
+variable  run_time            equal       {{system.nsteps}}
+
+timestep  ${timestep}
+
+# ------------- set integration settings ---------------
+
+{% for var,val in ensemble.var_val %}
+variable {{var}}  equal {{val}}
+{%- endfor %}
+
+{%- if not restart_flag %}
+
+variable seed  equal {{seed}}       
+
+# ------------- generate velocities ---------------
+
+velocity        all create ${temperature} ${seed} rot yes dist gaussian
+{%- endif %}
+
+# ------------- time integration ---------------
+
+{{ensemble.command}}
+
+
+{%- if shake_dict.values()|map('length')|select('>', 0)|first %}
+
+# ------------- shake algorithm ---------------
+
+fix rigid all shake 0.001 100 0 {%- for s in shake_dict %}{%- if shake_dict[s]|length > 0%} {{s}} {{shake_dict[s]|join(' ')}} {%- endif %}{%- endfor %} 
+{%- endif %}
+
+# ============= VARIABLES ===============
+
+# ------------- output ---------------
+
+variable  sample_frequency    equal       {{sampling_time.frequency}}
+variable  sample_number       equal       {{sampling_time.number}}
+variable  to_file_every       equal       $(v_sample_frequency*v_sample_number)
+variable  to_screen_every     equal       $(v_to_file_every*10)
+      
+# ------------- values ---------------
+
+variable step equal step
+
+# ============= SAMPLING CONDITIONS ============= 
+
+thermo          ${to_screen_every}
+thermo_style    custom step temp press pe ke etotal enthalpy vol density 
+
+{% for sample_name, sample_set in sampling.items() %}
+
+# Sample: {{sample_name}}
+
+# Define sample variables
+{% for var in sample_set.variables %}
+variable {{var.out}}  equal {{var.lammps}}
+{%- endfor %}
+
+{%- if sample_set.computations|select|first %}
+
+# Define computations
+{% for var in sample_set.computations %}
+var
+{%- endfor %}
+{%- endif %}
+
+{{sample_set.command}}
+{%- endfor %}
+
+# ============= RUN CONDITIONS =============
+
+run             ${run_time}
+
+# Write restart after successful simulation
+
+write_restart ${project}.restart

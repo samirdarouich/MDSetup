@@ -1,294 +1,245 @@
-#!/usr/bin/env python
-
 import os
-import moleculegraph
 import numpy as np
-import networkx as nx
-import pubchempy as pcp
-import matplotlib.pyplot as plt
 from jinja2 import Template
-from typing import List, Dict
+from typing import List, Dict, Any
+from .lammps_utils import LAMMPS_molecules
+from .playmol_utils import prepare_playmol_input, write_playmol_input
+from .molecule_utils import get_molecule_coordinates
 
-
-options = {
-    "node_size": 2000,
-    "node_color": "white",
-    "edgecolors": "black",
-    "linewidths": 5,
-    "width": 5,
-    "alpha":.3,
-    "font_size":16,
-}
-
-def vis_mol(bond_list,bond_atomtypes):
-    graph  = nx.Graph()
-    for (b0,b1),(bt0,bt1) in zip(bond_list,bond_atomtypes):
-        graph.add_edge( "%s%d"%(bt0,b0), "%s%d"%(bt1,b1) )
-        
-    labels = {}
-    nx.draw_networkx(graph, **options)
-    nx.draw_networkx_labels(graph, nx.spring_layout(graph) , labels, font_size=12, font_color="black")
-
-    # Set margins for the axes so that nodes aren't clipped
-    ax = plt.gca()
-    ax.margins(0.20)
-    plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destination_folder: str,
+                                    molecules_dict_list: List[Dict[str,str|float]], density: float,
+                                    template_xyz: str, playmol_ff_template: str, 
+                                    playmol_input_template: str, playmol_bash_file: str,
+                                    lammps_data_template: str,
+                                    submission_command: str="qsub", on_cluster: bool=False ):   
+                
+    # Get molecule xyz from pubchem
+    xyz_destinations = [ f'{destination_folder}/build/{mol["name"]}.xyz' for mol in molecules_dict_list ]
+    get_molecule_coordinates( molecule_name_list = [ mol["name"] for mol in molecules_dict_list ], 
+                                molecule_graph_list = [ mol["graph"] for mol in molecules_dict_list ],
+                                molecule_smiles_list = [ mol["smiles"] for mol in molecules_dict_list ],
+                                xyz_destinations = xyz_destinations, 
+                                template_xyz = template_xyz,
+                                verbose = False
+                            )
     
-    return
+    # Build system with PLAYMOL
+    playmol_ff  = f'{destination_folder}/build/force_field.playmol'
+    playmol_mol = f'{destination_folder}/build/build_script.mol'
 
-def adjust_bond_list_indexes(bond_list:np.ndarray):
-    """Function that takes a bond list with atom indices that are not consecutive (e.g.: after removing Hydrogens for a united atom approach)
+    prepare_playmol_input( mol_str = lammps_molecules.mol_str, 
+                            ff = lammps_molecules.ff, 
+                            playmol_template = playmol_ff_template,
+                            playmol_ff_path = playmol_ff
+                        )
 
-    Args:
-        bond_list (np.ndarray): Old bond list containing not consecutive atom indices
+    playmol_relative_ff_path  = os.path.relpath(playmol_ff, os.path.dirname(playmol_mol))
+    playmol_relative_xyz_path = [ os.path.relpath(xyz, os.path.dirname(playmol_mol)) for xyz in xyz_destinations ]
+
+    playmol_xyz = write_playmol_input( mol_str = lammps_molecules.mol_str, 
+                                        molecule_numbers = [ mol["number"] for mol in molecules_dict_list ], 
+                                        density = density, 
+                                        nb_all = lammps_molecules.ff_all, 
+                                        playmol_template = playmol_input_template,
+                                        playmol_path = playmol_mol, 
+                                        playmol_ff_path = playmol_relative_ff_path, 
+                                        xyz_paths = playmol_relative_xyz_path, 
+                                        playmol_execute_template = playmol_bash_file,
+                                        submission_command = submission_command, 
+                                        on_cluster = on_cluster
+                                    )
+                    
+
+    # Write LAMMPS data file 
+    ####################### (possible to do: extract from playmol the box dimension, so no need to compute them ourself)
+    lammps_data_file = f"{destination_folder}/build/system.data"
+    lammps_molecules.write_lammps_data( xyz_path = playmol_xyz, 
+                                        data_template = lammps_data_template,
+                                        data_path = lammps_data_file,
+                                        nmol_list = [ mol["number"] for mol in molecules_dict_list ],
+                                        density = density 
+                                    )
+    
+    if not os.path.exists(lammps_data_file):
+        raise FileExistsError("Something went wrong during the production of the LAMMPS data!\n")
+    
+    return lammps_data_file
+
+
+def generate_input_files( destination_folder: str, input_template: str, ensembles: List[str], 
+                          temperature: float, pressure: float, data_file: str, ff_file: str,
+                          ensemble_definition: Dict[str, Any|Dict[str, str|float]], 
+                          simulation_times: List[float], dt: float, kwargs: Dict[str, Any]={}, 
+                          off_set: int=0 ):
+    
+    """
+    Generate input files for simulation pipeline.
+
+    Parameters:
+     - destination_folder (str): The destination folder where the input files will be saved. Will be saved under destination_folder/0x_ensebmle/ensemble.input
+     - input_template (str): The path to the LAMMPS input template file.
+     - ensembles (List[str]): A list of ensembles to generate input files for.
+     - temperature (float): The temperature for the simulation.
+     - pressure (float): The pressure for the simulation.
+     - data_file (str): Path to LAMMPS data or restart file.
+     - ff_file (str): Path to LAMMPS ff file.
+     - ensemble_definition (Dict[str, Any|Dict[str, str|float]]): Dictionary containing the ensemble settings for each ensemble.
+     - simulation_times (List[float]): A list of simulation times (ns) for each ensemble.
+     - dt (float): The time step for the simulation.
+     - kwargs (Dict[str, Any], optional): Additional keyword arguments for the input file. That should contain all default values. Defaults to {}.
+     - off_set (int, optional): First ensemble starts with 0{off_set}_ensemble. Defaulst to 0.
+    
+    Raises:
+     - KeyError: If an invalid ensemble is specified.
+     - FileNotFoundError: If any input file does not exists.
 
     Returns:
-        (np.ndarray): Same bond list, just with consecutive atom indices
-    """
-    old = np.unique(bond_list)
-    new = np.arange(old.size)
-    new_list = np.ones( bond_list.shape )*-1
-    for i,j in zip(old,new):
-        new_list[ bond_list == i ] = j
-    return new_list,old
+     - input_files (List[str]): List with paths of the input files
 
-
-def assign_coos_via_distance_mat_local( coos_list: np.ndarray, distance_matrix: np.ndarray, atom_names: List[str],reference_matrix: np.ndarray, reference_names: List[str]):
     """
-    Assigns coos to suit a reference based on a distance matrix relying to the coos.
-    Reference and distance matrix/ coos belong to the same molecule type but are sorted in
-    different ways.
+
+    # Check if input template file exists
+    if not os.path.isfile( input_template ):
+        raise FileNotFoundError(f"Input template file { input_template } not found.")
     
-    Args:
-        coos_list: 
-            - list of coordinates.
-        distance_matrix:
-            - distance matrix which belongs to the coos_list.
-        atom_names:
-            - names of the atoms corresponding to coos_list.
-        reference_matrix:
-            - distance matrix which belongs to the reference you want to apply the coos to.
-        reference_names:
-            - names of the reference molecule.
+    # Check if datafile exists
+    if not os.path.isfile( data_file ):
+        raise FileNotFoundError(f"Data file { data_file } not found.")
+    
+    # Check if force field file exists
+    if not os.path.isfile( ff_file ):
+        raise FileNotFoundError(f"Force field file { ff_file } not found.")
+        
+    # Save ensemble names
+    ensemble_names    = [ f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}" for j,step in enumerate(ensembles) ]
+
+    # Produce input files for simulation pipeline
+    input_files = []
+    for j,(ensemble,time) in enumerate( zip( ensembles, simulation_times ) ):
+        
+        try:
+            ensemble_settings = ensemble_definition[ensemble]
+        except:
+            raise KeyError(f"Wrong ensemple specified: {ensemble}. Valid options are: {', '.join(ensemble_definition.keys())} ")
+        
+        # Add ensebmle variables
+        values = []
+        for v in ensemble_settings["variables"]:
+            if v == "temperature":
+                values.append( temperature )
+            elif v == "pressure":
+                values.append( round( pressure / 1.01325, 3 ) )
+            else:
+                raise KeyError(f"Variable is not implemented: '{v}'. Currently implemented are 'temperature' or 'pressure'. ")
+
+
+        # Simulation time is provided in nano seconds and dt in fs seconds, hence multiply with factor 1e6
+        kwargs["system"]["nsteps"] = int( 1e6 * time / dt ) if not ensemble == "em" else int(time)
+        kwargs["system"]["dt"]     = dt
+ 
+        # Overwrite the ensemble settings
+        kwargs["ensemble"]        = { "var_val": zip(ensemble_settings["variables"],values), "command": ensemble_settings["command"] }
+
+        # Provide a seed for tempearture generating:
+        kwargs["seed"] = np.random.randint(0,1e5)
+        
+        # Ensemble name
+        kwargs["ensemble_name"] = ensemble
+
+        # Write template
+        input_out = f"{destination_folder}/{'0' if (j+off_set) < 10 else ''}{j+off_set}_{ensemble}/{ensemble}.input"
+
+        kwargs["force_field_file"] = os.path.relpath( ff_file, os.path.dirname(input_out) )
+
+        # If its the first ensemble use provided data path, otherwise use the previous restart file. Hence set restart flag
+        if j == 0:
+            kwargs["data_file"] = os.path.relpath( data_file, os.path.dirname(input_out) )
+        else:
+            kwargs["data_file"] = f"../{ensemble_names[j-1]}/{ensembles[j-1]}.restart"
+            kwargs["restart_flag"] = True
+
+        # Open and fill template
+        with open( input_template ) as f:
+            template = Template( f.read() )
+
+        rendered = template.render( ** kwargs ) 
+
+        # Create the destination folder
+        os.makedirs( os.path.dirname( input_out ), exist_ok = True )
+
+        with open( input_out, "w" ) as f:
+            f.write( rendered )
             
+        input_files.append( input_out )
+
+    return input_files
+
+
+
+def generate_job_file( destination_folder: str, job_template: str, input_files: List[str],
+                       ensembles: List[str], job_name: str, job_out: str="job.sh", 
+                       off_set: int=0 ):
+    
+    """
+    Generate initial job file for a set of simulation ensemble
+
+    Parameters:
+     - destination_folder (str): Path to the destination folder where the job file will be created.
+     - job_template (str): Path to the job template file.
+     - input_files (List[str]): List of lists containing the paths to the input files for each simulation phase.
+     - ensembles (List[str]): List of simulation ensembles
+     - job_name (str): Name of the job.
+     - job_out (str, optional): Name of the job file. Defaults to "job.sh".
+     - off_set (int, optional): First ensemble starts with 0{off_set}_ensemble. Defaulst to 0.
+
     Returns:
-        new_coos_list:
-            - list of coordinates fitting the reference.
-        idx:
-            - indexes to translate sth. to reference.
-    """
-
-    
-    distance_matrix_sort = np.sort(distance_matrix,axis=1)
-    reference_sort = np.sort(reference_matrix,axis=1)
-    idx = []
-    
-    for rm,rn in zip(reference_sort,reference_names):
-        for i,(row,nn) in enumerate(zip(distance_matrix_sort,atom_names)):
-            if np.array_equal(rm, row) and i not in idx and nn in rn:
-                idx.append(i)
-                break
-            
-    if not bool(idx):
-        raise KeyError("Molecules could not be matched!\n")
-    
-    idx = np.array(idx)
-
-    #print("""\n\nWARNING:
-    #Assign_coos_via_distance_mat is not mature yet.
-    #Double-check your results!!! \n \n""")
-    
-    return coos_list[idx], idx 
-
-def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list: List[str], molecule_smiles_list: List[str], 
-                              xyz_destinations: List[str], template_xyz: str, UA: bool=True, verbose: bool=False ) -> None:
-
-    # Get molecule objects via PupChem and visualize them
-    try:    
-        mol_list  = [ pcp.get_compounds(smiles, "smiles", record_type='3d')[0] for smiles in molecule_smiles_list ]
-        flag_2d   = False
-    except:
-        flag_2d   = True
-    
-    if not flag_2d:
-        # Extract the coordinates, atom names and bond lists of each molecule
-        atoms          = [ np.array([[a.x,a.y,a.z] for a in molecule.atoms]) for molecule in mol_list ]
-        atom_names     = [ np.array([a.element for a in molecule.atoms]) for molecule in mol_list ]
-        bond_list      = [ np.array([[b.aid1-1,b.aid2-1] for b in molecule.bonds]) for molecule in mol_list ]
-        bond_atomtypes = [ np.array([[mol.atoms[bb[0]].element, mol.atoms[bb[1]].element] for bb in b]) for mol,b in zip(mol_list,bond_list)]
-
-        if verbose:
-            print("\nPubChem representation\n")
-            for i,(n,bl,bat) in enumerate( zip(molecule_name_list,bond_list,bond_atomtypes) ):
-                tmp = [ "%s%d"%(a.element,a.aid-1) for a in mol_list[i].atoms ]
-                print("Molecule: %s"%n)
-                print("Coordinates:\n" + "\n".join( ["  %s: %.3f %.3f %.3f"%(an, ax, ay, az) for an, (ax, ay, az) in zip( tmp, atoms[i] ) ] ) + "\n")
-                vis_mol(bl,bat)
-
-        # Filter out hydrogens bonded to C atoms for an united atom approach or just take every atom for all-atom molecules.
-        cleaned_bond_list = []
-        cleaned_atomtypes = []
-
-        for atom,bonds in zip( bond_atomtypes, bond_list ):
-            dummy1 = []
-            dummy2 = []
-            for (b0,b1),(a0,a1) in zip( bonds, atom ):
-                if UA:
-                    if all([x in (a0,a1) for x in ["H","C"]]):
-                        hydrogen = np.array([b0, b1])[ np.array([a0,a1]) == "H" ]
-                        if verbose: print("C + H detected")                                   
-                        if bonds[ bonds == hydrogen ].size == 1:          
-                            if verbose: print("continue")                                     
-                            continue
-                    if verbose: print( "keep",b0,b1,"->",a0,"--",a1 )   
-                dummy1.append((b0,b1))
-                dummy2.append((a0,a1))
-            cleaned_bond_list.append(np.array(dummy1))
-            cleaned_atomtypes.append(np.array(dummy2))
-            if UA and verbose: print("\n")
-        
-        if UA and verbose:
-            print("\nUnited atom representation\n")
-            for n,bl,bat in zip(molecule_name_list,cleaned_bond_list,cleaned_atomtypes):
-                print("Molecule: %s"%n)
-                vis_mol(bl,bat)
-
-        # Get moleculegraph representation of the molecules
-        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
-
-        if verbose:
-            print("\nMoleculegraph representation\n")
-            for name,raw_mol in zip( molecule_name_list, raw_mol_list) :
-                print("Molecule: %s"%name)
-                raw_mol.visualize()
-
-        # Correct the atom indices in the bond list, after hydrogen atoms are removed for an united atom approach
-        new_cleaned_bond_list = []
-        new_idx = []
-
-        for cbl in cleaned_bond_list:
-            ncbl,p = adjust_bond_list_indexes(cbl)
-            new_cleaned_bond_list.append(ncbl)
-            new_idx.append(p)
-        
-        cleaned_coordinates = [ atom[idx] for atom,idx in zip(atoms, new_idx) ]
-        cleaned_atomtyps    = [ atom_name[idx] for atom_name,idx in zip(atom_names, new_idx) ]
-
-        # Get the correct name used for Playmol (force field type + running number of atom in the system)
-        add_atom          = [1] + [ sum(mol.atom_number for mol in raw_mol_list[:(i+1)]) + 1 for i in range( len(raw_mol_list[1:]) ) ]
-        raw_atom_numbers  = [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(raw_mol_list) ]
-        raw_atom_types    = [ mol.atom_names for mol in raw_mol_list ]  
-        final_atomtyps    = [ ["%s%d"%(a,i) for a,i in zip( atn, idx ) ] for atn,idx in zip( raw_atom_types, raw_atom_numbers ) ]
-
-        # Get the correct coordinates from the PubChem coordinates
-        final_coordinates = []
-
-        # Create distance matrix of the PubChem molecule. This is a method to match the PubChem molecule description to the moleculegraph description of the same molecule
-        distance_matrix = [ moleculegraph.molecule_utils.get_distance_matrix(ncbl,np.unique(ncbl).size)[0] for ncbl in new_cleaned_bond_list ]
-
-        # Match the PubChem distance matrix and atom names to the moleculegraph distance matrix and atom names to exctract the corret atom coordinates
-        for mol,ca,cc,dm in zip( raw_mol_list, cleaned_atomtyps, cleaned_coordinates, distance_matrix ):
-
-            # extract moleculegraph names of atoms
-            reference_names = [n.split("_")[0] for n in mol.atom_names]
-
-            # This function matches the distance matrix and thus reorder the cleaned coordinates to match the moleculegraph description
-            fc,idx = assign_coos_via_distance_mat_local(  cc, dm, ca, mol.distance_matrix, reference_names )
-
-            final_coordinates.append( fc )
-    
-    else:
-        # Get moleculegraph representation of the molecules
-        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
-
-        # Get the correct name used for Playmol (force field type + running number of atom in the system)
-        add_atom          = [1] + [ sum(mol.atom_number for mol in raw_mol_list[:(i+1)]) + 1 for i in range( len(raw_mol_list[1:]) ) ]
-        raw_atom_numbers  = [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(raw_mol_list) ]
-        raw_atom_types    = [ mol.atom_names for mol in raw_mol_list ]  
-        final_atomtyps    = [ ["%s%d"%(a,i) for a,i in zip( atn, idx ) ] for atn,idx in zip( raw_atom_types, raw_atom_numbers ) ]
-
-        # Just give every single atom molecule the origin as coordinates
-        final_coordinates = [ np.array([0.0, 0.0, 0.0]) for _ in molecule_graph_list ]
-    
-    # Write coordinates to xyz files. These coordinates are sorted in the way the molecule is defined in 
-    # the moleculegraph. This is important for step 2 of this workflow
-    for xyz_destination, raw_atom_number, final_atomtyp, final_coordinate in zip( xyz_destinations, raw_atom_numbers, final_atomtyps, final_coordinates ):
-        # Make folder if not already done
-        os.makedirs( os.path.dirname(xyz_destination), exist_ok = True)
-
-        # Write template for xyz file
-        with open(template_xyz) as file:
-            template = Template(file.read())
-
-        rendered = template.render( atno  = len(raw_atom_number), 
-                                    atoms = zip( final_atomtyp, final_coordinate ) )
-
-        with open(xyz_destination, "w") as fh:
-            fh.write( rendered )
-
-    
-    
-
-## External functions for LAMMPS input ##
-
-def write_pair_ff(settings: Dict[str, str | List | Dict], atom_numbers_ges: List[int], nonbonded: List[Dict[str,str]], 
-                  ff_template: str="", lammps_ff_path: str="", relative_lammps_ff_path: str=""):
-    """
-    This function prepares LAMMPS understandable van der Waals pair interactions. If wanted these are written to a seperated force field file, or are added to the settings input dictionary.
-
-    Args:
-        settings (Dict[str, str  |  List  |  Dict]): Settings dictionary which will be used to render the LAMMPS input template. 
-        atom_numbers_ges (List[int]): List with the unique force field type identifiers used in LAMMPS
-        nonbonded (List[Dict[str,str]]): List with the unique force field dictionaries containing: sigma, epsilon, name, m 
-        ff_template (str, optional): Path to the force field template if it should be written to an external file instead into the LAMMPS input file. Defaults to "".
-        lammps_ff_path (str, optional): Destination of the external force field file. Defaults to "".
-        relative_lammps_ff_path (str, optional): Relative path to the external force field file from the lammps input file. Defaults to "".
+     - job_file (str): Path of job file
 
     Raises:
-        KeyError: If the settings dictionary do not contain the subdictionary "style".
+     - FileNotFoundError: If the job template file does not exist.
+     - FileNotFoundError: If any of the MDP files does not exist.
+     - FileNotFoundError: If the initial coordinate file does not exist.
+     - FileNotFoundError: If the initial topology file does not exist.
+     - FileNotFoundError: If the initial checkpoint file does not exist.
     """
 
-    if not "style" in settings.keys():
-        raise KeyError("Settings dictionary do not contain the style subdictionary!")
+    # Check if job template file exists
+    if not os.path.isfile( job_template ):
+        raise FileNotFoundError(f"Job template file { job_template } not found.")
+
+    # Check for input files
+    for file in input_files:
+        if not os.path.isfile( file ):
+            raise FileNotFoundError(f"Input file { file  } not found.")
     
-    # Van der Waals pair interactions
-    pair_interactions = []
+    with open(job_template) as f:
+        template = Template(f.read())
 
-    for i,iatom in zip(atom_numbers_ges, nonbonded):
-        for j,jatom in zip(atom_numbers_ges[i-1:], nonbonded[i-1:]):
-            
-            name_ij   = f"{iatom['name']}  {jatom['name']}"
+    job_file_settings = { "ensembles": { f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}": {} for j,step in enumerate(ensembles)} }
+    ensemble_names    = list(job_file_settings["ensembles"].keys())
 
-            if settings["style"]["mixing"] == "arithmetic": 
-                sigma_ij   = ( iatom["sigma"] + jatom["sigma"] ) / 2
-                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
+    # Create the simulation folder
+    os.makedirs( destination_folder, exist_ok = True )
 
-            elif settings["style"]["mixing"] ==  "geometric":
-                sigma_ij   = np.sqrt( iatom["sigma"] * jatom["sigma"] )
-                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
+    # Relative paths for each input file for each simulation phase
+    for j,step in enumerate(ensemble_names):
+        job_file_settings["ensembles"][step]["mdrun"] = os.path.relpath( input_files[j], f"{destination_folder}/{step}" )
 
-            elif settings["style"]["mixing"] ==  "sixthpower": 
-                sigma_ij   = ( 0.5 * ( iatom["sigma"]**6 + jatom["sigma"]**6 ) )**( 1 / 6 ) 
-                epsilon_ij = 2 * np.sqrt( iatom["epsilon"] * jatom["epsilon"] ) * iatom["sigma"]**3 * jatom["sigma"]**3 / ( iatom["sigma"]**6 + jatom["sigma"]**6 )
+    # Define LOG output
+    log_path   = f"{destination_folder}/LOG"
 
-            n_ij  = ( iatom["m"] + jatom["m"] ) / 2
-            
-            pair_interactions.append( { "i": i, "j": j, "sigma": round( sigma_ij, 4 ) , "epsilon": round( epsilon_ij, 4 ),  "m": n_ij, "name": name_ij } ) 
+    # Add to job file settings
+    job_file_settings.update( { "job_name": job_name, "log_path": log_path, "working_path": destination_folder } )
 
-    # If provided write pair interactions as external LAMMPS force field file.
-    if ff_template and lammps_ff_path and relative_lammps_ff_path:
-        with open(ff_template) as file_:
-            template = Template(file_.read())
-        
-        rendered = template.render( pair_interactions = pair_interactions )
+    rendered = template.render( **job_file_settings )
 
-        with open(lammps_ff_path, "w") as fh:
-            fh.write(rendered) 
+    # Create the job folder
+    job_file = f"{destination_folder}/{job_out}"
 
-        settings["style"]["pairs_path"] = relative_lammps_ff_path
+    os.makedirs( os.path.dirname( job_file ), exist_ok = True )
 
-    else:
-        # Otherwise add pair interactions in the style section
-        settings["style"]["pairs"] = pair_interactions
+    # Write new job file
+    with open( job_file, "w") as f:
+        f.write( rendered )
+
+    return job_file
