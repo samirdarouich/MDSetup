@@ -98,21 +98,26 @@ thermo_style    custom step temp press pe ke etotal enthalpy vol density
 
 # Sample: {{sample_name}}
 
+{%- if sample_set.variables|select|first %}
+
 # Define sample variables
 {% for var in sample_set.variables %}
 variable {{var.out}}  equal {{var.lammps}}
 {%- endfor %}
+{%- endif %}
 
-{%- if sample_set.computations|select|first %}
+{%- if sample_set.verbatim|select|first %}
 
-# Define computations
-{% for var in sample_set.computations %}
-var
+# Define any further verbatim input
+{% for var in sample_set.verbatim %}
+{{var}}
 {%- endfor %}
 {%- endif %}
 
 {{sample_set.command}}
-{%- endfor %}
+
+
+{% endfor %}
 
 # ============= RUN CONDITIONS =============
 

@@ -10,7 +10,7 @@ sampling:
       - lammps: enthalpy
         out: enthalpy
       
-    computations:
+    verbatim:
       - ""
 
     command:
