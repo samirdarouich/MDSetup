@@ -2,10 +2,9 @@
 from setuptools import setup, find_packages
 
 VERSION = '0.0.1'
-DESCRIPTION = 'This module enables users to perform molecular dynamics simulations utilizing LAMMPS with \
-               any force field. The process begins with a SMILES and graph representation of each component, \
-               where PLAYMOL constructs initial systems at specific densities. The moleculegraph software and supplementary Python code \
-               are then used to generate a LAMMPS data and input file via jinja2 templates.'
+DESCRIPTION = 'This repository enables users to perform molecular dynamics simulations utilizing LAMMPS. \
+               It can either start from given parameter and data file, or create them itself by using moleculegraph, PLAYMOL and supplementary Python code. \
+               YAML files are utilized to parse simulation settings, such as ensemble definitions, sampling properties and system specific input.'
 
 # Setting up
 setup(
