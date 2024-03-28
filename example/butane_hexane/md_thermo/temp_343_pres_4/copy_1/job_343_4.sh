@@ -1,7 +1,7 @@
 #!/bin/bash
-#PBS -q short
+#PBS -q long
 #PBS -l nodes=1:ppn=28
-#PBS -l walltime=24:00:00
+#PBS -l walltime=72:00:00
 #PBS -N butane_hexane_343_4
 #PBS -o /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/copy_1/LOG.o 
 #PBS -e /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/copy_1/LOG.e 

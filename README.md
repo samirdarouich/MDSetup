@@ -93,6 +93,30 @@ lammps_setup.prepare_simulation( folder_name = simulation_folder, ensembles = en
 # Submit the simulations
 lammps_setup.submit_simulation()
 ```
+## Extract sampled properties
+
+```python
+# Extract properties from LAMMPS and analyse them
+
+# Define analysis folder
+analysis_folder = "md_thermo"
+
+# Define analysis ensemble
+ensemble = "01_npt"  
+
+# Properties to extract
+properties = ["temperature", "potential energy", "kinetic energy", "enthalpy"]
+
+# Suffix of output file
+output_suffix = "energy"
+
+# Percentage to discard from beginning of the simulation
+fraction = 0.25
+
+lammps_setup.analysis_extract_properties( analysis_folder = analysis_folder, ensemble = ensemble, extracted_properties = properties, 
+                                          output_suffix = output_suffix, fraction =  fraction )
+```
+
 
 ## 🚑 Help
 

@@ -1,0 +1,102 @@
+{
+  "temperature": 343,
+  "pressure": 4,
+  "01_npt": {
+    "data": {
+      "copy_0": {
+        "temperature": {
+          "mean": 343.0880128205128,
+          "std": 0.9789604013268217,
+          "unit": "K"
+        },
+        "potential energy": {
+          "mean": -1651.1033333333332,
+          "std": 77.44982215848499,
+          "unit": "kcal/mol"
+        },
+        "kinetic energy": {
+          "mean": 5112.378333333333,
+          "std": 14.587795416313773,
+          "unit": "kcal/mol"
+        },
+        "enthalpy": {
+          "mean": 3474.529615384615,
+          "std": 79.7005672948623,
+          "unit": "kcal/mol"
+        }
+      },
+      "copy_1": {
+        "temperature": {
+          "mean": 343.2328589743589,
+          "std": 0.9478919978529899,
+          "unit": "K"
+        },
+        "potential energy": {
+          "mean": -1668.6789743589745,
+          "std": 62.93416010423358,
+          "unit": "kcal/mol"
+        },
+        "kinetic energy": {
+          "mean": 5114.537820512822,
+          "std": 14.125196024148222,
+          "unit": "kcal/mol"
+        },
+        "enthalpy": {
+          "mean": 3457.1771794871797,
+          "std": 64.84101864124976,
+          "unit": "kcal/mol"
+        }
+      },
+      "copy_2": {
+        "temperature": {
+          "mean": 343.1797692307693,
+          "std": 0.9951931343339249,
+          "unit": "K"
+        },
+        "potential energy": {
+          "mean": -1632.8801282051281,
+          "std": 60.83357694890984,
+          "unit": "kcal/mol"
+        },
+        "kinetic energy": {
+          "mean": 5113.745000000002,
+          "std": 14.829698594024409,
+          "unit": "kcal/mol"
+        },
+        "enthalpy": {
+          "mean": 3493.1782051282053,
+          "std": 68.94702509509652,
+          "unit": "kcal/mol"
+        }
+      },
+      "average": {
+        "temperature": {
+          "mean": 343.16688034188036,
+          "std": 0.07327820046644017,
+          "unit": "K"
+        },
+        "potential energy": {
+          "mean": -1650.8874786324786,
+          "std": 17.900399197381088,
+          "unit": "kcal/mol"
+        },
+        "kinetic energy": {
+          "mean": 5113.553717948719,
+          "std": 1.0923771495919548,
+          "unit": "kcal/mol"
+        },
+        "enthalpy": {
+          "mean": 3474.9616666666666,
+          "std": 18.004401212875376,
+          "unit": "kcal/mol"
+        }
+      }
+    },
+    "paths": [
+      "/home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/copy_0/01_npt/npt.energy",
+      "/home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/copy_1/01_npt/npt.energy",
+      "/home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/copy_2/01_npt/npt.energy"
+    ],
+    "fraction_discarded": 0.25
+  }
+}

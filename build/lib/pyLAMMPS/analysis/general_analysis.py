@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from typing import List, Tuple
 from matplotlib.ticker import AutoMinorLocator
 
-def mean_properties(file: str, keys: List[str]=[], fraction: float=0.7, average: bool=True) -> pd.DataFrame:
+def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, average: bool=True) -> pd.DataFrame:
     
     """
     Function that reads in a LAMMPS output file and return (time average) of given properties
@@ -15,8 +15,8 @@ def mean_properties(file: str, keys: List[str]=[], fraction: float=0.7, average:
     ----------
     
     file (str): Path to LAMMPS sampling output file 
-    keys (List[str]): Keys to average from output (do not include TimeStep)
-    fraction (float, optional): Fraction of simulation output that is discarded from the beginning. Defaults to 0.7.
+    keys (List[str]): Keys to average from output (do not include step).
+    fraction (float, optional): Fraction of simulation output that is discarded from the beginning. Defaults to 0.0.
     average (bool, optional): If the whole dataframe is returned or only the time averaged values.
 
     Return
@@ -27,14 +27,32 @@ def mean_properties(file: str, keys: List[str]=[], fraction: float=0.7, average:
     
     with open(file) as f:
         f.readline()
-        keys_lmp = f.readline().split()
-        idx_spec_keys = np.array([0]+[keys_lmp.index(k)-1 for k in keys if k in keys_lmp])
-        lines = np.array([np.array(line.split("\n")[0].split()).astype("float")[idx_spec_keys] for line in f])
+        header = f.readline().replace("#","").strip()
+        if "," in header:
+            keys_lmp = [ i.strip() for i in header.split(",") ]
+        elif ")" in header:
+            print("h")
+            keys_lmp = [ i.strip()+")" for i in header.split(")")[:-1] ]
+        else:
+            keys_lmp = header.split()
 
+        idx_spec_keys = [0]
+        for key in keys:
+            for i,key_l in enumerate(keys_lmp):
+                if key in key_l:
+                    idx_spec_keys.append(i)
+        
+        idx_spec_keys = np.array(idx_spec_keys)
+
+        if len(idx_spec_keys) != len(keys)+1:
+            raise KeyError(f"Not all provided keys are found in LAMMPS file! Found keys are: "+ "\n".join([keys_lmp[i] for i in idx_spec_keys]))
+
+        lines = np.array( [ np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys] for line in f ] )
+    
     time       = lines[:,0]
     start_time = fraction*time[-1]
     
-    data       = pd.DataFrame( { key: lines[:,i][time>start_time] for i,key in enumerate( ["timestep", *keys] ) } )
+    data       = pd.DataFrame( { key: lines[:,i][time>start_time] for i,key in enumerate( keys_lmp ) } )
     
     if average:
         return data.mean()

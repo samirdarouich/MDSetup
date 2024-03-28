@@ -16,5 +16,20 @@ sampling:
     command:
       "fix ene all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &\n
       c_thermo_temp v_potential_energy v_kinetic_energy v_enthalpy &\n
+      title2 '# step (fs), temperature (K), potential energy (kcal/mol), kinetic energy (kcal/mol), enthalpy (kcal/mol)' &\n
       file ${project}.energy"
+    
+  density:
+    variables:
+      - lammps: density
+        out: density
+    
+    verbatim:
+      - ""
+
+    command:
+      "fix density all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &\n
+      c_thermo_temp v_density   &\n
+      title2 '# step (fs), temperature (K), density (g/cm^3)' &\n
+      file ${project}.density"
     

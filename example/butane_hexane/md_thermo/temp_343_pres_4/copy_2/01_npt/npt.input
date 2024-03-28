@@ -42,7 +42,7 @@ special_bonds lj 0 0 0  coul 0 0 0
 
 variable  project             index       npt
 variable  timestep            equal       1
-variable  run_time            equal       10000000
+variable  run_time            equal       100000
 
 timestep  ${timestep}
 
@@ -51,6 +51,8 @@ timestep  ${timestep}
 
 variable temperature  equal 343.15
 variable pressure  equal 4.255
+
+# ------------- time integration ---------------
 
 fix int_npt all npt temp ${temperature} ${temperature} $(100.0*v_timestep) iso ${pressure} ${pressure} $(1000.0*v_timestep)
 
@@ -84,7 +86,25 @@ variable enthalpy  equal enthalpy
 
 fix ene all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
  c_thermo_temp v_potential_energy v_kinetic_energy v_enthalpy &
+ title2 '# step (fs), temperature (K), potential energy (kcal/mol), kinetic energy (kcal/mol), enthalpy (kcal/mol)' &
  file ${project}.energy
+
+
+
+
+# Sample: density
+
+# Define sample variables
+
+variable density  equal density
+
+fix density all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ c_thermo_temp v_density   &
+ title2 '# step (fs), temperature (K), density (g/cm^3)' &
+ file ${project}.density
+
+
+
 
 # ============= RUN CONDITIONS =============
 
