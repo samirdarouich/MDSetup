@@ -1,0 +1,41 @@
+# Define general system properties
+
+system:
+  # Provide timestep in fs
+  dt : 1
+
+# Define nonbonded settings (if FF file is provided, these settings are not important)
+non_bonded:
+  # Pair style
+  pair_style: ""
+  # VdW style arguments
+  vdw_style:
+    "": []
+  # Coulomb style argument
+  coulomb_style:
+    "": []
+  # Coulomb long range method and precision
+  kspace_style: ""
+  # Tail corrections
+  tail: ""
+  # Mixing rule
+  mixing: ""
+  # If LAMMPS should do the mixing (if false, pyLAMMPS does the mixing with the specified mixing rule)
+  lammps_mixing: ""
+  # Special bonds
+  special_bonds: 
+    vdw: [ 0 0 1 ]
+    coulomb: [ 0 0 1 ]
+
+# Define constraints based on the force field types (if FF file is provided, enter here the atom, bonds and angle type numbers)
+shake_dict: 
+  atoms: []
+  bonds: []
+  angles: []
+
+# Define sampling intervalls for fixes
+sampling_time:
+  frequency: 10
+  number: 100
+
+# Define any other setting for the input template 

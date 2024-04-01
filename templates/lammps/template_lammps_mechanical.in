@@ -24,8 +24,52 @@ neigh_modify every 1 delay 0 check yes
 
 special_bonds lj {{non_bonded.special_bonds.vdw|join(' ')}}  coul {{non_bonded.special_bonds.coulomb|join(' ')}}
 
+{%- if deformation is defined %}
 
-# ============= INITIAL SYSTEM SETUP AND EQUILIBRATION =============
+# ============= Deformation =============
+
+variable  deform_rate equal {{deformation.rate}}
+
+{%- if deformation.direction == xx %}
+# Deformation in xx direction
+variable delta equal ${deform_rate}*lx
+variable deltaxy equal ${deform_rate}*xy
+variable deltaxz equal ${deform_rate}*xz
+
+change_box all x delta 0 ${delta} xy delta ${deltaxy} xz delta ${deltaxz} remap units box
+{%- elif deformation.direction == yy %}
+# Deformation in yy direction
+variable delta equal ${deform_rate}*ly
+variable deltayz equal ${deform_rate}*yz
+
+change_box all y delta 0 ${delta} yz delta ${deltayz} remap units box
+{%- elif deformation.direction == zz %}
+# Deformation in zz direction
+variable delta equal ${deform_rate}*lz
+
+change_box all z delta 0 ${delta} remap units box
+{%- elif deformation.direction == xy %}
+# Deformation in xy direction
+variable delta equal ${deform_rate}*ly
+
+change_box all xy delta ${delta} remap units box
+{%- elif deformation.direction == xz %}
+# Deformation in xz direction
+variable delta equal ${deform_rate}*lz
+
+change_box all xz delta ${delta} remap units box
+{%- elif deformation.direction == yz %}
+# Deformation in yz direction
+variable delta equal ${deform_rate}*lz
+
+change_box all yz delta ${delta} remap units box
+{%- elif deformation.direction == undeformed %}
+# Undeformed box
+change_box all triclinic
+{%- endif %}
+{%- endif %}
+
+# ============= INITIAL SYSTEM SETUP =============
 
 # ------------- general ---------------
 

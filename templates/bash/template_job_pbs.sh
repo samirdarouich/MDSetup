@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -q long
 #PBS -l nodes=1:ppn=28
-#PBS -l walltime=72:00:00
+#PBS -l walltime=10:00:00
 #PBS -N {{job_name}}
 #PBS -o {{log_path}}.o 
 #PBS -e {{log_path}}.e 

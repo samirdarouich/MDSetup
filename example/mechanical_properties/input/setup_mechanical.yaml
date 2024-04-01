@@ -1,0 +1,25 @@
+# General definitions of the system
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/mechanical_properties
+
+# System name
+name: ettringite
+
+# Define paths 
+paths:
+  # Template files
+  template:
+    lammps_input_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps_mechanical.in
+    job_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/bash/template_job_pbs.sh
+
+# Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied.
+# Density is not important if initial system is provided.
+temperature:
+  - 298.15
+
+pressure:
+  - 1.0
+
+density: 
+  - 1000.0

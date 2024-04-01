@@ -364,18 +364,6 @@ class LAMMPS_molecules():
 
         return {"t":key_at, "b":key_b, "a":key_an}
     
-    def get_bonded_styles(self, n_eval: int=1000):
-        # If several styles are utilized, add "hybrid" infront
-        bond_styles     = np.unique( [a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in self.bonds ] ).tolist()
-        angle_styles    = np.unique( [a["style"] for a in self.angles] ).tolist()
-        dihedral_styles = np.unique( [a["style"] for a in self.torsions] ).tolist()
-
-        if len(bond_styles) >1: bond_styles = ["hybrid"] + bond_styles
-        if len(angle_styles) >1: angle_styles = ["hybrid"] + angle_styles
-        if len(dihedral_styles) >1: dihedral_styles = ["hybrid"] + dihedral_styles
-
-        return { "bond": bond_styles, "angle" : angle_styles, "dihedral": dihedral_styles }
-    
 ## External functions for LAMMPS 
 
 def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Dict[str,List[str]],
@@ -384,14 +372,14 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
                      angle_numbers_ges: List[int], angles: List[Dict[str,str]],
                      torsion_numbers_ges: List[int], torsions: List[Dict[str,str]],
                      only_self_interactions: bool=True, mixing_rule: str = "arithmetic",
-                     ff_kwargs: Dict[str,Any]={}) -> str:
+                     ff_kwargs: Dict[str,Any]={}, n_eval: int=1000) -> str:
     """
     This function prepares LAMMPS understandable force field interactions and writes them to a file.
 
     Parameters:
      - ff_template (str, optional): Path to the force field template for LAMMPS
      - lammps_ff_path (str, optional): Destination of the external force field file. 
-     - potential_kwargs (Dict[str,List[str]]): Dictionary that contains the LAMMPS arguments every pair style that is used.
+     - potential_kwargs (Dict[str,List[str]]): Dictionary that contains the LAMMPS arguments for every pair style that is used.
      - atom_numbers_ges (List[int]): List with the unique force field type identifiers used in LAMMPS
      - nonbonded (List[Dict[str,str]]): List with the unique force field dictionaries containing: vdw_style, coul_style, sigma, epsilon, name, m 
      - bond_numbers_ges (List[int]): List with the unique bond type identifiers used in LAMMPS
@@ -403,7 +391,8 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
      - only_self_interactions (bool, optional): If only self interactions should be written and LAMMPS does the mixing. Defaults to "True".
      - mixing_rule (str, optional): In case this function should do the mixing, the used mixing rule. Defaultst to "arithmetic"
      - ff_kwargs (Dict[str,Any], optional): Parameter kwargs, which are directly parsed to the template. Defaults to {}.
-    
+     - n_eval (int, optional): Number of spline interpolations saved if tabled bond is used. Defaults to 1000.
+
     Returns:
      -  lammps_ff_path (str): Destination of the external force field file.
     
@@ -411,13 +400,8 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
         FileExistsError: If the force field template do not exist.
     """
 
-    # Define the arugment mapping 
-    ARGUMENT_MAP = { "sigma": 0,
-                     "epsilon": 0,
-                     "n": 0,
-                     "m": 0
-                    }
-    
+    # Define arugment mapping 
+    ARGUMENT_MAP = { }
 
     if not os.path.exists(ff_template):
         raise FileExistsError(f"Template file does not exists:\n  {ff_template}")
@@ -466,9 +450,9 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
                 raise KeyError(f"Atom '{i}' and atom '{j}' has different vdW pair style:\n  {i}: {iatom['vdw_style']}\n  {j}: {jatom['vdw_style']}")
             
             if pair_hybrid_flag:
-                vdw_interactions.append( [ i, j, iatom["vdw_style"] ] + [ ARGUMENT_MAP[arg]  for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
+                vdw_interactions.append( [ i, j, iatom["vdw_style"] ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
             else:
-                vdw_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg]  for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
+                vdw_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
 
             # If the system is charged, add Coulomb interactions
             if renderdict["charged"]:
@@ -478,9 +462,9 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
                     continue
 
                 if pair_hybrid_flag:
-                    coulomb_interactions.append( [ i, j, iatom["coulomb_style"] ] + [ ARGUMENT_MAP[arg]  for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
+                    coulomb_interactions.append( [ i, j, iatom["coulomb_style"] ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
                 else:
-                    coulomb_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg]  for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
+                    coulomb_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
 
     renderdict["vdw_interactions"] = vdw_interactions
 
@@ -495,40 +479,45 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
 
     # Bonded interactions
     bond_paras = []
-
+    bond_styles = np.unique( [a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in bonds ] ).tolist()
     bond_hybrid_flag = len( np.unique( [a["style"] for a in bonds ] ) ) > 1
+
     for bond_type, bond in zip(bond_numbers_ges, bonds):
         if bond_hybrid_flag:
             bond_paras.append( [ bond_type, bond["style"], *bond["p"], "#", *bond["list"] ] )
         else:
             bond_paras.append( [ bond_type, *bond["p"], "#", *bond["list"] ] )
 
-    renderdict["bond_paras"]    = bond_paras 
-    
+    renderdict["bond_paras"]  = bond_paras 
+    renderdict["bond_styles"] = ["hybrid"] + bond_styles if bond_hybrid_flag else bond_styles
+
     # Angle interactions
     angle_paras = []
-
+    angle_styles = np.unique( [a["style"] for a in angles] ).tolist()
     angle_hybrid_flag = len( np.unique( [a["style"] for a in angles ] ) ) > 1
+
     for angle_type, angle in zip(angle_numbers_ges, angles):
         if angle_hybrid_flag:
             angle_paras.append( [ angle_type, angle["style"], *angle["p"], "#", *angle["list"] ] )
         else:
             angle_paras.append( [ angle_type, *angle["p"], "#", *angle["list"] ] )
 
-    renderdict["angle_paras"]    = angle_paras 
- 
+    renderdict["angle_paras"]  = angle_paras 
+    renderdict["angle_styles"] = ["hybrid"] + angle_styles if angle_hybrid_flag else angle_styles
+
     # Dihedral interactions
     torsion_paras = []
+    torsion_styles = np.unique( [a["style"] for a in torsions] ).tolist()
+    torsion_hybrid_flag = len( np.unique( [a["style"] for a in torsions ] ) ) > 1
 
-    angle_hybrid_flag = len( np.unique( [a["style"] for a in torsions ] ) ) > 1
     for torsion_type, torsion in zip(torsion_numbers_ges, torsions):
-        if angle_hybrid_flag:
+        if torsion_hybrid_flag:
             torsion_paras.append( [ torsion_type, torsion["style"], *torsion["p"], "#", *torsion["list"] ] )
         else:
             torsion_paras.append( [ torsion_type, *torsion["p"], "#", *torsion["list"] ] )
 
-    renderdict["torsion_paras"]    = torsion_paras 
-
+    renderdict["torsion_paras"]  = torsion_paras 
+    renderdict["torsion_styles"] = ["hybrid"] + torsion_styles if torsion_hybrid_flag else torsion_styles
 
     # If provided write pair interactions as external LAMMPS force field file.
     with open(ff_template) as file_:

@@ -1,10 +1,15 @@
 import os
+import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from typing import List, Tuple
 from matplotlib.ticker import AutoMinorLocator
+
+def contains_pattern(text: str, pattern: str) -> bool:
+    regex = re.compile(pattern)
+    return bool(regex.search(text))
 
 def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, average: bool=True) -> pd.DataFrame:
     
@@ -26,33 +31,67 @@ def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, avera
     """
     
     with open(file) as f:
+        # Skip first line as it is title
         f.readline()
+
+        # 2nd line is first header
         header = f.readline().replace("#","").strip()
+
+        # Check if there is a second header
+        snd_header  = f.readline()
+        header_flag = False
+
+        # get the length of the 
+        first_len = len(header.replace("#","").split())
+        snd_len   = len(snd_header.replace("#","").split())
+        
+        # If there is a 2nd header extract the arguments from there
+        if snd_header.startswith("#"):
+            header = snd_header.replace("#","").strip()
+            header_flag = True
+            print("2nd header found. Match keys with this header!\n")
+
         if "," in header:
-            keys_lmp = [ i.strip() for i in header.split(",") ]
+            bracket_bool = all( contains_pattern(i,r'\(*.\)') for i in header.split(",") )
+            keys_lmp = [ i.strip() if bracket_bool else i.strip() + "(NaN)" for i in header.split(",") ]
         elif ")" in header:
-            print("h")
             keys_lmp = [ i.strip()+")" for i in header.split(")")[:-1] ]
         else:
-            keys_lmp = header.split()
-
-        idx_spec_keys = [0]
-        for key in keys:
-            for i,key_l in enumerate(keys_lmp):
-                if key in key_l:
-                    idx_spec_keys.append(i)
+            bracket_bool = all( contains_pattern(i,r'\(*.\)') for i in header.split() )
+            keys_lmp = [ i.strip() if bracket_bool else i.strip() + " (NaN)" for i in header.split() ]
         
-        idx_spec_keys = np.array(idx_spec_keys)
+        # Match keys with LAMMPS keys
+        matching_keys = [ i.split("(")[0].strip() for i in keys_lmp ]
+        idx_spec_keys = np.array( [ matching_keys.index(key) for key in keys ] )
 
-        if len(idx_spec_keys) != len(keys)+1:
+        if len(idx_spec_keys) != len(keys):
             raise KeyError(f"Not all provided keys are found in LAMMPS file! Found keys are: "+ "\n".join([keys_lmp[i] for i in idx_spec_keys]))
 
-        lines = np.array( [ np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys] for line in f ] )
+        # Read in data
+        if header_flag:
+            final_keys = [ "step (fs)" ] + keys_lmp
+            lines = [  ]
+        else:
+            # In case no 2nd header is used, the first line represents the time
+            idx_spec_keys = np.insert( idx_spec_keys, 0, 0 )
+            final_keys = np.array(keys_lmp)[idx_spec_keys]
+            lines = [ np.array( snd_header.split("\n")[0].split() ).astype("float")[idx_spec_keys] ]
+
+        for line in f:
+            if header_flag:
+                if len(line.split()) == first_len:
+                    time = float( line.split()[0] )
+                else:
+                    # Add time stamp to data
+                    lines.append( np.insert(  np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys], 0, time ) )
+            else:
+                lines.append( np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys] )
     
+    lines      = np.array(lines)
     time       = lines[:,0]
     start_time = fraction*time[-1]
     
-    data       = pd.DataFrame( { key: lines[:,i][time>start_time] for i,key in enumerate( keys_lmp ) } )
+    data       = pd.DataFrame( { key: lines[:,i][time>start_time] for i,key in enumerate( final_keys ) } )
     
     if average:
         return data.mean()

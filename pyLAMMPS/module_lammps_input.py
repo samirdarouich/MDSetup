@@ -74,9 +74,6 @@ class LAMMPS_setup():
 
             # Get shake dictionary
             shake_dict = lammps_molecules.get_shake_indices( self.simulation_default["shake_dict"] )
-
-            # Get bonded styles
-            style_dict = lammps_molecules.get_bonded_styles()
             
             # Write lammps ff file. Either using the write_lammps_ff or any external provided function
             if lammps_ff_callable is not None and callable(lammps_ff_callable):
@@ -86,7 +83,7 @@ class LAMMPS_setup():
                 lammps_ff_file = write_lammps_ff( ff_template = self.system_setup["paths"]["template"]["lammps_ff_file"], 
                                                 lammps_ff_path = f"{sim_folder}/force_field.params", 
                                                 potential_kwargs = { **self.simulation_default["non_bonded"]["vdw_style"], 
-                                                                        **self.simulation_default["non_bonded"]["coulomb_style"] },
+                                                                     **self.simulation_default["non_bonded"]["coulomb_style"] },
                                                 atom_numbers_ges = lammps_molecules.atom_numbers_ges, 
                                                 nonbonded = lammps_molecules.nonbonded, 
                                                 bond_numbers_ges = lammps_molecules.bond_numbers_ges, 
@@ -101,14 +98,20 @@ class LAMMPS_setup():
                                                 )
         else:
             lammps_ff_file = ff_file
-        
+
+            # Use directly the shake dict 
+            shake_dict = { "t": self.simulation_default["shake_dict"]["atoms"],
+                           "b": self.simulation_default["shake_dict"]["bonds"], 
+                           "a": self.simulation_default["shake_dict"]["angles"], 
+                         }
+            
         for i, (temperature, pressure, density) in enumerate( zip( self.system_setup["temperature"], 
                                                                    self.system_setup["pressure"], 
                                                                    self.system_setup["density"] ) ):
             
             job_files = []
             # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.0f}_pres_{pressure:.0f}"
+            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
 
             # Build system with PLAYMOL and write LAMMPS data if no initial system is provided
             if not initial_systems:
@@ -151,7 +154,6 @@ class LAMMPS_setup():
                                                     kwargs = { **self.simulation_default,
                                                                **self.simulation_sampling, 
                                                                **input_kwargs,
-                                                               "style": style_dict,
                                                                "shake_dict": shake_dict, 
                                                                "restart_flag": flag_restart }, 
                                                     ensemble_definition = self.simulation_ensemble,
@@ -220,28 +222,30 @@ class LAMMPS_setup():
         ensemble_name = "_".join(ensemble.split("_")[1:])
 
         # Search output files and sort them after temperature / pressure and then copy
-        files = glob.glob( f"{sim_folder}/**/{ensemble}/{ensemble_name}.{output_suffix}", recursive = True )
-        files.sort( key=lambda x: (int(re.search(r'temp_(\d+)', x).group(1)),
-                                   int(re.search(r'pres_(\d+)', x).group(1)),
-                                   int(re.search(r'copy_(\d+)', x).group(1))) )
-        
-        if len(files) == 0:
-            raise KeyError(f"No files found machting the ensemble: {ensemble} in folder\n:   {sim_folder}")
-        
-        # Group paths by temperature and pressure states
-
-        for (temp, pres), paths_group in groupby(files, key=lambda x: (int(re.search(r'temp_(\d+)', x).group(1)),
-                                                                       int(re.search(r'pres_(\d+)', x).group(1)))):
+        for i, (temperature, pressure) in enumerate( zip( self.system_setup["temperature"], 
+                                                          self.system_setup["pressure"]
+                                                    ) ):
             
-            paths_group = list(paths_group).copy()
+            # Define folder for specific temp and pressure state
+            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
 
-            print(f"Temperature: {temp}, Pressure: {pres}\n   "+"\n   ".join(paths_group) + "\n")
+            # Search for available copies
+            files = glob.glob( f"{state_folder}/copy_*/{ensemble}/{ensemble_name}.{output_suffix}" )
+            files.sort( key=lambda x: int(re.search(r'copy_(\d+)', x).group(1)) ) 
+        
+            if len(files) == 0:
+                raise KeyError(f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}")
+
+            print(f"Temperature: {temperature}, Pressure: {pressure}\n   "+"\n   ".join(files) + "\n")
 
             data_list = []
 
-            for path in paths_group:
+            for file in files:
                 # Analysis data
-                data_list.append( read_lammps_output( file = path, keys = extracted_properties, fraction = fraction, average = False ) )
+                data_list.append( read_lammps_output( file = file, 
+                                                      keys = extracted_properties, 
+                                                      fraction = fraction, 
+                                                      average = False ) )
 
             if len(data_list) == 0:
                 raise KeyError("No data was extracted!")
@@ -263,14 +267,11 @@ class LAMMPS_setup():
             json_data = { f"copy_{i}": { d["property"]: {key: value for key,value in d.items() if not key == "property"} for d in df.to_dict(orient="records") } for i,df in enumerate(mean_std_list) }
             json_data["average"] = { d["property"]: {key: value for key,value in d.items() if not key == "property"} for d in final_df.to_dict(orient="records") }
 
-            # Extract main folder for the state:
-            destination_folder = re.search(r'(/.*?/temp_\d+_pres_\d+/)', path).group(1)
-
             # Either append the new data to exising file or create new json
-            json_path = f"{destination_folder}/results.json"
+            json_path = f"{state_folder}/results.json"
             
-            work_json( json_path, { "temperature": temp, "pressure": pres,
-                                    ensemble: { "data": json_data, "paths": paths_group, "fraction_discarded": fraction } }, "append" )
+            work_json( json_path, { "temperature": temperature, "pressure": pressure,
+                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction } }, "append" )
         
-            # Add the extracted values for the command, analysis_folder and ensemble to the class
-            merge_nested_dicts( self.analysis_dictionary, { (temp, pres): { analysis_folder: { ensemble: final_df }  } } )
+            # Add the extracted values for the analysis_folder and ensemble to the class
+            merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )

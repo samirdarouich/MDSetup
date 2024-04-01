@@ -4,7 +4,7 @@ from typing import Dict, List
 from jinja2 import Template
 
 from ..tools.general_utils import work_json
-from .general_analysis import mean_properties, plot_data
+from .general_analysis import read_lammps_output, plot_data
 
 def get_stiffness_tensor( pressure: List[List[List[float]]], deformation_magnitudes: List[float]  ):
     """
@@ -363,7 +363,7 @@ class mechanical_properties:
         paths = [ f"{self.equilibration_folder}/0{copy}/{self.project_name}.lattice" for copy in range(copies+1) ] 
 
         for path in paths:
-            _, a,b,c,alpha,beta,gamma,dens = mean_properties( path, keys=["v_a", "v_b", "v_c", "v_alpha" ,"v_beta", "v_gamma" ,"v_density"], fraction = fraction )
+            _, a,b,c,alpha,beta,gamma,dens = read_lammps_output( path, keys=["v_a", "v_b", "v_c", "v_alpha" ,"v_beta", "v_gamma" ,"v_density"], fraction = fraction )
             a_list.append(a)
             b_list.append(b)
             c_list.append(c)
@@ -435,7 +435,7 @@ class mechanical_properties:
             for i,path in enumerate(simulation_paths):
                 # Convert pressure from atm in GPa ( GPa = 10^-9 Pa = 10^-9 * 101325 * atm )
                 for k,def_path in enumerate(path):
-                    press_array    = mean_properties( def_path, keys = [ "c_thermo_press[%d]"%j for j in range(1,7) ], fraction = fraction )
+                    press_array    = read_lammps_output( def_path, keys = [ "c_thermo_press[%d]"%j for j in range(1,7) ], fraction = fraction )
                     # As the time average is also returned
                     press_array    = press_array[1:]
                     pressure[i][k] = press_array * 101325 / 1e9

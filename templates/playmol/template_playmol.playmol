@@ -15,24 +15,20 @@ charge {{n}}  {{a.charge}}
 # Bonds
 {%- if rd.bonds %}
 {% for n, b in rd.bonds %}
-bond_type  {{n.0}}  {{n.1}}  {{b.style}}  {{b.p.1}}  {{b.p.0}}
+bond_type  {{n.0}}  {{n.1}}  {{b.style}}  {{b.p|join(' ')}}
 {%- endfor %}
 {% endif %}
 
 # Angles
 {%- if rd.angles %}
-{% for n, b in rd.angles %}
-angle_type {{n.0}} {{n.1}} {{n.2}} {{b.style}}  {{b.p.1}} {{b.p.0}} 
+{% for n, a in rd.angles %}
+angle_type {{n.0}} {{n.1}} {{n.2}} {{a.style}}  {{a.p|join(' ')}}
 {%- endfor %}
 {% endif %}
 
 # Torsions
 {%- if rd.torsions %}
-{% for n, p in rd.torsions %}
-{%- if p.p|length > 5 %}
-dihedral_type {{n.0}} {{n.1}} {{n.2}} {{n.3}} {{p.style}} {{p.p|length-1}} {%- for a in p.p[:-1] %} {{a}} {%- endfor %}
-{%- else %}
-dihedral_type {{n.0}} {{n.1}} {{n.2}} {{n.3}} {{p.style}} {%- for a in p.p[:-1] %} {{a}} {%- endfor %}
-{%- endif %}
+{% for n, t in rd.torsions %}
+dihedral_type {{n.0}} {{n.1}} {{n.2}} {{n.3}} {{t.style}} {{t.p|join(' ')}}
 {%- endfor %}
 {% endif %}
