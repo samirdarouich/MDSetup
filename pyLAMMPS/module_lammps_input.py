@@ -3,7 +3,7 @@ import yaml
 import glob
 import subprocess
 import pandas as pd
-from itertools import groupby
+import multiprocessing
 from typing import Any, List, Dict, Callable
 from .analysis import read_lammps_output
 from .tools.general_utils import work_json, merge_nested_dicts
@@ -238,15 +238,23 @@ class LAMMPS_setup():
 
             print(f"Temperature: {temperature}, Pressure: {pressure}\n   "+"\n   ".join(files) + "\n")
 
-            data_list = []
+            num_processes = multiprocessing.cpu_count()
+            # In case there are multiple CPU's, leave one without task
+            if num_processes > 1:
+                num_processes -= 1
 
-            for file in files:
-                # Analysis data
-                data_list.append( read_lammps_output( file = file, 
-                                                      keys = extracted_properties, 
-                                                      fraction = fraction, 
-                                                      average = False ) )
+            # Create a pool of processes
+            pool = multiprocessing.Pool( processes = multiprocessing.cpu_count()  )
 
+            inputs = [ (file,extracted_properties,fraction,False) for file in files]
+
+            # Execute the tasks in parallel
+            data_list = pool.starmap(read_lammps_output, inputs)
+
+            # Close the pool to free up resources
+            pool.close()
+            pool.join()
+        
             if len(data_list) == 0:
                 raise KeyError("No data was extracted!")
             

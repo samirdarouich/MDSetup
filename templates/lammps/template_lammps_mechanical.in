@@ -26,48 +26,63 @@ special_bonds lj {{non_bonded.special_bonds.vdw|join(' ')}}  coul {{non_bonded.s
 
 {%- if deformation is defined %}
 
+
 # ============= Deformation =============
 
 variable  deform_rate equal {{deformation.rate}}
 
-{%- if deformation.direction == xx %}
+{%- if deformation.direction == "xx" %}
+
 # Deformation in xx direction
 variable delta equal ${deform_rate}*lx
 variable deltaxy equal ${deform_rate}*xy
 variable deltaxz equal ${deform_rate}*xz
 
 change_box all x delta 0 ${delta} xy delta ${deltaxy} xz delta ${deltaxz} remap units box
-{%- elif deformation.direction == yy %}
+
+{%- elif deformation.direction == "yy" %}
+
 # Deformation in yy direction
 variable delta equal ${deform_rate}*ly
 variable deltayz equal ${deform_rate}*yz
 
 change_box all y delta 0 ${delta} yz delta ${deltayz} remap units box
-{%- elif deformation.direction == zz %}
+
+{%- elif deformation.direction == "zz" %}
+
 # Deformation in zz direction
 variable delta equal ${deform_rate}*lz
 
 change_box all z delta 0 ${delta} remap units box
-{%- elif deformation.direction == xy %}
+
+{%- elif deformation.direction == "xy" %}
+
 # Deformation in xy direction
 variable delta equal ${deform_rate}*ly
 
 change_box all xy delta ${delta} remap units box
-{%- elif deformation.direction == xz %}
+
+{%- elif deformation.direction == "xz" %}
+
 # Deformation in xz direction
 variable delta equal ${deform_rate}*lz
 
 change_box all xz delta ${delta} remap units box
-{%- elif deformation.direction == yz %}
+
+{%- elif deformation.direction == "yz" %}
+
 # Deformation in yz direction
 variable delta equal ${deform_rate}*lz
 
 change_box all yz delta ${delta} remap units box
-{%- elif deformation.direction == undeformed %}
+
+{%- elif deformation.direction == "undeformed" %}
+
 # Undeformed box
 change_box all triclinic
 {%- endif %}
-{%- endif %}
+
+{% endif %}
 
 # ============= INITIAL SYSTEM SETUP =============
 
@@ -85,7 +100,7 @@ timestep  ${timestep}
 variable {{var}}  equal {{val}}
 {%- endfor %}
 
-{%- if not restart_flag %}
+{%- if not restart_flag  %}
 
 variable seed  equal {{seed}}       
 
@@ -156,3 +171,7 @@ run             ${run_time}
 # Write restart after successful simulation
 
 write_restart ${project}.restart
+
+# Additionally write data file
+
+write_data ${project}.data nocoeff nofix
