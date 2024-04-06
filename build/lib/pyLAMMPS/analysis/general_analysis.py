@@ -2,10 +2,11 @@ import os
 import re
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from typing import List, Tuple
-from matplotlib.ticker import AutoMinorLocator
+from typing import List, Dict, Any
 
 def contains_pattern(text: str, pattern: str) -> bool:
     regex = re.compile(pattern)
@@ -41,9 +42,8 @@ def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, avera
         snd_header  = f.readline()
         header_flag = False
 
-        # get the length of the 
+        # get the length of the first header
         first_len = len(header.replace("#","").split())
-        snd_len   = len(snd_header.replace("#","").split())
         
         # If there is a 2nd header extract the arguments from there
         if snd_header.startswith("#"):
@@ -99,101 +99,103 @@ def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, avera
         return data
 
 
-def plot_data(datas: List[ List[List]], labels: List[str], colors: List[str],
-              path_out: str="", linestyle: List[str]=[], markerstyle: List[str]=[], 
-              ax_lim: List[List[float]]=[[],[]], ticks: List[np.ndarray]=[np.array([]),np.array([])], 
-              label_size: int=24, legend_size: int=18, tick_size: int=24,
-              linewidth: int=0, markersize: int=0, size: Tuple[float]=(8,6),
-              lr: bool=False, fill: List[bool]=[]):
+def plot_data(datas: List[ List[List]], 
+              labels: List[str]=[], 
+              colors: List[str]=[],
+              sns_context: str="paper", 
+              save_path: str="", 
+              label_size: int=24, 
+              data_kwargs: List[Dict[str,Any]]=[],
+              fig_kwargs: Dict[str,Any]={},
+              set_kwargs: Dict[str,Any]={},
+              ax_kwargs: Dict[str,Any]={},
+              legend_kwargs: Dict[str,Any]={} ):
     
-    """
-    Function that plots data.
     
-    Args:
-        datas (List[ List[ List, List, List, List ]]): Data list containing in each sublist x and y data 
-                                                       (if errorbar plot is desired, datas should contain as 3rd entry the x-error and as 4th entry the y-error )
-        labels (List[str]): Label list containing a label for each data in datas. 2nd last entry is x-axis label and last entry for y-axis
-        colors (List[str]): Color list containing a color for each data in datas.
-        path_out (str, optional): Path to save plot.
-        linestyle (List[str], optional): Linestyle list containing a linestyle for each data in datas.
-        markerstyle (List[str], optional): Markerstyle list containing a markerstyle for each data in datas.
-        ax_lim (List[List[float],List[float]], optional): List with ax limits. First entry x ax, 2nd entry y ax.
-        ticks (List[np.ndarray, np.ndarray] optional): List with ticks for x and y axis. First entry x ax, 2nd entry y ax.
-        label_size (int,optional): Size of axis labels (also influence the linewidth with factor 1/7). Defaults to 24.
-        legend_size (int,optional): Size of labels in legend. Defaults to 18.
-        tick_size (int,optional): Size of ticks on axis. Defaults to 24.
-        linewidth (int,optional): Linewidth, if not provided use 1/7 of the label size.
-        markersize (int,optional): Markersize, if not provided use 1/2 of the label size.
-        size (Tuple[float, float],optional): Figure size. Defaults to (8,6).
-        lr (bool,optional): If true, then the plot will have y ticks on both sides.
-        fill (list of booleans): If entry i is True then a filled plot will be made. Therefore, datas[i][1] should contain 2 entries -> y_low,y_high instead of one -> y
-    """
     
-    if not fill: fill = [False for _ in datas]
-    # If no linewidth/markersize is presented, just use a portion of the label size to balance plot
-    if not linewidth:
-        linewidth = label_size/7
-    if not markersize:
-        markersize = label_size/2
+    # Set seaborn plot contect
+    sns.set_context( sns_context )
 
-    fig,ax = plt.subplots(figsize=size)
+    # Define inital figure kwargs
+    if not fig_kwargs:
+        fig_kwargs = { "figsize": (8,6) }
 
-    for i,(data,label,color) in enumerate(zip(datas,labels,colors)):
+    # Define initial legend kwargs
+    if not legend_kwargs:
+        legend_kwargs = { "fontsize": 12 }
+    
+    # Predefine ax kwargs
+    if not ax_kwargs:
+        ax_kwargs = { "minorticks_on": {} }
 
-        # Prevent plotting of emtpy data:
-        if (not np.any(data[0]) and not isinstance(data[0],float)) or \
-           (not np.any(data[1])) or \
-           (not np.any(data[0]) and not np.any(data[1])): continue
+    # Provide inital colors
+    if not colors:  
+        colors = sns.color_palette("tab10", n_colors = len(datas) )
+    
+    # Predefine labels
+    if not labels:
+        labels = [ "" for _ in datas ]
+    
+    # If no data kwars are presented
+    if not data_kwargs: 
+        data_kwargs = [ {} for _ in datas ]
 
-        ls       = linestyle[i] if len(linestyle)>0 else "solid"
-        ms       = markerstyle[i] if len(markerstyle)>0 else "."
-        error    = True if len(data) == 4 else False
+    if not len(labels) == len(colors) == len(data_kwargs) == len(datas):
+        raise TypeError("Provided labels or colors or data kwargs do not have the same lenght as the data!")
+    
+    # Create figure and ax object
+    fig, ax = plt.subplots( **fig_kwargs )
 
-        if fill[i]:
-            ax.fill_between(data[0],data[1][0],data[1][1], facecolor=color,alpha=0.3)
-        elif error:
-            ax.errorbar(data[0],data[1],xerr=data[2],yerr=data[3],linestyle=ls,marker=ms,markersize=markersize,
-                        linewidth=linewidth,elinewidth=linewidth*0.7,capsize=linewidth*0.7,color=color,label=label )
+    # Add label size to set kwargs and apply them
+    for key,item in set_kwargs.items():
+        if isinstance(item,dict):
+            getattr(ax, f"set_{key}")(**item)
+        elif key in ["xlabel","ylabel","title"]:
+            getattr(ax, f"set_{key}")(**{ key: item, "fontsize": label_size })
         else:
-            ax.plot(data[0],data[1],linestyle=ls,marker=ms,markersize=markersize,linewidth=linewidth,color=color,label=label)
+            getattr(ax, f"set_{key}")(item) 
+
+    # Apple direct ax kwargs
+    for key, value in ax_kwargs.items():
+        if not isinstance(value,dict):
+            raise TypeError(f"Specified ax kwargs is not a dict: '{key}': ", print(value))
+        getattr(ax, key)(**value)
+
+    for data,label,color,kwargs in zip(datas,labels,colors,data_kwargs):
+
+        error = True if len(data) == 4 else False
+        # Fill is used when the y data has a np.array/list with two dimensions
+        fill  = (isinstance(data[1], np.ndarray) and data[1].ndim == 2) or (isinstance(data[1],list) and all(isinstance(sublist, list) for sublist in data[1]))
+
+        if fill:
+            d_kwargs = { "facecolor": color, "alpha": 0.3, "label": label, **kwargs }
+            ax.fill_between (data[0], data[1][0], data[1][1], **d_kwargs )
+
+        elif error:
+            d_kwargs = { "elinewidth": mpl.rcParams['lines.linewidth']*0.7 if not "linewidth" in kwargs.keys() else kwargs["linewidth"]*0.7, 
+                         "capsize": mpl.rcParams['lines.linewidth']*0.7 if not "linewidth" in kwargs.keys() else kwargs["linewidth"]*0.7, 
+                         "label": label,
+                         "color": color,
+                         **kwargs }
+
+            ax.errorbar( data[0], data[1], xerr = data[2], yerr = data[3], **d_kwargs )
+
+        else:
+            d_kwargs = { "label": label,
+                         "color": color,
+                         **kwargs }
+            
+            ax.plot( data[0], data[1], **d_kwargs )
 
     # Plot legend if any label provided
-    if any(labels[:-2]):
-        ax.legend(fontsize=legend_size)
-    
-    try: 
-        if len(ax_lim[0]) > 0: ax.set_xlim(*ax_lim[0])
-    except: pass
-    try: 
-        if len(ax_lim[1]) > 0: ax.set_ylim(*ax_lim[1])
-    except: pass
-
-    for axis in ["top","bottom","left","right"]:
-        ax.spines[axis].set_linewidth(2)
-
-    if len(ticks[0])>0:
-        ax.set_xticks(ticks[0])
-    elif len(ticks[1])>0:
-        ax.set_yticks(ticks[1])
-
-    ax.minorticks_on()
-    ax.xaxis.set_minor_locator(AutoMinorLocator(2))
-    ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-    ax.tick_params( which = "major", labelsize = tick_size,
-                    direction = "out", width = tick_size/9,
-                    length = tick_size/5, right = lr )
-    ax.tick_params( which = "minor", labelsize = tick_size,
-                    direction = "out", width = tick_size/12,
-                    length = tick_size/8, right=lr )
-    
-    ax.set_xlabel(labels[-2],fontsize=label_size)
-    ax.set_ylabel(labels[-1],fontsize=label_size)
+    if any(labels):
+        ax.legend( **legend_kwargs )
     
     fig.tight_layout()
 
-    if path_out: 
-        os.makedirs( os.path.dirname(path_out), exist_ok=True)
-        fig.savefig( path_out, dpi=400, bbox_inches='tight')
+    if save_path: 
+        os.makedirs( os.path.dirname(save_path), exist_ok=True)
+        fig.savefig( save_path, dpi=400, bbox_inches='tight')
     plt.show()
     plt.close()
     
