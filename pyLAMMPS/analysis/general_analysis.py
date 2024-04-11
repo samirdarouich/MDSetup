@@ -7,6 +7,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from typing import List, Dict, Any
+from collections.abc import Iterable
 
 def contains_pattern(text: str, pattern: str) -> bool:
     regex = re.compile(pattern)
@@ -141,7 +142,12 @@ def plot_data(datas: List[ List[List]],
         data_kwargs = [ {} for _ in datas ]
 
     if not len(labels) == len(colors) == len(data_kwargs) == len(datas):
-        raise TypeError("Provided labels or colors or data kwargs do not have the same lenght as the data!")
+        if len(labels) != len(datas):
+            raise TypeError("Provided labels do not have the same lenght as the data!")
+        elif len(colors) != len(datas):
+            raise TypeError("Provided colors do not have the same lenght as the data!")
+        else:
+            raise TypeError("Provided data kwargs do not have the same lenght as the data!")
     
     # Create figure and ax object
     fig, ax = plt.subplots( **fig_kwargs )
@@ -165,7 +171,7 @@ def plot_data(datas: List[ List[List]],
 
         error = True if len(data) == 4 else False
         # Fill is used when the y data has a np.array/list with two dimensions
-        fill  = (isinstance(data[1], np.ndarray) and data[1].ndim == 2) or (isinstance(data[1],list) and all(isinstance(sublist, list) for sublist in data[1]))
+        fill  = (isinstance(data[1], np.ndarray) and data[1].ndim == 2) or (isinstance(data[1],list) and all(isinstance(sublist,Iterable) for sublist in data[1]))
 
         if fill:
             d_kwargs = { "facecolor": color, "alpha": 0.3, "label": label, **kwargs }
