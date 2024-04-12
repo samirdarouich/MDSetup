@@ -20,7 +20,8 @@ setup(
                       'toml',
                       'jinja2',
                       'scipy',
-                      'Pubchempy'
+                      'Pubchempy',
+                      'seaborn'
                       ],
 
     classifiers=[
