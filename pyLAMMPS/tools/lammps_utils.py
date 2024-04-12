@@ -22,14 +22,11 @@ class LAMMPS_molecules():
 
         # Read in force field file
         if ".yaml" in force_field_path:
-            with open(force_field_path) as ff_toml_file:
-                self.ff = yaml.load(ff_toml_file)
+            self.ff = yaml.load( open(force_field_path) )
         elif ".json" in force_field_path:
-            with open(force_field_path) as ff_toml_file:
-                self.ff = json.load(ff_toml_file)
+            self.ff = json.load( open(force_field_path) )
         elif ".toml" in force_field_path:
-            with open(force_field_path) as ff_toml_file:
-                self.ff = toml.load(ff_toml_file)
+            self.ff = toml.load( open(force_field_path) )
         else:
             raise KeyError("Force field file is not supported. Please provide 'YAML', 'JSON', or 'TOML' file.")
             
@@ -456,11 +453,11 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
 
             # If the system is charged, add Coulomb interactions
             if renderdict["charged"]:
-                if iatom["coulomb_style"] != jatom["coulomb_style"]:
-                    raise KeyError(f"Atom '{i}' and atom '{j}' has different Coulomb pair style:\n  {i}: {iatom['coulomb_style']}\n  {j}: {jatom['coulomb_style']}")
                 if iatom["charge"] == 0.0 or jatom["charge"] == 0.0:
                     continue
-
+                if iatom["coulomb_style"] != jatom["coulomb_style"]:
+                    raise KeyError(f"Atom '{i}' and atom '{j}' has different Coulomb pair style:\n  {i}: {iatom['coulomb_style']}\n  {j}: {jatom['coulomb_style']}")
+                
                 if pair_hybrid_flag:
                     coulomb_interactions.append( [ i, j, iatom["coulomb_style"] ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
                 else:
@@ -471,7 +468,7 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
     # Overwrite Coulomb pair interactions if there is only one style
     if len( np.unique( [a["coulomb_style"] for a in nonbonded if a["coulomb_style"]] ) ) == 1:
         if pair_hybrid_flag:
-            coulomb_interactions = [ [ "*", "*", np.unique( [a["coulomb_style"] for a in nonbonded ] )[0] ] ]
+            coulomb_interactions = [ [ "*", "*", np.unique( [a["coulomb_style"] for a in nonbonded if a["coulomb_style"] ] )[0] ] ]
         else:
             coulomb_interactions = [ [ "*", "*" ] ]
     
