@@ -13,97 +13,53 @@ def contains_pattern(text: str, pattern: str) -> bool:
     regex = re.compile(pattern)
     return bool(regex.search(text))
 
-def read_lammps_output(file: str, keys: List[str]=[], fraction: float=0.0, average: bool=True) -> pd.DataFrame:
-    
+def read_lammps_output( file_path: str, fraction: float=0.0, header: int=2,
+                        header_delimiter: str= "," ):
     """
-    Function that reads in a LAMMPS output file and return (time average) of given properties
-    
-    Parameters
-    ----------
-    
-    file (str): Path to LAMMPS sampling output file 
-    keys (List[str]): Keys to average from output (do not include step).
-    fraction (float, optional): Fraction of simulation output that is discarded from the beginning. Defaults to 0.0.
-    average (bool, optional): If the whole dataframe is returned or only the time averaged values.
+    Reads a LAMMPS output file and returns a pandas DataFrame containing the data.
 
-    Return
-    ------
-    
-    data (DataFrame): (Time averaged) properties
+    Parameters:
+        file_path (str): The path to the LAMMPS output file.
+        fraction (float, optional): The fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
+        header (int, optional): The number of header lines to skip. Defaults to 2.
+        header_delimiter (str, optional): The delimiter used in the header line. Defaults to ",".
+
+    Returns:
+        pandas.DataFrame: The DataFrame containing the data from the LAMMPS output file.
+
+    Raises:
+        KeyError: If the LAMMPS output file does not have enough titles.
+
+    Note:
+        - The function assumes that the LAMMPS output file has a timestamp in the first line.
+        - If the timestamp is not present, the provided fraction parameter will be ignored.
+        - The function expects the LAMMPS output file to have a specific format, with titles starting with '#'.
+
     """
+    with open( file_path ) as file:
+        titles = [ file.readline() for _ in range(3) ]
     
-    with open(file) as f:
-        # Skip first line as it is title
-        f.readline()
+    titles = [ t.replace("#","").strip() for t in titles if t.startswith("#") ]
 
-        # 2nd line is first header
-        header = f.readline().replace("#","").strip()
-
-        # Check if there is a second header
-        snd_header  = f.readline()
-        header_flag = False
-
-        # get the length of the first header
-        first_len = len(header.replace("#","").split())
-        
-        # If there is a 2nd header extract the arguments from there
-        if snd_header.startswith("#"):
-            header = snd_header.replace("#","").strip()
-            header_flag = True
-            print("2nd header found. Match keys with this header!\n")
-
-        if "," in header:
-            bracket_bool = all( contains_pattern(i,r'\(*.\)') for i in header.split(",") )
-            keys_lmp = [ i.strip() if bracket_bool else i.strip() + "(NaN)" for i in header.split(",") ]
-        elif ")" in header:
-            keys_lmp = [ i.strip()+")" for i in header.split(")")[:-1] ]
-        else:
-            bracket_bool = all( contains_pattern(i,r'\(*.\)') for i in header.split() )
-            keys_lmp = [ i.strip() if bracket_bool else i.strip() + " (NaN)" for i in header.split() ]
-        
-        # Match keys with LAMMPS keys
-        matching_keys = [ i.split("(")[0].strip() for i in keys_lmp ]
-        idx_spec_keys = np.array( [ matching_keys.index(key) for key in keys ] )
-
-        if len(idx_spec_keys) != len(keys):
-            raise KeyError(f"Not all provided keys are found in LAMMPS file! Found keys are: "+ "\n".join([keys_lmp[i] for i in idx_spec_keys]))
-
-        # Read in data
-        if header_flag:
-            final_keys = [ "step (fs)" ] + keys_lmp
-            lines = [  ]
-        else:
-            # In case no 2nd header is used, the first line represents the time
-            idx_spec_keys = np.insert( idx_spec_keys, 0, 0 )
-            final_keys = np.array(keys_lmp)[idx_spec_keys]
-            lines = [ np.array( snd_header.split("\n")[0].split() ).astype("float")[idx_spec_keys] ]
-
-        for line in f:
-            if header_flag:
-                if len(line.split()) == first_len:
-                    time = float( line.split()[0] )
-                else:
-                    # Add time stamp to data
-                    lines.append( np.insert(  np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys], 0, time ) )
-            else:
-                lines.append( np.array( line.split("\n")[0].split() ).astype("float")[idx_spec_keys] )
-    
-    lines      = np.array(lines)
-    time       = lines[:,0]
-    start_time = fraction*time[-1]
-    
-    data       = pd.DataFrame( { key: lines[:,i][time>start_time] for i,key in enumerate( final_keys ) } )
-    
-    if average:
-        return data.mean()
+    if len(titles) < header:
+        raise KeyError(f"LAMMPS output file has only '{len(titles)}' titles. Cannot use title n°'{header}' !")
     else:
-        return data
+        lammps_header = [ h.strip() for h in titles[header-1].split(header_delimiter) ]
+
+    df = pd.read_csv( file_path, comment="#", delimiter = " ", names = lammps_header )
+
+    if "time" in df.columns[0].lower():
+        idx = df.iloc[:,0] > df.iloc[:,0].max() * fraction
+        return df.loc[idx,:]
+    else:
+        print(f"\nNo timestamp provided in first line of LAMMPS output. Hence, can't discard the provided fraction '{fraction}'")
+        return df
 
 
 def plot_data(datas: List[ List[List]], 
               labels: List[str]=[], 
               colors: List[str]=[],
-              sns_context: str="paper", 
+              sns_context: str="talk", 
               save_path: str="", 
               label_size: int=24, 
               data_kwargs: List[Dict[str,Any]]=[],
@@ -112,22 +68,40 @@ def plot_data(datas: List[ List[List]],
               ax_kwargs: Dict[str,Any]={},
               legend_kwargs: Dict[str,Any]={} ):
     
-    
+    """
+    Plot data function.
+
+    This function plots data using matplotlib and seaborn libraries.
+
+    Parameters:
+    - datas (List[List[List]]): A list of data to be plotted. Each element in the list represents a separate dataset. Each dataset is a list of two or four elements. 
+                                If the dataset has two elements, it represents x and y values. If the dataset has four elements, it represents x, y, x error, and y error values.
+                                If the dataset has two elemenets and the y value contains sublists, it represents x, y_upper, y_lower
+    - labels (List[str], optional): A list of labels for each dataset. Default is an empty list.
+    - colors (List[str], optional): A list of colors for each dataset. Default is an empty list.
+    - sns_context (str, optional): The seaborn plot context. Default is "talk".
+    - save_path (str, optional): The path to save the plot. Default is an empty string.
+    - label_size (int, optional): The font size of the labels. Default is 24.
+    - data_kwargs (List[Dict[str,Any]], optional): A list of dictionaries containing additional keyword arguments for each dataset. Default is an empty list.
+    - fig_kwargs (Dict[str,Any], optional): A dictionary containing additional keyword arguments for the figure. Default is an empty dictionary.
+    - set_kwargs (Dict[str,Any], optional): A dictionary containing additional keyword arguments for setting properties of the axes. Default is an empty dictionary.
+    - ax_kwargs (Dict[str,Any], optional): A dictionary containing additional keyword arguments for the axes. Default is an empty dictionary.
+    - legend_kwargs (Dict[str,Any], optional): A dictionary containing additional keyword arguments for the legend. Default is an empty dictionary.
+
+    Returns:
+    None
+    """
     
     # Set seaborn plot contect
     sns.set_context( sns_context )
 
     # Define inital figure kwargs
     if not fig_kwargs:
-        fig_kwargs = { "figsize": (8,6) }
+        fig_kwargs = { "figsize": (6.6,4.6) }
 
     # Define initial legend kwargs
     if not legend_kwargs:
         legend_kwargs = { "fontsize": 12 }
-    
-    # Predefine ax kwargs
-    if not ax_kwargs:
-        ax_kwargs = { "minorticks_on": {} }
 
     # Provide inital colors
     if not colors:  

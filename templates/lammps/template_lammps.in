@@ -20,10 +20,6 @@ include   {{force_field_file}}
 neighbor 2.0 bin
 neigh_modify every 1 delay 0 check yes 
 
-# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
-
-special_bonds lj {{non_bonded.special_bonds.vdw|join(' ')}}  coul {{non_bonded.special_bonds.coulomb|join(' ')}}
-
 
 # ============= INITIAL SYSTEM SETUP AND EQUILIBRATION =============
 

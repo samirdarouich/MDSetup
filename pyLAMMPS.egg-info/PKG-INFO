@@ -16,3 +16,4 @@ Requires-Dist: toml
 Requires-Dist: jinja2
 Requires-Dist: scipy
 Requires-Dist: Pubchempy
+Requires-Dist: seaborn

@@ -3,9 +3,57 @@
 import os
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 
 from typing import List, Tuple, Dict, Any
+
+def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
+    """
+    Function that searches an (nested) python object and extract the item at the end of the key chain.
+    Keys are provided as one string and seperated by ".".
+
+    Args:
+        obj (Dict[str,Any]|List[Any]|Any): Object from which the (nested) keys are extracted
+        keys (str): Keys to extract. Chain of keys should be seperated by ".". Integers to get list items will be converted from string.
+        default (dict, optional): Default return if key is not found. Defaults to {}.
+
+    Returns:
+        d (Any): Element that is extracted
+    """
+    d = obj
+    for key in keys.split("."):
+        if isinstance(d, dict):
+            d = d.get(key, default)          
+        elif isinstance(d,(list,np.ndarray,tuple)):
+            d = d[int(key)]
+        elif isinstance(d, object):
+            d = getattr(d,key,default)
+        else:
+            raise KeyError(f"Subtype is not implemented for extraction: '{type(d)}'")
+        
+        if not isinstance(d,np.ndarray) and d == default:
+            print(f"\nKey: '{key}' not found! Return default!\n")
+
+
+    return d
+
+def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
+    """
+    Function that maps the elements in the attributes dictionary based on the provided mapping dictionary.
+
+    Args:
+        all_attributes (dict): A dictionary containing all the attributes from which the elements will be mapped.
+        argument_map (dict): A dictionary that defines the mapping between the elements in all_attributes and the desired keys in the output dictionary.
+
+    Returns:
+        dict: A new dictionary with the mapped elements.
+    """
+    function_input = {}
+    for arg, item in argument_map.items():
+        if isinstance(item, dict):
+            function_input[arg] = {subarg: deep_get(all_attributes, subitem) for subarg, subitem in item.items()}
+        else:
+            function_input[arg] = deep_get(all_attributes, item)
+    return function_input
 
 def merge_nested_dicts(existing_dict: Dict[str, Any], new_dict: Dict[str, Any]):
     """
@@ -44,7 +92,7 @@ def serialize_json(data: Dict | List | np.ndarray | Any, target_class: Tuple=(),
     elif isinstance(data, np.ndarray):
         return np.round( data, precision ).tolist()
     elif isinstance(data, float):
-        return round( data, precision)
+        return round( data, precision )
     else:
         return data
 
@@ -62,24 +110,18 @@ def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
     """
     
     if to_do=="read":
-        with open(file_path) as f:
-            data = json.load(f)
-        return data
+        return json.load( open(file_path) )
     
     elif to_do=="write":
-        with open(file_path,"w") as f:
-            json.dump(data,f,indent=indent)
+        json.dump(data, open(file_path,"w"), indent=indent)
 
     elif to_do=="append":
         if not os.path.exists(file_path):
-            with open(file_path,"w") as f:
-                json.dump(data,f,indent=indent)
+            json.dump(data, open(file_path,"w"), indent=indent)
         else:
-            with open(file_path) as f:
-                current_data = json.load(f)
+            current_data = json.load( open(file_path) )
             merge_nested_dicts(current_data,data)
-            with open(file_path,"w") as f:
-                json.dump(current_data,f,indent=indent)
+            json.dump(current_data, open(file_path,"w"), indent=indent)
         
     else:
         raise KeyError("Wrong task defined: %s"%to_do)

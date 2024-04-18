@@ -7,6 +7,10 @@ pair_modify  mix {{mixing}}  tail {{tail}}
 {%- if charged %}
 kspace_style  {{kspace_style}}{%- endif %}
 
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj {{special_bonds.vdw|join(' ')}}  coul {{special_bonds.coulomb|join(' ')}}
+
 # Van der Waals interactions
 {% for p in vdw_interactions %}
 pair_coeff  {{p|join(' ')}}
@@ -25,7 +29,6 @@ pair_coeff  {{p|join(' ')}}
 # Bonded interactions
 
 bond_style  {{bond_styles|join(' ')}}
-
 {% for p in bond_paras %}
 bond_coeff  {{p|join(' ')}}
 {%- endfor %}
@@ -36,7 +39,6 @@ bond_coeff  {{p|join(' ')}}
 # Angle interactions
 
 angle_style  {{angle_styles|join(' ')}}
-
 {% for p in angle_paras %}
 angle_coeff  {{p|join(' ')}}
 {%- endfor %}
@@ -47,7 +49,6 @@ angle_coeff  {{p|join(' ')}}
 # Dihedral interactions
 
 dihedral_style  {{torsion_styles|join(' ')}}
-
 {% for p in torsion_paras %}
 dihedral_coeff  {{p|join(' ')}}
 {%- endfor %}

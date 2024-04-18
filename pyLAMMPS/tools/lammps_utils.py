@@ -106,16 +106,17 @@ class LAMMPS_molecules():
         # To these indicies the number of preceeding atoms in the system will be added (in the write_lammps_data function).
         # Thus the direct list from molecule graph can be used, without further refinement. 
         # (E.g.: Bond_list for ethanediol: [ [1,2], [2,3], [3,4], [4,5], [5,6] ] )
-        self.bond_numbers            = np.concatenate( [mol.bond_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
+        # As these lists are 2D, an empty list can't be parsed to np.concatenate, these need to be skipped.
+        self.bond_numbers            = np.concatenate( [mol.bond_list + 1 for mol in self.mol_list if mol.bond_list.any()], axis=0 ).astype("int")
 
         # This is just the name of each the bonds defined above. This is written as information that one knows what which bond is defined in the data file.
-        self.bond_names              = np.concatenate( [[[mol.atom_names[i] for i in bl] for bl in mol.bond_list] for mol in self.mol_list], axis=0 )
+        self.bond_names              = np.concatenate( [[[mol.atom_names[i] for i in bl] for bl in mol.bond_list] for mol in self.mol_list if mol.bond_list.any()], axis=0 )
 
         # Get the number of bonds per component. This will later be multiplied with the number of molecules per component to get the total number of bonds in the system
         self.number_of_bonds         = [ len(mol.bond_keys) for mol in self.mol_list ]
 
         # If several bond styles are used, these needs to be added in the data file, as well as the "hybrid" style.
-        self.bond_styles             = list( np.unique( [ p["style"] for p in self.bonds ] ) )
+        self.bond_styles             = list( { p["style"] for p in self.bonds } )
 
         # Defines the total number of bond types
         self.bond_type_number        = len( self.bond_numbers_ges )
@@ -127,11 +128,11 @@ class LAMMPS_molecules():
 
         self.angles_running_number   = np.concatenate( [mol.unique_angle_inverse + add_angles[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
         self.angle_numbers_ges       = np.unique( self.angles_running_number )
-        self.angle_numbers           = np.concatenate( [mol.angle_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
-        self.angle_names             = np.concatenate( [[[mol.atom_names[i] for i in al] for al in mol.angle_list] for mol in self.mol_list], axis=0 )
+        self.angle_numbers           = np.concatenate( [mol.angle_list + 1 for mol in self.mol_list if mol.angle_list.any()], axis=0 ).astype("int")
+        self.angle_names             = np.concatenate( [[[mol.atom_names[i] for i in al] for al in mol.angle_list] for mol in self.mol_list if mol.angle_list.any()], axis=0 )
         self.number_of_angles        = [ len(mol.angle_keys) for mol in self.mol_list ]
 
-        self.angle_styles            = list( np.unique( [ p["style"] for p in self.angles] ) )
+        self.angle_styles            = list( { p["style"] for p in self.angles } )
         self.angle_type_number       = len(self.angle_numbers_ges)
 
 
@@ -141,11 +142,11 @@ class LAMMPS_molecules():
         
         self.torsions_running_number = np.concatenate( [mol.unique_torsion_inverse + add_torsions[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
         self.torsion_numbers_ges     = np.unique( self.torsions_running_number )
-        self.torsion_numbers         = np.concatenate( [mol.torsion_list + 1 for mol in self.mol_list], axis=0 ).astype("int")
-        self.torsion_names           = np.concatenate( [[[mol.atom_names[i] for i in tl] for tl in mol.torsion_list] for mol in self.mol_list], axis=0 )
+        self.torsion_numbers         = np.concatenate( [mol.torsion_list + 1 for mol in self.mol_list if mol.torsion_list.any()], axis=0 ).astype("int")
+        self.torsion_names           = np.concatenate( [[[mol.atom_names[i] for i in tl] for tl in mol.torsion_list ] for mol in self.mol_list if mol.torsion_list.any() ], axis=0 )
         self.number_of_torsions      = [ len(mol.torsion_keys) for mol in self.mol_list ]
 
-        self.torsion_styles          = list( np.unique( [ p["style"] for p in self.torsions ] ) )
+        self.torsion_styles          = list( { p["style"] for p in self.torsions } )
         self.torsion_type_number     = len(self.torsion_numbers_ges)
         
         return
@@ -360,8 +361,205 @@ class LAMMPS_molecules():
         key_an  = [item for sublist in [[a[0] for a in angle_paras if a_key == a[1]["list"]] for a_key in shake_dict["angles"]] for item in sublist]
 
         return {"t":key_at, "b":key_b, "a":key_an}
-    
+
+
+
 ## External functions for LAMMPS 
+
+def get_pair_style( local_attributes: Dict[str,Any], vdw_pair_styles: List[str], 
+                    coul_pair_styles: List[str], pair_style_kwargs: Dict[str,str] ):
+    """
+    This function takes in several parameters and returns a string representing the combined pair style for a molecular simulation.
+
+    Parameters:
+    - local_attributes (Dict[str,Any]): A dictionary containing local attributes for the pair style.
+    - vdw_pair_styles (List[str]): A list of strings representing the Van der Waals pair styles to be used.
+    - coul_pair_styles (List[str]): A list of strings representing the Coulombic pair styles to be used.
+    - pair_style_kwargs (Dict[str,str]): A dictionary mapping pair styles to their corresponding arguments.
+
+    Returns:
+    - A string representing the combined pair style for the simulation.
+
+    The function iterates over the unique Van der Waals pair styles and Coulombic pair styles provided. For each pair style, it constructs a substring 
+    by concatenating the pair style name with the corresponding arguments from the local_attributes dictionary. These substrings are then appended to the combined_pair_style list.
+
+    If multiple pair styles are used, the function inserts the "hybrid/overlay" style at the beginning of the combined_pair_style list.
+
+    Finally, the function returns the combined pair style as a string, with each pair style separated by two spaces.
+
+    Note: The function assumes that the local_attributes dictionary contains all the necessary arguments for each pair style specified 
+          in vdw_pair_styles and coul_pair_styles. If an argument is missing, a KeyError will be raised.
+    """
+    combined_pair_style = []
+
+    for vdw_pair_style in set(vdw_pair_styles):
+        sub_string = f"{vdw_pair_style} " + ' '.join( [ str(local_attributes[arg]) for arg in pair_style_kwargs[vdw_pair_style] ] )
+        combined_pair_style.append( sub_string )
+
+    for coul_pair_style in set(coul_pair_styles):
+        sub_string = f"{coul_pair_style} " + ' '.join( [ str(local_attributes[arg]) for arg in pair_style_kwargs[coul_pair_style] ] )
+        combined_pair_style.append( sub_string )
+
+    # Add hybrid/overlay style in case several styles are used
+    if len(combined_pair_style) > 1:
+        combined_pair_style.insert( 0, "hybrid/overlay" )
+
+    return "  ".join( combined_pair_style )
+
+def get_mixed_parameter( sigma_i: float, sigma_j: float, epsilon_i: float, epsilon_j: float, 
+                         mixing_rule: str="arithmetic", precision: int=4 ):
+    """
+    Calculate the mixed parameters for a pair of interacting particles.
+
+    Parameters:
+        sigma_i (float): The sigma parameter of particle i.
+        sigma_j (float): The sigma parameter of particle j.
+        epsilon_i (float): The epsilon parameter of particle i.
+        epsilon_j (float): The epsilon parameter of particle j.
+        mixing_rule (str, optional): The mixing rule to use. Valid options are "arithmetic", "geometric", and "sixthpower". Defaults to "arithmetic".
+        precision (int, optional): The number of decimal places to round the results to. Defaults to 4.
+
+    Returns:
+        tuple: A tuple containing the mixed sigma and epsilon parameters.
+
+    Raises:
+        KeyError: If the specified mixing rule is not implemented.
+
+    Example:
+        >>> get_mixed_parameter(3.5, 2.5, 0.5, 0.8, mixing_rule="arithmetic", precision=3)
+        (3.0, 0.632)
+    """
+    if mixing_rule == "arithmetic": 
+        sigma_ij   = ( sigma_i + sigma_j ) / 2
+        epsilon_ij = np.sqrt( epsilon_i * epsilon_j )
+
+    elif mixing_rule ==  "geometric":
+        sigma_ij   = np.sqrt( sigma_i * sigma_j )
+        epsilon_ij = np.sqrt( epsilon_i * epsilon_j )
+
+    elif mixing_rule ==  "sixthpower": 
+        sigma_ij   = ( 0.5 * ( sigma_i**6 + sigma_j**6 ) )**( 1 / 6 ) 
+        epsilon_ij = 2 * np.sqrt( epsilon_i * epsilon_j ) * sigma_i**3 * sigma_j**3 / ( sigma_i**6 + sigma_j**6 )
+    
+    else:
+        raise KeyError(f"Specified mixing rule is not implemented: '{mixing_rule}'. Valid options are: 'arithmetic', 'geometric', and 'sixthpower'")
+    
+    return np.round(sigma_ij, precision), np.round(epsilon_ij, precision)
+
+def get_bonded_style( bonded_numbers: List[int], bonded_dict: Dict[str,Any], n_eval: int=1000 ):
+    """
+    Get bonded styles and parameters for a given list of bonded numbers and bonded dictionary for LAMMPS ff input. 
+    This can be used for bonds, angles, dihedrals, etc...
+
+    Parameters:
+    - bonded_numbers (List[int]): A list of integers representing the bonded numbers.
+    - bonded_dict (Dict[str, Any]): A dictionary containing the bonded styles and parameters.
+    - n_eval (int, optional): The number of evaluations. Default is 1000.
+
+    Returns:
+    - bonded_styles (List[str]): A list of unique bonded styles.
+    - bonded_paras (List[List]): A list of bonded parameters.
+
+    """
+    bonded_styles = list( { a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in bonded_dict } )
+    hybrid_flag = len(bonded_styles) > 1
+
+    bonded_paras = [ ]
+
+    for bonded_type, bonded in zip(bonded_numbers, bonded_dict):
+        bonded_paras.append( [ bonded_type ] + 
+                             ( [ bonded["style"]] if hybrid_flag else [] ) +
+                             [ *bonded["p"], "#", *bonded["list"] ] 
+                            )
+
+    if hybrid_flag:
+        bonded_styles.insert( 0, "hybrid" )
+
+    return bonded_styles, bonded_paras
+
+def get_coupling_lambdas( combined_lambdas: List[float], coupling: bool = True, precision: int=3 ):
+    """
+    Calculate the van der Waals (vdW) and Coulomb coupling lambdas.
+
+    Parameters:
+    - combined_lambdas (List[float]): A list of combined lambdas.
+    - coupling (bool, optional): Whether to calculate coupling lambdas (default is True).
+    - precision (int, optional): The precision of the lambdas (default is 3).
+
+    Returns:
+    - vdw_lambdas (List[str]): A list of formatted vdW lambdas.
+    - coul_lambdas (List[str]): A list of formatted Coulomb lambdas.
+
+    The vdW lambdas are calculated as the minimum of each combined lambda and 1.0, rounded to the specified precision.
+    The Coulomb lambdas are calculated as the maximum of each combined lambda minus 1.0 and 0.0, rounded to the specified precision.
+    If coupling is False, the vdW lambdas are calculated as 1 minus the maximum of each combined lambda minus 1.0, rounded to the specified precision.
+    If coupling is False, the Coulomb lambdas are calculated as 1 minus the minimum of each combined lambda and 1.0, rounded to the specified precision.
+    The Coulomb lambdas are adjusted to be at least 1e-9 to avoid division by 0.
+    """
+
+    # Coulomb lambdas need to be at least 1e-9 to avoid division by 0
+    if coupling:
+        vdw_lambdas = [ f"{min(l,1.0):.{precision}f}" for l in combined_lambdas] 
+        coul_lambdas = [ f"{max(l-1,0):.{precision}f}".replace(f"{0:.{precision}f}","1e-9") for l in combined_lambdas ] 
+    else:
+        vdw_lambdas = [ f"{1-max(l-1,0.0):.{precision}f}" for l in combined_lambdas] 
+        coul_lambdas = [ f"{1-min(l,1.0):.{precision}f}".replace(f"{0:.{precision}f}","1e-9") for l in combined_lambdas ]
+    
+    return vdw_lambdas, coul_lambdas
+
+def write_fep_sampling( fep_template: str, fep_outfile: str, combined_lambdas: List[float], 
+                        charge_list: List[List[int|float]], current_state: int, 
+                        precision: int=3, coupling: bool=True, kwargs: Dict[str,Any]={} ):
+    """
+    Write FEP sampling.
+
+    This function takes in various parameters to generate a free energy sampling file based on a provided FEP sampling template.
+
+    Parameters:
+    - fep_template (str): The path to the FEP sampling template file.
+    - fep_outfile (str): The path to the output file where the generated sampling file will be saved.
+    - combined_lambdas (List[float]): A list of combined lambda values.
+    - charge_list (List[List[int|float]]): A list of charge lists, where each charge list contains the charges for each atom in the system.
+    - current_state (int): The index of the current state in the combined_lambdas list.
+    - precision (int, optional): The precision of the lambda values. Defaults to 3.
+    - coupling (bool, optional): Whether to couple the lambda values. Defaults to True.
+    - kwargs (Dict[str,Any], optional): Additional keyword arguments to be passed to the template rendering. Defaults to {}.
+
+    Returns:
+    - str: The path to the generated FEP sampling file.
+
+    Raises:
+    - FileExistsError: If the provided FEP sampling template file does not exist.
+
+    """
+
+    if not os.path.exists( fep_template ):
+        raise FileExistsError(f"Provided FEP sampling template does not exist!: '{fep_template}'")
+    
+    # Produce free energy sampling file
+    with open( fep_template ) as f:
+        template = Template( f.read() )
+    
+    lambda_vdw, lambda_coul = get_coupling_lambdas( combined_lambdas, coupling, precision )
+
+    lambda_states = [ (float(l_vdw),float(l_coul)) for l_vdw,l_coul in zip( lambda_vdw, lambda_coul ) ]
+    lambda_state = lambda_states[current_state]
+
+    renderdict = { "no_intermediates": len(combined_lambdas),
+                   "charge_list": charge_list,
+                   "init_lambda_state": current_state + 1,
+                   "charged": any(np.array(charge_list)[:,1]),
+                   "lambda_states": lambda_states,
+                   "current_lambda_state": lambda_state,
+                    **kwargs  
+                    }
+
+    os.makedirs( os.path.dirname( fep_outfile ), exist_ok = True )
+    
+    with open( fep_outfile, "w" ) as f:
+        f.write( template.render( renderdict ) )
+    
+    return fep_outfile
 
 def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Dict[str,List[str]],
                      atom_numbers_ges: List[int], nonbonded: List[Dict[str,str]], 
@@ -376,7 +574,8 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
     Parameters:
      - ff_template (str, optional): Path to the force field template for LAMMPS
      - lammps_ff_path (str, optional): Destination of the external force field file. 
-     - potential_kwargs (Dict[str,List[str]]): Dictionary that contains the LAMMPS arguments for every pair style that is used.
+     - potential_kwargs (Dict[str,List[str]]): Dictionary that contains the LAMMPS arguments for every pair style that is used. 
+                                               Should contain 'pair_style', 'vdw_style' and 'coulomb_style' key.
      - atom_numbers_ges (List[int]): List with the unique force field type identifiers used in LAMMPS
      - nonbonded (List[Dict[str,str]]): List with the unique force field dictionaries containing: vdw_style, coul_style, sigma, epsilon, name, m 
      - bond_numbers_ges (List[int]): List with the unique bond type identifiers used in LAMMPS
@@ -397,59 +596,66 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
         FileExistsError: If the force field template do not exist.
     """
 
-    # Define arugment mapping 
-    ARGUMENT_MAP = { }
-
     if not os.path.exists(ff_template):
         raise FileExistsError(f"Template file does not exists:\n  {ff_template}")
     
-    # Dictionary to render the template. Pass are keyword arguments directly in the template.
-    renderdict = { **ff_kwargs, "charged": not all( charge==0 for charge in np.unique([p["charge"] for p in nonbonded]) ) }
+    if not all(key in potential_kwargs for key in ["pair_style", "vdw_style", "coulomb_style"]):
+        key = 'pair_style' if not 'pair_style' in potential_kwargs else 'vdw_style' if not 'vdw_style' in potential_kwargs else 'coulomb_style'
+        raise KeyError(f"{key} not in keys of the potential kwargs! Check nonbonded input!")
+    
+    # Dictionary to render the template. Pass ff keyword arguments directly in the template.
+    renderdict = { **ff_kwargs, "charged": any( p["charge"] != 0 for p in nonbonded ) }
+
+    # Define cut of radius (scanning the force field and taking the highest value)
+    rcut = max( map( lambda p: p["cut"], nonbonded ) )
+
+    # Get pair style defined in force field
+    local_variables = locals()
+
+    # Get pair style defined in force field
+    vdw_pair_styles = list( { p["vdw_style"] for p in nonbonded if p["vdw_style"] } )
+    coul_pair_styles = list( { p["coulomb_style"] for p in nonbonded if p["coulomb_style"] } )
+    
+    pair_style = get_pair_style( local_variables, vdw_pair_styles,
+                                 coul_pair_styles, potential_kwargs["pair_style"] )
+
+    renderdict["pair_style"] = pair_style
+
+    pair_hybrid_flag = "hybrid" in pair_style
 
     # Van der Waals and Coulomb pair interactions
     vdw_interactions     = []
     coulomb_interactions = []
-    pair_hybrid_flag = ( len( np.unique( [a["vdw_style"] for a in nonbonded ] ) ) + len( np.unique( [a["coulomb_style"] for a in nonbonded if a["coulomb_style"]] ) )) > 1
-
+    
     for i,iatom in zip(atom_numbers_ges, nonbonded):
         for j,jatom in zip(atom_numbers_ges[i-1:], nonbonded[i-1:]):
             
             # Skip mixing pair interactions in case self only interactions are wanted
             if only_self_interactions and i != j:
                 continue
-
-            name_ij   = f"{iatom['name']}  {jatom['name']}"
-
-            if mixing_rule == "arithmetic": 
-                sigma_ij   = ( iatom["sigma"] + jatom["sigma"] ) / 2
-                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
-
-            elif mixing_rule ==  "geometric":
-                sigma_ij   = np.sqrt( iatom["sigma"] * jatom["sigma"] )
-                epsilon_ij = np.sqrt( iatom["epsilon"] * jatom["epsilon"] )
-
-            elif mixing_rule ==  "sixthpower": 
-                sigma_ij   = ( 0.5 * ( iatom["sigma"]**6 + jatom["sigma"]**6 ) )**( 1 / 6 ) 
-                epsilon_ij = 2 * np.sqrt( iatom["epsilon"] * jatom["epsilon"] ) * iatom["sigma"]**3 * jatom["sigma"]**3 / ( iatom["sigma"]**6 + jatom["sigma"]**6 )
             
-            else:
-                raise KeyError(f"Specified mixing rule is not implemented: '{mixing_rule}'. Valid options are: 'arithmetic', 'geometric', and 'sixthpower'")
-            
-            n_ij  = ( iatom["n"] + jatom["n"] ) / 2
-            m_ij  = ( iatom["m"] + jatom["m"] ) / 2
-
-            ARGUMENT_MAP["sigma"]   = np.round(sigma_ij, 4)
-            ARGUMENT_MAP["epsilon"] = np.round(epsilon_ij, 4)
-            ARGUMENT_MAP["n"]       = n_ij
-            ARGUMENT_MAP["m"]       = m_ij
-
             if iatom["vdw_style"] != jatom["vdw_style"]:
                 raise KeyError(f"Atom '{i}' and atom '{j}' has different vdW pair style:\n  {i}: {iatom['vdw_style']}\n  {j}: {jatom['vdw_style']}")
             
-            if pair_hybrid_flag:
-                vdw_interactions.append( [ i, j, iatom["vdw_style"] ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
-            else:
-                vdw_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["vdw_style"]] ] + [ "#", name_ij ] ) 
+            # Get mixed parameters
+            name_ij = f"{iatom['name']}  {jatom['name']}"
+            sigma_ij, epsilon_ij = get_mixed_parameter( sigma_i=iatom["sigma"], sigma_j=jatom["sigma"],
+                                                        epsilon_i=iatom["epsilon"], epsilon_j=jatom["epsilon"],
+                                                        mixing_rule=mixing_rule, precision=4 )
+            
+            # In case n and m are present get mixed exponents
+            if "n" in iatom.keys() and "n" in jatom.keys():
+                n_ij  = ( iatom["n"] + jatom["n"] ) / 2
+                m_ij  = ( iatom["m"] + jatom["m"] ) / 2
+
+            # Get local variables and map them with potential kwargs 
+            local_variables = locals()
+            
+            vdw_interactions.append( [ i, j ] + 
+                                     ( [ iatom["vdw_style"] ] if pair_hybrid_flag else [] ) + 
+                                     [ local_variables[arg] for arg in potential_kwargs["vdw_style"][iatom["vdw_style"]] ] +
+                                     [ "#", name_ij ] 
+                                    ) 
 
             # If the system is charged, add Coulomb interactions
             if renderdict["charged"]:
@@ -458,64 +664,225 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
                 if iatom["coulomb_style"] != jatom["coulomb_style"]:
                     raise KeyError(f"Atom '{i}' and atom '{j}' has different Coulomb pair style:\n  {i}: {iatom['coulomb_style']}\n  {j}: {jatom['coulomb_style']}")
                 
-                if pair_hybrid_flag:
-                    coulomb_interactions.append( [ i, j, iatom["coulomb_style"] ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
-                else:
-                    coulomb_interactions.append( [ i, j ] + [ ARGUMENT_MAP[arg] for arg in potential_kwargs[iatom["coulomb_style"]] ] + [ "#", name_ij ] )
+
+                coulomb_interactions.append( [ i, j ] + 
+                                             ( [ iatom["coulomb_style"] ] if pair_hybrid_flag else [] ) + 
+                                             [ local_variables[arg] for arg in potential_kwargs["coulomb_style"][iatom["coulomb_style"]] ] +
+                                             [ "#", name_ij ] 
+                                            )
+                
+    # Overwrite Coulomb pair interactions if there is only one style
+    if len( coul_pair_styles ) == 1:
+        coulomb_interactions = [ [ "*", "*"] +
+                                 ( coul_pair_styles if pair_hybrid_flag else [] )
+                                ]
 
     renderdict["vdw_interactions"] = vdw_interactions
-
-    # Overwrite Coulomb pair interactions if there is only one style
-    if len( np.unique( [a["coulomb_style"] for a in nonbonded if a["coulomb_style"]] ) ) == 1:
-        if pair_hybrid_flag:
-            coulomb_interactions = [ [ "*", "*", np.unique( [a["coulomb_style"] for a in nonbonded if a["coulomb_style"] ] )[0] ] ]
-        else:
-            coulomb_interactions = [ [ "*", "*" ] ]
-    
     renderdict["coulomb_interactions"] = coulomb_interactions
 
+    ## Add all kind of bonded interactions
+
     # Bonded interactions
-    bond_paras = []
-    bond_styles = np.unique( [a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in bonds ] ).tolist()
-    bond_hybrid_flag = len( np.unique( [a["style"] for a in bonds ] ) ) > 1
-
-    for bond_type, bond in zip(bond_numbers_ges, bonds):
-        if bond_hybrid_flag:
-            bond_paras.append( [ bond_type, bond["style"], *bond["p"], "#", *bond["list"] ] )
-        else:
-            bond_paras.append( [ bond_type, *bond["p"], "#", *bond["list"] ] )
-
+    bond_styles, bond_paras   = get_bonded_style( bond_numbers_ges, bonds, n_eval = n_eval )
     renderdict["bond_paras"]  = bond_paras 
-    renderdict["bond_styles"] = ["hybrid"] + bond_styles if bond_hybrid_flag else bond_styles
+    renderdict["bond_styles"] = bond_styles
 
     # Angle interactions
-    angle_paras = []
-    angle_styles = np.unique( [a["style"] for a in angles] ).tolist()
-    angle_hybrid_flag = len( np.unique( [a["style"] for a in angles ] ) ) > 1
-
-    for angle_type, angle in zip(angle_numbers_ges, angles):
-        if angle_hybrid_flag:
-            angle_paras.append( [ angle_type, angle["style"], *angle["p"], "#", *angle["list"] ] )
-        else:
-            angle_paras.append( [ angle_type, *angle["p"], "#", *angle["list"] ] )
+    angle_styles, angle_paras = get_bonded_style( angle_numbers_ges, angles )
 
     renderdict["angle_paras"]  = angle_paras 
-    renderdict["angle_styles"] = ["hybrid"] + angle_styles if angle_hybrid_flag else angle_styles
+    renderdict["angle_styles"] = angle_styles
 
     # Dihedral interactions
-    torsion_paras = []
-    torsion_styles = np.unique( [a["style"] for a in torsions] ).tolist()
-    torsion_hybrid_flag = len( np.unique( [a["style"] for a in torsions ] ) ) > 1
-
-    for torsion_type, torsion in zip(torsion_numbers_ges, torsions):
-        if torsion_hybrid_flag:
-            torsion_paras.append( [ torsion_type, torsion["style"], *torsion["p"], "#", *torsion["list"] ] )
-        else:
-            torsion_paras.append( [ torsion_type, *torsion["p"], "#", *torsion["list"] ] )
+    torsion_styles, torsion_paras = get_bonded_style( torsion_numbers_ges, torsions )
 
     renderdict["torsion_paras"]  = torsion_paras 
-    renderdict["torsion_styles"] = ["hybrid"] + torsion_styles if torsion_hybrid_flag else torsion_styles
+    renderdict["torsion_styles"] = torsion_styles
+    
+    # If provided write pair interactions as external LAMMPS force field file.
+    with open(ff_template) as file_:
+        template = Template( file_.read() )
+    
+    rendered = template.render( renderdict )
 
+    os.makedirs( os.path.dirname( lammps_ff_path ), exist_ok = True  )
+
+    with open(lammps_ff_path, "w") as fh:
+        fh.write(rendered) 
+
+    return lammps_ff_path
+
+def write_coupled_lammps_ff(ff_template: str, lammps_ff_path: str, potential_kwargs: Dict[str,List[str]],
+                            solute_numbers: List[int], combined_lambdas: List[float],
+                            coupling_potential: Dict[str,Any], coupling_soft_core: Dict[str,float],
+                            atom_numbers_ges: List[int], nonbonded: List[Dict[str,str]], 
+                            bond_numbers_ges: List[int], bonds: List[Dict[str,str]],
+                            angle_numbers_ges: List[int], angles: List[Dict[str,str]],
+                            torsion_numbers_ges: List[int], torsions: List[Dict[str,str]],
+                            mixing_rule: str, coupling: bool=True, precision: int=3, 
+                            ff_kwargs: Dict[str,Any]={}, n_eval: int=1000) -> str:
+    """
+    This function prepares LAMMPS understandable force field interactions for coupling simulations and writes them to a file.
+
+    Parameters:
+     - ff_template (str, optional): Path to the force field template for LAMMPS
+     - lammps_ff_path (str, optional): Destination of the external force field file. 
+     - potential_kwargs (Dict[str,List[str]]): Dictionary that contains the LAMMPS arguments for every pair style that is used. 
+                                               Should contain 'pair_style', 'vdw_style' and 'coulomb_style' key.
+     - coupling_potential (Dict[str,Any]): Define the coupling potential that is used. Should contain 'vdw' and 'coulomb' key.
+     - coupling_soft_core (Dict[str,float]): Soft core potential parameters.
+     - solute_numbers (List[int]): List with unique force field type identifiers for the solute which is coupled/decoupled.
+     - combined_lambdas (List[float]): Combined lambdas. Check "coupling" parameter for description.
+     - atom_numbers_ges (List[int]): List with the unique force field type identifiers used in LAMMPS
+     - nonbonded (List[Dict[str,str]]): List with the unique force field dictionaries containing: vdw_style, coul_style, sigma, epsilon, name, m 
+     - bond_numbers_ges (List[int]): List with the unique bond type identifiers used in LAMMPS
+     - bonds (List[Dict[str,str]]): List with the unique bonds dictionaries containing
+     - angle_numbers_ges (List[int]): List with the unique angle type identifiers used in LAMMPS
+     - angles (List[Dict[str,str]]): List with the unique angles dictionaries containing
+     - torsion_numbers_ges (List[int]): List with the unique dihedral type identifiers used in LAMMPS
+     - torsions (List[Dict[str,str]]): List with the unique dihedral dictionaries containing
+     - mixing_rule (str): Provide mixing rule. Defaults to "arithmetic"
+     - coupling (bool, optional): If True, coupling is used (lambdas between 0 and 1 are vdW, 1 to 2 are Coulomb). 
+                                  For decoupling (lambdas between 0 and 1 are Coulomb, 1 to 2 are vdW). Defaults to "True".
+     - precision (int, optional): Precision of coupling lambdas. Defaults to 3.
+     - ff_kwargs (Dict[str,Any], optional): Parameter kwargs, which are directly parsed to the template. Defaults to {}.
+     - n_eval (int, optional): Number of spline interpolations saved if tabled bond is used. Defaults to 1000.
+
+    Returns:
+     -  lammps_ff_path (str): Destination of the external force field file.
+    
+    Raises:
+        FileExistsError: If the force field template do not exist.
+    """
+    if not os.path.exists(ff_template):
+        raise FileExistsError(f"Template file does not exists:\n  {ff_template}")
+    
+    if not all(key in potential_kwargs for key in ["pair_style", "vdw_style", "coulomb_style"]):
+        key = 'pair_style' if not 'pair_style' in potential_kwargs else 'vdw_style' if not 'vdw_style' in potential_kwargs else 'coulomb_style'
+        raise KeyError(f"{key} not in keys of the potential kwargs! Check nonbonded input!")
+    
+    if not all(key in coupling_potential for key in ["vdw", "coulomb"]):
+        key = 'vdw' if not 'vdw' in coupling_potential else 'coulomb'
+        raise KeyError(f"{key} not in keys of the coupling potential! Check coupling input!")
+    
+
+    # Dictionary to render the template. Pass all keyword arguments directly in the template.
+    renderdict = { **ff_kwargs, "charged": any( p["charge"] != 0 for p in nonbonded ), 
+                 }
+    
+    # Define coupling lambdas
+    vdw_lambdas, coul_lambdas = get_coupling_lambdas( combined_lambdas, coupling, precision )
+
+    renderdict.update( { "vdw_lambdas": vdw_lambdas, "coul_lambdas": coul_lambdas } )
+    
+    # Define charge of coupled molecule
+    renderdict["charge_list"] = [ [i, iatom["charge"]] for i,iatom in zip(solute_numbers, nonbonded) ]
+
+    # Define cut of radius (scanning the force field and taking the highest value)
+    rcut = max( p["cut"] for p in nonbonded if p["cut"] )
+
+    # Update local variables with soft core settings
+    local_variables = { **locals(), **coupling_soft_core }
+    
+    # Get pair style defined in force field
+    
+    vdw_pair_styles = list( { p["vdw_style"] for p in nonbonded if p["vdw_style"] } ) + [ coupling_potential["vdw"] ]
+    coul_pair_styles = list( { p["coulomb_style"] for p in nonbonded if p["coulomb_style"] } ) + \
+                        ( [ coupling_potential["coulomb"] ] if any(np.array(renderdict["charge_list"])[:,1]) else [] )
+    
+    pair_style = get_pair_style( local_variables, vdw_pair_styles,
+                                 coul_pair_styles, potential_kwargs["pair_style"] )
+
+    renderdict["pair_style"] = pair_style
+    
+    # Van der Waals and Coulomb pair interactions
+    vdw_interactions     = { "solute_solute": [], 
+                             "solution_solution": [], 
+                             "solute_solution": [] 
+                            }
+    
+    coulomb_interactions = { "all": [], 
+                             "solute_solute": [ [ f"{solute_numbers[0]}*{solute_numbers[-1]} {solute_numbers[0]}*{solute_numbers[-1]}",  
+                                                  coupling_potential['coulomb'], "${init_scaling_lambda}" ] 
+                                              ]
+                            }
+
+    for i,iatom in zip(atom_numbers_ges, nonbonded):
+        for j,jatom in zip(atom_numbers_ges[i-1:], nonbonded[i-1:]):
+            
+            if iatom["vdw_style"] != jatom["vdw_style"]:
+                raise KeyError(f"Atom '{i}' and atom '{j}' has different vdW pair style:\n  {i}: {iatom['vdw_style']}\n  {j}: {jatom['vdw_style']}")
+            
+            # Get mixed parameters
+            name_ij = f"{iatom['name']}  {jatom['name']}"
+            sigma_ij, epsilon_ij = get_mixed_parameter( sigma_i=iatom["sigma"], sigma_j=jatom["sigma"],
+                                                        epsilon_i=iatom["epsilon"], epsilon_j=jatom["epsilon"],
+                                                        mixing_rule=mixing_rule, precision=4 )
+            
+            # In case n and m are present get mixed exponents
+            if "n" in iatom.keys() and "n" in jatom.keys():
+                n_ij  = ( iatom["n"] + jatom["n"] ) / 2
+                m_ij  = ( iatom["m"] + jatom["m"] ) / 2
+
+            # Check interaction type (solute_solute, solution_solution, solute_solution)
+            key = "solute_solute" if (i in solute_numbers and j in solute_numbers) else \
+                  "solution_solution" if (not i in solute_numbers and not j in solute_numbers) else \
+                  "solute_solution"
+
+            vdw_style = iatom["vdw_style"] if (i in solute_numbers and j in solute_numbers) or \
+                                            (not i in solute_numbers and not j in solute_numbers) else \
+                        coupling_potential['vdw']
+
+            l_vdw_args = [] if (i in solute_numbers and j in solute_numbers) or \
+                               (not i in solute_numbers and not j in solute_numbers) else \
+                        [ "${init_vdw_lambda}" ]
+
+            # Get local variables and map them with potential kwargs 
+            local_variables = locals()
+
+            vdw_interactions[key].append( [ i, j, vdw_style ] + 
+                                          [ local_variables[arg] for arg in potential_kwargs["vdw_style"][iatom["vdw_style"]] ] +
+                                          l_vdw_args + 
+                                          [ "#", name_ij ] ) 
+
+            # If the system is charged, add Coulomb interactions
+            if renderdict["charged"]:
+                if iatom["charge"] == 0.0 or jatom["charge"] == 0.0:
+                    continue
+                if iatom["coulomb_style"] != jatom["coulomb_style"]:
+                    raise KeyError(f"Atom '{i}' and atom '{j}' has different Coulomb pair style:\n  {i}: {iatom['coulomb_style']}\n  {j}: {jatom['coulomb_style']}")
+                
+                coulomb_interactions["all"].append( [ i, j, iatom["coulomb_style"] ] + 
+                                                    [ local_variables[arg] for arg in potential_kwargs["coulomb_style"][iatom["coulomb_style"]] ] +
+                                                    [ "#", name_ij ] )
+
+    # Overwrite Coulomb pair interactions if there is only one style
+    if len( { p["coulomb_style"] for p in nonbonded if p["coulomb_style"] } ) == 1:
+        coulomb_interactions["all"] = [ [ "*", "*", *{ p["coulomb_style"] for p in nonbonded if p["coulomb_style"] } ] ]
+
+    renderdict["vdw_interactions"] = vdw_interactions
+    renderdict["coulomb_interactions"] = coulomb_interactions
+
+    ## Add all kind of bonded interactions
+
+    # Bonded interactions
+    bond_styles, bond_paras   = get_bonded_style( bond_numbers_ges, bonds, n_eval = n_eval )
+    renderdict["bond_paras"]  = bond_paras 
+    renderdict["bond_styles"] = bond_styles
+
+    # Angle interactions
+    angle_styles, angle_paras = get_bonded_style( angle_numbers_ges, angles )
+
+    renderdict["angle_paras"]  = angle_paras 
+    renderdict["angle_styles"] = angle_styles
+
+    # Dihedral interactions
+    torsion_styles, torsion_paras = get_bonded_style( torsion_numbers_ges, torsions )
+
+    renderdict["torsion_paras"]  = torsion_paras 
+    renderdict["torsion_styles"] = torsion_styles
+
+            
     # If provided write pair interactions as external LAMMPS force field file.
     with open(ff_template) as file_:
         template = Template( file_.read() )

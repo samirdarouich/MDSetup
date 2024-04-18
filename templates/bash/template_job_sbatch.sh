@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -N 1
-#SBATCH -n 20
-#SBATCH -t 48:00:00
+#SBATCH -n 40
+#SBATCH -t 72:00:00
 #SBATCH -p single
 #SBATCH -J {{job_name}}
 #SBATCH -o {{log_path}}.o

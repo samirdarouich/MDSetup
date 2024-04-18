@@ -10,6 +10,7 @@ pyLAMMPS.egg-info/top_level.txt
 pyLAMMPS/analysis/__init__.py
 pyLAMMPS/analysis/general_analysis.py
 pyLAMMPS/analysis/mechanical_properties.py
+pyLAMMPS/analysis/solvation_free_energy.py
 pyLAMMPS/tools/__init__.py
 pyLAMMPS/tools/general_utils.py
 pyLAMMPS/tools/lammps_utils.py
