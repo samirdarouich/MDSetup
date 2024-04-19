@@ -360,9 +360,9 @@ class LAMMPS_molecules():
         angle_dict = { "_".join(f["list"]): n for n,f in zip(self.angle_numbers_ges, self.angles) }
 
         # Search the index of the given force field types
-        key_tt  = sort( flatten_list( [ atom_dict.get( "".join(t_key), [] ) for t_key in shake_dict["atoms"] ] ) )
-        key_bt  = sort( flatten_list( [ bond_dict.get( "_".join(b_key), [] ) for b_key in shake_dict["bonds"] ] ) )
-        key_at  = sort( flatten_list( [ angle_dict.get( "_".join(a_key), [] ) for a_key in shake_dict["angles"] ] ) )
+        key_tt  = sorted( flatten_list( [ atom_dict.get( "".join(t_key), [] ) for t_key in shake_dict["atoms"] ] ) )
+        key_bt  = sorted( flatten_list( [ bond_dict.get( "_".join(b_key), [] ) for b_key in shake_dict["bonds"] ] ) )
+        key_at  = sorted( flatten_list( [ angle_dict.get( "_".join(a_key), [] ) for a_key in shake_dict["angles"] ] ) )
 
         return {"t":key_tt, "b":key_bt, "a":key_at}
 

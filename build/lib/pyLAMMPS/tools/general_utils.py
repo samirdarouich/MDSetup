@@ -33,7 +33,6 @@ def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
         if not isinstance(d,np.ndarray) and d == default:
             print(f"\nKey: '{key}' not found! Return default!\n")
 
-
     return d
 
 def flatten_list(lst: List[Any]):

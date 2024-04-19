@@ -13,7 +13,8 @@ logging.getLogger('alchemlyb').setLevel('WARNING')
 
 ## To do:
 # Check pV contribution
-
+# Add that lambdas are also written in the json file
+# Add writing json from free energy analysis
 def extract_current_state( file_path: str ):
     """
     Extracts the current lambda state from the LAMMPS fep output file.
