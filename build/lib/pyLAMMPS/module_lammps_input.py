@@ -9,7 +9,7 @@ import pandas as pd
 import multiprocessing
 from typing import Any, List, Dict, Callable
 from .analysis import read_lammps_output
-from .tools.general_utils import work_json, merge_nested_dicts, map_function_input
+from .tools.general_utils import work_json, merge_nested_dicts, map_function_input, flatten_list
 from .tools import ( LAMMPS_molecules, generate_initial_configuration, 
                      generate_input_files, generate_job_file, 
                      write_lammps_ff, write_coupled_lammps_ff, 
@@ -435,19 +435,22 @@ class LAMMPS_setup():
 
 
     def analysis_extract_properties( self, analysis_folder: str, ensemble: str, extracted_properties: List[str], 
-                                     output_suffix: str, fraction: float=0.0 ):
+                                     output_suffix: str, fraction: float=0.0, header: int=2,
+                                     header_delimiter: str= "," ):
         """
         Extracts properties from LAMMPS output files for a specific ensemble.
 
         Parameters:
-            analysis_folder (str): The name of the folder where the analysis will be performed.
-            ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
-            extracted_properties (List[str]): A list of properties to be extracted from the LAMMPS output files.
-            output_suffix (str): Suffix of the LAMMPS output file to be analyzed.
-            fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+         - analysis_folder (str): The name of the folder where the analysis will be performed.
+         - ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
+         - extracted_properties (List[str]): A list of properties to be extracted from the LAMMPS output files.
+         - output_suffix (str): Suffix of the LAMMPS output file to be analyzed.
+         - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+         - header (int, optional): The number of header lines from which to extract the keys for the reported values. Defaults to 2.
+         - header_delimiter (str, optional): The delimiter used in the header line. Defaults to ",".
 
         Returns:
-            None
+         - None
 
         The method searches for output files in the specified analysis folder that match the given ensemble.
         For each group of files with the same temperature and pressure, the properties are extracted using the specified suffix and properties list.
@@ -487,7 +490,7 @@ class LAMMPS_setup():
             # Create a pool of processes
             pool = multiprocessing.Pool( processes = multiprocessing.cpu_count()  )
 
-            inputs = [ (file,extracted_properties,fraction,False) for file in files]
+            inputs = [ (file,fraction,header,header_delimiter) for file in files]
 
             # Execute the tasks in parallel
             data_list = pool.starmap(read_lammps_output, inputs)
@@ -499,16 +502,36 @@ class LAMMPS_setup():
             if len(data_list) == 0:
                 raise KeyError("No data was extracted!")
             
-            # Mean the values for each copy and exctract mean and standard deviation
-            mean_std_list  = [df.iloc[:, 1:].agg(['mean', 'std']).T.reset_index().rename(columns={'index': 'property'}) for df in data_list]
-            
-            # Extract units from the property column and remove it from the label and make an own unit column
-            for df in mean_std_list:
-                df['unit']     = df['property'].str.extract(r'\((.*?)\)')
-                df['property'] = [ p.split('(')[0].strip() for p in df['property'] ]
+            # Get the columns of one of the extracted data frames
+            df_keys = { key.split("(")[0].strip(): i for i,key in enumerate( data_list[0].columns) }
 
-            final_df           = pd.concat(mean_std_list,axis=0).groupby("property", sort=False)["mean"].agg(["mean","std"]).reset_index()
-            final_df["unit"]   = df["unit"]
+            # Get the index of the keys to extract
+            key_idx = flatten_list( df_keys.get( key, [] ) for key in extracted_properties )
+
+            if len(key_idx) == 0:
+                raise KeyError(f"Specified keys '{', '.join(extracted_properties) }' could not be extracted! Valid keys are: '{', '.join(df_keys.keys())}'")
+            
+            # Drop all nonrelevant columns from the data frames
+            extracted_df_list = [ df.iloc[:,key_idx] for df in data_list ]
+
+            # Get the mean and std of each property over time
+            mean_std_list = []
+            for df in extracted_df_list:
+                df_new = df.agg(['mean', 'std']).T.reset_index().rename(columns={'index': 'property'})
+                df_new['unit'] = df_new['property'].str.extract(r'\((.*?)\)')
+                df_new['property'] = [ p.split('(')[0].strip() for p in df_new['property'] ]
+                mean_std_list.append(df_new)
+
+            # Concat the copies and group by properties
+            grouped_total_df = pd.concat( mean_std_list, axis=0).groupby("property", sort=False)
+
+            # Get the mean over the copies. To get the standard deviation, propagate the std over the copies.
+            mean_over_copies = grouped_total_df["mean"].mean()
+            std_over_copies = grouped_total_df["std"].apply( lambda p: np.sqrt( sum(p**2) ) / len(p) )
+
+            # Final df has the mean, std and the unit
+            final_df = pd.DataFrame([mean_over_copies,std_over_copies]).T.reset_index()
+            final_df["unit"] = df_new["unit"]
 
             print("\nAveraged values over all copies:\n\n",final_df,"\n")
 

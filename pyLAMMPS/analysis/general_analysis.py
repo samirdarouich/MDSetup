@@ -10,6 +10,18 @@ from typing import List, Dict, Any
 from collections.abc import Iterable
 from ..tools.general_utils import deep_get
 
+def add_nan_if_no_brackets(lst: List[Any]):
+    """
+    Function that checks if round brackets are in every key of a list, if not add (NaN) to the entry
+    """
+    updated_list = []
+    for item in lst:
+        if '(' in item and ')' in item:
+            updated_list.append(item)
+        else:
+            updated_list.append(f"{item} (NaN)")
+    return updated_list
+
 def contains_pattern(text: str, pattern: str) -> bool:
     regex = re.compile(pattern)
     return bool(regex.search(text))
@@ -22,7 +34,7 @@ def read_lammps_output( file_path: str, fraction: float=0.0, header: int=2,
     Parameters:
         file_path (str): The path to the LAMMPS output file.
         fraction (float, optional): The fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
-        header (int, optional): The number of header lines to skip. Defaults to 2.
+        header (int, optional): The number of header lines from which to extract the keys for the reported values. Defaults to 2.
         header_delimiter (str, optional): The delimiter used in the header line. Defaults to ",".
 
     Returns:
@@ -47,9 +59,12 @@ def read_lammps_output( file_path: str, fraction: float=0.0, header: int=2,
     else:
         lammps_header = [ h.strip() for h in titles[header-1].split(header_delimiter) ]
 
+    # Check if for every key a unit is provided, if not add NaN.
+    lammps_header = add_nan_if_no_brackets( lammps_header )
+
     df = pd.read_csv( file_path, comment="#", delimiter = " ", names = lammps_header )
 
-    if "time" in df.columns[0].lower():
+    if any( key in df.columns[0].lower() for key in ["time","step"] ):
         idx = df.iloc[:,0] > df.iloc[:,0].max() * fraction
         return df.loc[idx,:]
     else:

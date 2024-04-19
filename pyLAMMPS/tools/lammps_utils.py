@@ -38,23 +38,23 @@ class LAMMPS_molecules():
         ## Map force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions) ##
 
         # Get (unique) atom types and parameters
-        self.nonbonded =  flatten_list( [molecule.map_molecule( molecule.unique_atom_keys, self.ff["atoms"] ) for molecule in self.mol_list] ) 
+        self.nonbonded =  flatten_list( molecule.map_molecule( molecule.unique_atom_keys, self.ff["atoms"] ) for molecule in self.mol_list ) 
         
         # Get (unique) bond types and parameters
-        self.bonds     =  flatten_list( [molecule.map_molecule( molecule.unique_bond_keys, self.ff["bonds"] ) for molecule in self.mol_list] ) 
+        self.bonds     =  flatten_list( molecule.map_molecule( molecule.unique_bond_keys, self.ff["bonds"] ) for molecule in self.mol_list ) 
         
         # Get (unique) angle types and parameters
-        self.angles    =  flatten_list( [molecule.map_molecule( molecule.unique_angle_keys, self.ff["angles"] ) for molecule in self.mol_list] ) 
+        self.angles    =  flatten_list( molecule.map_molecule( molecule.unique_angle_keys, self.ff["angles"] ) for molecule in self.mol_list ) 
         
         # Get (unique) torsion types and parameters 
-        self.torsions  =  flatten_list( [molecule.map_molecule( molecule.unique_torsion_keys, self.ff["torsions"] ) for molecule in self.mol_list] ) 
+        self.torsions  =  flatten_list( molecule.map_molecule( molecule.unique_torsion_keys, self.ff["torsions"] ) for molecule in self.mol_list ) 
         
         if not all( [ all(self.nonbonded), all(self.bonds), all(self.angles), all(self.torsions) ] ):
             txt = "nonbonded" if not all(self.nonbonded) else "bonds" if not all(self.bonds) else "angles" if not all(self.angles) else "torsions"
             raise ValueError("Something went wrong during the force field mapping for key: %s"%txt)
         
         # Get nonbonded force field for all atom types not only the unique one. This is later used to extract the charge of each atom in the system while writing the LAMMPS data file.
-        self.ff_all    = np.array( flatten_list( [molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) for molecule in self.mol_list] ) )
+        self.ff_all    = np.array( flatten_list( molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) for molecule in self.mol_list ) )
 
 
     def prepare_lammps_force_field(self):
@@ -360,9 +360,9 @@ class LAMMPS_molecules():
         angle_dict = { "_".join(f["list"]): n for n,f in zip(self.angle_numbers_ges, self.angles) }
 
         # Search the index of the given force field types
-        key_tt  = sorted( flatten_list( [ atom_dict.get( "".join(t_key), [] ) for t_key in shake_dict["atoms"] ] ) )
-        key_bt  = sorted( flatten_list( [ bond_dict.get( "_".join(b_key), [] ) for b_key in shake_dict["bonds"] ] ) )
-        key_at  = sorted( flatten_list( [ angle_dict.get( "_".join(a_key), [] ) for a_key in shake_dict["angles"] ] ) )
+        key_tt  = sorted( flatten_list( atom_dict.get( "".join(t_key), [] ) for t_key in shake_dict["atoms"] ) )
+        key_bt  = sorted( flatten_list( bond_dict.get( "_".join(b_key), [] ) for b_key in shake_dict["bonds"] ) )
+        key_at  = sorted( flatten_list( angle_dict.get( "_".join(a_key), [] ) for a_key in shake_dict["angles"] ) )
 
         return {"t":key_tt, "b":key_bt, "a":key_at}
 
