@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from typing import List, Dict, Any
 from collections.abc import Iterable
+from ..tools.general_utils import deep_get
 
 def contains_pattern(text: str, pattern: str) -> bool:
     regex = re.compile(pattern)
@@ -129,17 +130,18 @@ def plot_data(datas: List[ List[List]],
     # Add label size to set kwargs and apply them
     for key,item in set_kwargs.items():
         if isinstance(item,dict):
-            getattr(ax, f"set_{key}")(**item)
+            deep_get(ax, f"set_{key}",lambda x: None)(**item)
         elif key in ["xlabel","ylabel","title"]:
-            getattr(ax, f"set_{key}")(**{ key: item, "fontsize": label_size })
+            deep_get(ax, f"set_{key}",lambda x: None)(**{ key: item, "fontsize": label_size })
         else:
-            getattr(ax, f"set_{key}")(item) 
+            deep_get(ax, f"set_{key}",lambda x: None)(item) 
 
     # Apple direct ax kwargs
     for key, value in ax_kwargs.items():
-        if not isinstance(value,dict):
-            raise TypeError(f"Specified ax kwargs is not a dict: '{key}': ", print(value))
-        getattr(ax, key)(**value)
+        if isinstance(value,dict):
+            deep_get(ax, key,lambda x: None)(**value)
+        else:
+            deep_get(ax, key,lambda x: None)(value)
 
     for data,label,color,kwargs in zip(datas,labels,colors,data_kwargs):
 
