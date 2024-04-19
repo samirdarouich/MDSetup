@@ -138,12 +138,6 @@ class LAMMPS_setup():
                 lammps_ff_file = write_lammps_ff( **ff_input )
         else:
             lammps_ff_file = ff_file
-
-            # Use directly the shake dict 
-            shake_dict = { "t": self.simulation_default["shake_dict"]["atoms"],
-                           "b": self.simulation_default["shake_dict"]["bonds"], 
-                           "a": self.simulation_default["shake_dict"]["angles"], 
-                         }
             
         for i, (temperature, pressure, density) in enumerate( zip( self.system_setup["temperature"], 
                                                                    self.system_setup["pressure"], 
@@ -194,7 +188,6 @@ class LAMMPS_setup():
                                                     kwargs = { **self.simulation_default,
                                                                **self.simulation_sampling, 
                                                                **input_kwargs,
-                                                               "shake_dict": shake_dict, 
                                                                "restart_flag": flag_restart }, 
                                                     ensemble_definition = self.simulation_ensemble,
                                                     off_set = off_set
@@ -264,6 +257,7 @@ class LAMMPS_setup():
                                 "coupling": "coupling_settings.coupling",
                                 "precision": "coupling_settings.precision",
                                 "mixing_rule": "simulation_default.nonbonded.mixing",
+                                "shake_dict": "shake_dict",
                                 "ff_kwargs": "simulation_default.nonbonded"  
                             }
         
@@ -391,7 +385,6 @@ class LAMMPS_setup():
                                                         kwargs = { **self.simulation_default,
                                                                 **self.simulation_sampling, 
                                                                 **input_kwargs,
-                                                                "shake_dict": shake_dict, 
                                                                 "restart_flag": flag_restart,
                                                                 "init_lambda_state": i+1,
                                                                 "fep_sampling_file": f"../{os.path.basename(fep_sampling_file)}"

@@ -345,7 +345,7 @@ class LAMMPS_molecules():
 
         return
     
-    def get_shake_indices(self, shake_dict: Dict[str,List[str]]={"atoms":[],"bonds":[],"angles":[]}):
+    def get_shake_indices(self, shake_dict: Dict[str,List[List[str]]]={"atoms":[],"bonds":[],"angles":[]}):
         """
         Function that get the unique type identifier for atoms, bonds or angles that should be constrained using SHAKE.
 
@@ -570,6 +570,7 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
                      bond_numbers_ges: List[int], bonds: List[Dict[str,str]],
                      angle_numbers_ges: List[int], angles: List[Dict[str,str]],
                      torsion_numbers_ges: List[int], torsions: List[Dict[str,str]],
+                     shake_dict: Dict[str,List[str|int]]={"t":[], "b":[], "a":[]},
                      only_self_interactions: bool=True, mixing_rule: str = "arithmetic",
                      ff_kwargs: Dict[str,Any]={}, n_eval: int=1000) -> str:
     """
@@ -588,6 +589,8 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
      - angles (List[Dict[str,str]]): List with the unique angles dictionaries containing
      - torsion_numbers_ges (List[int]): List with the unique dihedral type identifiers used in LAMMPS
      - torsions (List[Dict[str,str]]): List with the unique dihedral dictionaries containing
+     - shake_dict (Dict[str,List[str|int]]): Shake dictionary containing the unique atom,bond,angle identifier for SHAKE algorithm.
+                                             Defaults to {"t":[],"b":[],"a":[]}.
      - only_self_interactions (bool, optional): If only self interactions should be written and LAMMPS does the mixing. Defaults to "True".
      - mixing_rule (str, optional): In case this function should do the mixing, the used mixing rule. Defaultst to "arithmetic"
      - ff_kwargs (Dict[str,Any], optional): Parameter kwargs, which are directly parsed to the template. Defaults to {}.
@@ -608,7 +611,9 @@ def write_lammps_ff( ff_template: str, lammps_ff_path: str, potential_kwargs: Di
         raise KeyError(f"{key} not in keys of the potential kwargs! Check nonbonded input!")
     
     # Dictionary to render the template. Pass ff keyword arguments directly in the template.
-    renderdict = { **ff_kwargs, "charged": any( p["charge"] != 0 for p in nonbonded ) }
+    renderdict = { **ff_kwargs, "charged": any( p["charge"] != 0 for p in nonbonded ),
+                   "shake_dict": shake_dict 
+                 }
 
     # Define cut of radius (scanning the force field and taking the highest value)
     rcut = max( map( lambda p: p["cut"], nonbonded ) )
@@ -723,7 +728,9 @@ def write_coupled_lammps_ff(ff_template: str, lammps_ff_path: str, potential_kwa
                             bond_numbers_ges: List[int], bonds: List[Dict[str,str]],
                             angle_numbers_ges: List[int], angles: List[Dict[str,str]],
                             torsion_numbers_ges: List[int], torsions: List[Dict[str,str]],
-                            mixing_rule: str, coupling: bool=True, precision: int=3, 
+                            mixing_rule: str, 
+                            shake_dict: Dict[str,List[str|int]]={"t":[], "b":[], "a":[]},
+                            coupling: bool=True, precision: int=3, 
                             ff_kwargs: Dict[str,Any]={}, n_eval: int=1000) -> str:
     """
     This function prepares LAMMPS understandable force field interactions for coupling simulations and writes them to a file.
@@ -746,6 +753,8 @@ def write_coupled_lammps_ff(ff_template: str, lammps_ff_path: str, potential_kwa
      - torsion_numbers_ges (List[int]): List with the unique dihedral type identifiers used in LAMMPS
      - torsions (List[Dict[str,str]]): List with the unique dihedral dictionaries containing
      - mixing_rule (str): Provide mixing rule. Defaults to "arithmetic"
+     - shake_dict (Dict[str,List[str|int]]): Shake dictionary containing the unique atom,bond,angle identifier for SHAKE algorithm.
+                                             Defaults to {"t":[],"b":[],"a":[]}.
      - coupling (bool, optional): If True, coupling is used (lambdas between 0 and 1 are vdW, 1 to 2 are Coulomb). 
                                   For decoupling (lambdas between 0 and 1 are Coulomb, 1 to 2 are vdW). Defaults to "True".
      - precision (int, optional): Precision of coupling lambdas. Defaults to 3.
@@ -772,6 +781,7 @@ def write_coupled_lammps_ff(ff_template: str, lammps_ff_path: str, potential_kwa
 
     # Dictionary to render the template. Pass all keyword arguments directly in the template.
     renderdict = { **ff_kwargs, "charged": any( p["charge"] != 0 for p in nonbonded ), 
+                   "shake_dict": shake_dict 
                  }
     
     # Define coupling lambdas
