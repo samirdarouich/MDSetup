@@ -100,7 +100,8 @@ class LAMMPS_setup():
                                 "torsions": "lammps_molecules.torsions",
                                 "only_self_interactions": "simulation_default.nonbonded.lammps_mixing", 
                                 "mixing_rule": "simulation_default.nonbonded.mixing",
-                                "ff_kwargs": "simulation_default.nonbonded"  
+                                "ff_kwargs": "simulation_default.nonbonded",
+                                "shake_dict": "shake_dict"
                             }
         
         # Define simulation folder
