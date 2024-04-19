@@ -20,8 +20,9 @@ molecules:
 # Define paths 
 paths:
 
-  # Force field toml
-  force_field_path: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/force-fields/forcefield_UA_TAMie_alkanes.toml
+  # Force field toml files
+  force_field_paths: 
+    - /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/force-fields/forcefield_UA_TAMie_alkanes.toml
 
   # Template files
   template:

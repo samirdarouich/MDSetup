@@ -24,8 +24,8 @@ non_bonded:
   lammps_mixing: ""
   # Special bonds
   special_bonds: 
-    vdw: [ 0 0 1 ]
-    coulomb: [ 0 0 1 ]
+    vdw: [ ]
+    coulomb: [ ]
 
 # Define constraints based on the force field types (if FF file is provided, enter here the atom, bonds and angle type numbers)
 shake_dict: 

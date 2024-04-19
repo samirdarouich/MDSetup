@@ -6,8 +6,10 @@ system:
 
 # Define nonbonded settings (directly parsed in lammps ff template)
 non_bonded:
-  # Pair style
-  pair_style: "mie/cut 12" #"hybrid/overlay lj/cut 12 coul/long 12"
+  # Pair style arguments
+  pair_style:
+    lj/cut: [ rcut ]
+    coul/long: [ rcut ]
   # VdW style arguments
   vdw_style:
     lj/cut: [ epsilon, sigma ]

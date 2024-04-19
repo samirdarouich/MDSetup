@@ -5,6 +5,11 @@ pair_style	lj/class2/coul/long 12
 pair_modify	mix sixthpower tail yes
 kspace_style  pppm/cg 0.0001
 
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj 0 0 1  coul 0 0 1
+
+
 # Pair Coeffs
 
 pair_coeff	1	1	0.5	4.8	#	al6o,al6o

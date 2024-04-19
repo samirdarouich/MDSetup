@@ -130,12 +130,25 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         # Filter out hydrogens bonded to C atoms for an united atom approach or just take every atom for all-atom molecules.
         cleaned_bond_list = []
         cleaned_atomtypes = []
+        
+        # Check which molecule has a UA representation and which AA.
+        # Get moleculegraph representation of the molecules
+        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
 
-        for atom,bonds in zip( bond_atomtypes, bond_list ):
+        if verbose:
+            print("\nMoleculegraph representation\n")
+            for name,raw_mol in zip( molecule_name_list, raw_mol_list) :
+                print("Molecule: %s"%name)
+                raw_mol.visualize()
+
+        # This is done by checking the number of atoms in the graph vs the real number of atoms
+        UA_list = [ raw_mol.atom_number == mol.atoms for raw_mol, mol in zip(raw_mol_list,mol_list) ]
+
+        for i,(atom,bonds) in enumerate(zip( bond_atomtypes, bond_list )):
             dummy1 = []
             dummy2 = []
             for (b0,b1),(a0,a1) in zip( bonds, atom ):
-                if UA:
+                if UA_list[i]:
                     if all([x in (a0,a1) for x in ["H","C"]]):
                         hydrogen = np.array([b0, b1])[ np.array([a0,a1]) == "H" ]
                         if verbose: print("C + H detected")                                   
@@ -147,22 +160,14 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
                 dummy2.append((a0,a1))
             cleaned_bond_list.append(np.array(dummy1))
             cleaned_atomtypes.append(np.array(dummy2))
-            if UA and verbose: print("\n")
+            if UA_list[i] and verbose: print("\n")
         
-        if UA and verbose:
-            print("\nUnited atom representation\n")
-            for n,bl,bat in zip(molecule_name_list,cleaned_bond_list,cleaned_atomtypes):
-                print("Molecule: %s"%n)
-                vis_mol(bl,bat)
-
-        # Get moleculegraph representation of the molecules
-        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
-
         if verbose:
-            print("\nMoleculegraph representation\n")
-            for name,raw_mol in zip( molecule_name_list, raw_mol_list) :
-                print("Molecule: %s"%name)
-                raw_mol.visualize()
+            for i,(n,bl,bat) in enumerate(zip(molecule_name_list,cleaned_bond_list,cleaned_atomtypes)):
+                if UA_list[i]:
+                    print("\nUnited atom representation\n")
+                    print("Molecule: %s"%n)
+                    vis_mol(bl,bat)
 
         # Correct the atom indices in the bond list, after hydrogen atoms are removed for an united atom approach
         new_cleaned_bond_list = []

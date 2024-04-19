@@ -113,7 +113,7 @@ class LAMMPS_setup():
             system_molecules = [ mol for mol in self.system_setup["molecules"] if mol["number"] > 0 ]
 
             lammps_molecules = LAMMPS_molecules( mol_str = [ mol["graph"] for mol in system_molecules ],
-                                                force_field_path = self.system_setup["paths"]["force_field_path"] 
+                                                 force_field_paths = self.system_setup["paths"]["force_field_paths"] 
                                                 ) 
             
             # Prepare the LAMMPS force field
@@ -298,7 +298,7 @@ class LAMMPS_setup():
 
         # Call the LAMMPS molecule class
         lammps_molecules = LAMMPS_molecules( mol_str = [ mol["graph"] for mol in system_molecules ],
-                                             force_field_path = self.system_setup["paths"]["force_field_path"] 
+                                             force_field_paths = self.system_setup["paths"]["force_field_paths"]  
                                             ) 
         
         # Prepare the LAMMPS force field

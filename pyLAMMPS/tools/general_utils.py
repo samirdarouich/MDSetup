@@ -33,8 +33,19 @@ def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
         if not isinstance(d,np.ndarray) and d == default:
             print(f"\nKey: '{key}' not found! Return default!\n")
 
-
     return d
+
+def flatten_list(lst: List[Any]):
+    """
+    Function that flattens a list with sublists, of items.
+    E.g: 
+    test = [1,2,3,[4,5,6]] 
+    flatten_list(a)
+    >> [1,2,3,4,5,6]
+    """
+    return [ item for sublist in lst for item in (sublist if isinstance(sublist, list) else [sublist]) ]
+
+
 
 def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     """
