@@ -2,6 +2,7 @@ import re
 import os
 import yaml
 import glob
+import shutil
 import subprocess
 import numpy as np
 import pandas as pd
@@ -138,7 +139,14 @@ class LAMMPS_setup():
             else:
                 lammps_ff_file = write_lammps_ff( **ff_input )
         else:
-            lammps_ff_file = ff_file
+            #
+            if not os.path.exists( ff_file ):
+                raise FileExistsError(f"Provided force field file does not exist:\n   '{ff_file}'")
+                
+            # Copy provided force field file to simulation folder
+            os.makedirs( sim_folder, exist_ok = True )
+            lammps_ff_file = shutil.copy( ff_file, sim_folder )
+
             
         for i, (temperature, pressure, density) in enumerate( zip( self.system_setup["temperature"], 
                                                                    self.system_setup["pressure"], 

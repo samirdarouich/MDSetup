@@ -27,7 +27,7 @@ non_bonded:
     vdw: [ ]
     coulomb: [ ]
 
-# Define constraints based on the force field types (if FF file is provided, enter here the atom, bonds and angle type numbers)
+# Define constraints based on the force field types
 shake_dict: 
   atoms: []
   bonds: []
