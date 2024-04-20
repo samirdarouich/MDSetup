@@ -639,7 +639,7 @@ class LAMMPS_setup():
             # Get the combined lambda state list
             combined_states = extract_combined_states( files )
 
-            print(f"\nFollowing combined lambda states were analysed:\n   {', '.join([str(l) for l in combined_states])}")
+            print(f"\nFollowing combined lambda states were analysed with the '{method}' method:\n   {', '.join([str(l) for l in combined_states])}")
             print("\nAveraged values over all copies:\n\n",final_df,"\n")
 
             # Save as json
@@ -650,8 +650,8 @@ class LAMMPS_setup():
             json_path = f"{state_folder}/results.json"
             
             work_json( json_path, { "temperature": temperature, "pressure": pressure,
-                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction, 
-                                                "combined_states": combined_states } }, "append" )
+                                    ensemble: { method : { "data": json_data, "paths": files, "fraction_discarded": fraction, 
+                                                "combined_states": combined_states } } }, "append" )
         
             # Add the extracted values for the analysis_folder and ensemble to the class
             merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )
