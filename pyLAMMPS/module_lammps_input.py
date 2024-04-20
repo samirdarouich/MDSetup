@@ -10,8 +10,9 @@ import multiprocessing
 from itertools import groupby
 from .analysis import read_lammps_output
 from typing import Any, List, Dict, Callable
-from pyLAMMPS.analysis.solvation_free_energy import get_free_energy_difference, visualize_dudl
 from .tools.general_utils import work_json, merge_nested_dicts, map_function_input, flatten_list
+from pyLAMMPS.analysis.solvation_free_energy import ( get_free_energy_difference, visualize_dudl, 
+                                                      extract_combined_states )
 from .tools import ( LAMMPS_molecules, generate_initial_configuration, 
                      generate_input_files, generate_job_file, 
                      write_lammps_ff, write_coupled_lammps_ff, 
@@ -548,7 +549,7 @@ class LAMMPS_setup():
             json_path = f"{state_folder}/results.json"
             
             work_json( json_path, { "temperature": temperature, "pressure": pressure,
-                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction } }, "append" )
+                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction} }, "append" )
         
             # Add the extracted values for the analysis_folder and ensemble to the class
             merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )
@@ -635,6 +636,10 @@ class LAMMPS_setup():
             final_df = pd.DataFrame([mean_over_copies,std_over_copies]).T.reset_index()
             final_df["unit"] = mean_std_list[0]["unit"]
 
+            # Get the combined lambda state list
+            combined_states = extract_combined_states( files )
+
+            print(f"\nFollowing combined lambda states were analysed:\n   {', '.join([str(l) for l in combined_states])}")
             print("\nAveraged values over all copies:\n\n",final_df,"\n")
 
             # Save as json
@@ -645,7 +650,8 @@ class LAMMPS_setup():
             json_path = f"{state_folder}/results.json"
             
             work_json( json_path, { "temperature": temperature, "pressure": pressure,
-                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction } }, "append" )
+                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction, 
+                                                "combined_states": combined_states } }, "append" )
         
             # Add the extracted values for the analysis_folder and ensemble to the class
             merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )

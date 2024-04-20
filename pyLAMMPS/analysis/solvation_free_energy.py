@@ -1,3 +1,4 @@
+import re
 import logging
 import numpy as np
 import pandas as pd
@@ -13,8 +14,7 @@ logging.getLogger('alchemlyb').setLevel('WARNING')
 
 ## To do:
 # Check pV contribution
-# Add that lambdas are also written in the json file
-# Add writing json from free energy analysis
+
 def extract_current_state( file_path: str ):
     """
     Extracts the current lambda state from the LAMMPS fep output file.
@@ -33,6 +33,31 @@ def extract_current_state( file_path: str ):
     statevec = tuple( map(lambda p: float(p.split("=")[1].strip()), title.split(":")[1].split(",") ) )
     
     return lambdas, statevec
+
+def extract_combined_states( files: List[str], precision: int=5 ):
+    """
+    Function that takes a list of paths to LAMMPS fep output files, sort them after copy and lambda, and then extract from the first copy the combined state vector.
+
+    Parameters:
+     - files (List[str]): List of paths to LAMMPS fep output files
+     - precision (int,optional): Number of digits for lambda states.
+
+    Returns:
+     - combined_lambdas (List[float]): List with lambda states
+    """
+
+    copy_pattern = re.compile( r'copy_(\d+)')
+    lambda_pattern = re.compile( r'lambda_(\d+)')
+
+    files.sort( key=lambda x: ( int(copy_pattern.search(x).group(1)), 
+                                int(lambda_pattern.search(x).group(1))
+                              )
+                )
+    
+    unique_copy = [ file for file in files if "copy_0" in file ]
+    combined_states = [ round( sum( extract_current_state(file)[1] ), precision ) for file in unique_copy ] 
+
+    return combined_states
 
 def extract_u_nk( file_path: str, T: float, fraction: float=0.0, decorrelate: bool=False ):
     """
