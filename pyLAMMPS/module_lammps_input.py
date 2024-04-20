@@ -7,8 +7,10 @@ import subprocess
 import numpy as np
 import pandas as pd
 import multiprocessing
-from typing import Any, List, Dict, Callable
+from itertools import groupby
 from .analysis import read_lammps_output
+from typing import Any, List, Dict, Callable
+from pyLAMMPS.analysis.solvation_free_energy import get_free_energy_difference, visualize_dudl
 from .tools.general_utils import work_json, merge_nested_dicts, map_function_input, flatten_list
 from .tools import ( LAMMPS_molecules, generate_initial_configuration, 
                      generate_input_files, generate_job_file, 
@@ -465,6 +467,9 @@ class LAMMPS_setup():
         # Seperatre the ensemble name to determine output files
         ensemble_name = "_".join(ensemble.split("_")[1:])
 
+        # sorting patterns
+        copy_pattern = re.compile( r'copy_(\d+)')
+
         # Search output files and sort them after temperature / pressure and then copy
         for i, (temperature, pressure) in enumerate( zip( self.system_setup["temperature"], 
                                                           self.system_setup["pressure"]
@@ -475,7 +480,7 @@ class LAMMPS_setup():
 
             # Search for available copies
             files = glob.glob( f"{state_folder}/copy_*/{ensemble}/{ensemble_name}.{output_suffix}" )
-            files.sort( key=lambda x: int(re.search(r'copy_(\d+)', x).group(1)) ) 
+            files.sort( key=lambda x: int(copy_pattern.search(x).group(1)) ) 
         
             if len(files) == 0:
                 raise KeyError(f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}")
@@ -532,6 +537,103 @@ class LAMMPS_setup():
             # Final df has the mean, std and the unit
             final_df = pd.DataFrame([mean_over_copies,std_over_copies]).T.reset_index()
             final_df["unit"] = df_new["unit"]
+
+            print("\nAveraged values over all copies:\n\n",final_df,"\n")
+
+            # Save as json
+            json_data = { f"copy_{i}": { d["property"]: {key: value for key,value in d.items() if not key == "property"} for d in df.to_dict(orient="records") } for i,df in enumerate(mean_std_list) }
+            json_data["average"] = { d["property"]: {key: value for key,value in d.items() if not key == "property"} for d in final_df.to_dict(orient="records") }
+
+            # Either append the new data to exising file or create new json
+            json_path = f"{state_folder}/results.json"
+            
+            work_json( json_path, { "temperature": temperature, "pressure": pressure,
+                                    ensemble: { "data": json_data, "paths": files, "fraction_discarded": fraction } }, "append" )
+        
+            # Add the extracted values for the analysis_folder and ensemble to the class
+            merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )
+
+    def analysis_free_energy( self, analysis_folder: str, solute: str, ensemble: str, 
+                              method: str="MBAR", fraction: float=0.0, 
+                              decorrelate: bool=True, visualize: bool=False  ):
+        """
+        Extracts free energy difference for a specified folder and solute and ensemble.
+
+        Parameters:
+        - analysis_folder (str): The name of the folder where the analysis will be performed.
+        - solute (str): Solute under investigation
+        - ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
+        - method (str, optional): The free energy method that should be used. Defaults to "MBAR".
+        - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+        - decorrelate (bool, optional): Whether to decorrelate the data before estimating the free energy difference. Defaults to True.
+
+        Returns:
+            None
+
+        The method searches for output files in the specified analysis folder that match the given ensemble.
+        For each group of files with the same temperature and pressure, the properties are extracted using alchempy.
+        The extracted properties are then averaged over all copies and the mean and standard deviation are calculated.
+        The averaged values and the extracted data for each copy are saved as a JSON file in the destination folder.
+        The extracted values are also added to the class's analysis dictionary.
+        """
+        
+        # Define folder for analysis
+        sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}'#/{solute}'
+
+        # Seperatre the ensemble name to determine output files
+        ensemble_name = "_".join(ensemble.split("_")[1:])
+        
+        print(f"\nExtract solvation free energy results for solute: {solute}\n")
+
+        # sorting patterns
+        copy_pattern = re.compile( r'copy_(\d+)')
+        lambda_pattern = re.compile( r'lambda_(\d+)')
+
+        # Loop over each temperature & pressure state
+        for temperature, pressure in zip( self.system_setup["temperature"], self.system_setup["pressure"] ):
+            
+            # Define folder for specific temp and pressure state
+            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
+
+            # Search for available copies
+            files = glob.glob( f"{state_folder}/copy_*/lambda_*/{ensemble}/{ensemble_name}.fep" )
+            files.sort( key=lambda x: ( int(copy_pattern.search(x).group(1)), 
+                                        int(lambda_pattern.search(x).group(1))
+                                    )
+                    )
+
+
+            if len(files) == 0:
+                raise KeyError(f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}")
+
+            print(f"Temperature: {temperature}, Pressure: {pressure}\n   "+"\n   ".join(files) + "\n")
+            
+            # Sort in copies 
+            mean_std_list = [ get_free_energy_difference(list(copy_files), temperature, method, fraction, decorrelate) for 
+                            _,copy_files in groupby( files, key=lambda x: int(copy_pattern.search(x).group(1)) ) 
+                            ]
+
+            # Visualize dH/dl plots if wanted
+            if method in ["TI", "TI_spline"] and visualize:
+                for copy,group in groupby( files, key=lambda x: int(re.search(r'copy_(\d+)', x).group(1)) ):
+                    visualize_dudl( fep_files = group, T = temperature, 
+                                    fraction = fraction, decorrelate = decorrelate,
+                                    save_path = f"{state_folder}/copy_{copy}"  
+                                )
+
+            if len(mean_std_list) == 0:
+                raise KeyError("No data was extracted!")
+            
+            # Concat the copies and group by properties
+            grouped_total_df = pd.concat( mean_std_list, axis=0).groupby("property", sort=False)
+
+            # Get the mean over the copies. To get the standard deviation, propagate the std over the copies.
+            mean_over_copies = grouped_total_df["mean"].mean()
+            std_over_copies = grouped_total_df["std"].apply( lambda p: np.sqrt( sum(p**2) ) / len(p) )
+
+            # Final df has the mean, std and the unit
+            final_df = pd.DataFrame([mean_over_copies,std_over_copies]).T.reset_index()
+            final_df["unit"] = mean_std_list[0]["unit"]
 
             print("\nAveraged values over all copies:\n\n",final_df,"\n")
 
