@@ -11,6 +11,13 @@ atom_style full
 
 {% if restart_flag %}read_restart   {{data_file}}{% else %}read_data   {{data_file}}{%- endif %}
 
+{%- if restart_flag %}
+
+# Reset timestep 
+
+reset_timestep   0
+{%- endif %}
+
 # Include force field paramters
 
 include   {{force_field_file}}
@@ -20,7 +27,7 @@ include   {{force_field_file}}
 neighbor 2.0 bin
 neigh_modify every 1 delay 0 check yes 
 
-{%- if deformation is defined %}
+{%- if deformation is defined and not restart_flag %}
 
 
 # ============= Deformation =============
