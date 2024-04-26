@@ -75,7 +75,7 @@ def read_lammps_output( file_path: str, fraction: float=0.0, header: int=2,
 def plot_data(datas: List[ List[List]], 
               labels: List[str]=[], 
               colors: List[str]=[],
-              sns_context: str="talk", 
+              sns_context: str="poster", 
               save_path: str="", 
               label_size: int=24, 
               data_kwargs: List[Dict[str,Any]]=[],
@@ -95,7 +95,7 @@ def plot_data(datas: List[ List[List]],
                                 If the dataset has two elemenets and the y value contains sublists, it represents x, y_upper, y_lower
     - labels (List[str], optional): A list of labels for each dataset. Default is an empty list.
     - colors (List[str], optional): A list of colors for each dataset. Default is an empty list.
-    - sns_context (str, optional): The seaborn plot context. Default is "talk".
+    - sns_context (str, optional): The seaborn plot context. Default is "poster".
     - save_path (str, optional): The path to save the plot. Default is an empty string.
     - label_size (int, optional): The font size of the labels. Default is 24.
     - data_kwargs (List[Dict[str,Any]], optional): A list of dictionaries containing additional keyword arguments for each dataset. Default is an empty list.
