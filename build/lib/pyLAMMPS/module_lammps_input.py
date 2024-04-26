@@ -578,8 +578,14 @@ class LAMMPS_setup():
         The extracted values are also added to the class's analysis dictionary.
         """
         
+        # Check if solute species is present in the system
+        current_name_list = [ mol["name"] for mol in self.system_setup["molecules"] ]
+
+        if not solute in current_name_list:
+            raise KeyError("Provided solute species is not presented in the system setup! Available species are:\   ",", ".join(current_name_list) )
+
         # Define folder for analysis
-        sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}'#/{solute}'
+        sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}/{solute}'
 
         # Seperatre the ensemble name to determine output files
         ensemble_name = "_".join(ensemble.split("_")[1:])
@@ -639,7 +645,7 @@ class LAMMPS_setup():
             # Get the combined lambda state list
             combined_states = extract_combined_states( files )
 
-            print(f"\nFollowing combined lambda states were analysed:\n   {', '.join([str(l) for l in combined_states])}")
+            print(f"\nFollowing combined lambda states were analysed with the '{method}' method:\n   {', '.join([str(l) for l in combined_states])}")
             print("\nAveraged values over all copies:\n\n",final_df,"\n")
 
             # Save as json
