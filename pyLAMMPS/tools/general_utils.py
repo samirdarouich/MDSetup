@@ -4,6 +4,7 @@ import os
 import json
 import numpy as np
 
+from scipy.constants import Avogadro
 from typing import List, Tuple, Dict, Any
 
 def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
@@ -138,4 +139,51 @@ def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
         raise KeyError("Wrong task defined: %s"%to_do)
 
 
+def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, box_type: str="cubic" ):
+    """
+    Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
 
+    Parameters:
+    - molar_masses (List[List[float]]): A list with the molar masses of each molecule in the system.
+    - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
+    - density (float): The density of the mixture in kg/m^3.
+    - box_type (str, optional): The type of box to calculate dimensions for. Currently, only 'cubic' is implemented.
+
+    Returns:
+    - dict: A dictionary with keys 'box_x', 'box_y', and 'box_z', each containing a list with the negative and positive half-lengths of the box in Angstroms.
+
+    Raises:
+    - KeyError: If the `box_type` is not 'cubic', since other box types are not implemented yet.
+    """
+    # Account for mixture density
+    molar_masses = np.array( molar_masses )
+
+    # mole fraction of mixture (== numberfraction)
+    x = np.array( molecule_numbers ) / np.sum( molecule_numbers )
+
+    # Average molar weight of mixture [g/mol]
+    M_avg = np.dot( x, molar_masses )
+
+    # Total mole n = N/NA [mol] #
+    n = np.sum( molecule_numbers ) / Avogadro
+
+    # Total mass m = n*M, convert from g in kg. [kg]
+    mass = n * M_avg / 1000
+
+    # Volume = mass / mass_density = kg / kg/m^3, convert from m^3 to A^3. [A^3]
+    volume = mass / density * 1e30
+
+
+    # Compute box lenght L (in Angstrom) using the volume V=m/rho
+    if box_type == "cubic":
+        # Cubix box: L/2 = V^(1/3) / 2
+        boxlen = volume**(1/3) / 2
+
+        box = { "box_x": [ -boxlen, boxlen ],
+                "box_y": [ -boxlen, boxlen ],
+                "box_z": [ -boxlen, boxlen ]
+                }
+    else:
+        raise KeyError(f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic'.")
+
+    return box

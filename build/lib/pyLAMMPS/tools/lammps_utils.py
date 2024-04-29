@@ -6,11 +6,13 @@ import numpy as np
 import moleculegraph
 from jinja2 import Template
 from typing import Dict, List, Any
-from scipy.constants import Avogadro
-from .general_utils import merge_nested_dicts, flatten_list
+
+from .general_utils import merge_nested_dicts, flatten_list, get_system_volume
 
 ## LAMMPS molecule class
 
+#### to do:
+# include check if playmol defined atom name matches expected atom ff type 
 class LAMMPS_molecules():
     """
     This class writes LAMMPS data input for arbitrary mixtures using moleculegraph.
@@ -54,7 +56,7 @@ class LAMMPS_molecules():
             raise ValueError("Something went wrong during the force field mapping for key: %s"%txt)
         
         # Get nonbonded force field for all atom types not only the unique one. This is later used to extract the charge of each atom in the system while writing the LAMMPS data file.
-        self.ff_all    = np.array( flatten_list( molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) for molecule in self.mol_list ) )
+        self.ff_all    = [ molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) for molecule in self.mol_list ]
 
 
     def prepare_lammps_force_field(self):
@@ -70,21 +72,21 @@ class LAMMPS_molecules():
         # start after the indexes of the first component (e.g.: Component 1: 1 cH_alcohol, 2 OH_alcohol 3 CH2_alcohol --> Component 2: 4 CH3_alkane, ...)
         # As molecule graph just gives for each component the indexes starting from 0 --> Component 1: 0 cH_alcohol, 1 OH_alcohol 2 CH2_alcohol; Component 2: 0 CH3_alkane, ... 
         # one needs to add the index of all preceding molecules.
-        add_atoms                    = [1] + [ sum(len(mol.unique_atom_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
+        add_atoms = [1] + [ sum(len(mol.unique_atom_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
 
         # Get the force field type identifiers for each atom. This is used in the #Atoms section in the data file.
         # Therefore take the identifier number of every atom in each moleculegraph and add the preceeding number of atom types.
         # 1 1 1 0.404 -10.69874 -8.710742 1.59434903 # cH_alcohol1 --> First index is a running LAMMPS number for the atom. The 2nd index is the running numner for the molecule.
         # The third index is the force field type identifier (here it is 1, thus it is type the cH_alcohol type, as defined in the input file header)
         # The forth number is the partial charge. The following 3 numbers are the x, y and z coordinate of the atom in the system.
-        self.atoms_running_number    = np.concatenate( [mol.unique_atom_inverse + add_atoms[i] for i,mol in enumerate(self.mol_list)], axis=0 )
+        self.atoms_running_number = [ mol.unique_atom_inverse + add_atoms[i] for i,mol in enumerate(self.mol_list) ]
         
         # These are the !unique! atom force field types from "atoms_running_number". This is used in the atom definition section of the data file.
         # As just the unique atom force field types are defined in LAMMPS. 
-        self.atom_numbers_ges        = np.unique( self.atoms_running_number )
+        self.atom_numbers_ges = np.unique( self.atoms_running_number )
 
         # Get the number of atoms per component. This will later be multiplied with the number of molecules per component to get the total number of atoms in the system
-        self.number_of_atoms         = [ mol.atom_number for mol in self.mol_list ]
+        self.number_of_atoms = [ mol.atom_number for mol in self.mol_list ]
 
         # Define the total number of atom tpyes
         self.atom_type_number = len( self.atom_numbers_ges )
@@ -100,58 +102,45 @@ class LAMMPS_molecules():
         # These types will be written in the # Bonds section. Where every bond for every atom in the system is defined. 
         # (e.g.: 1 1 1 5 # cH_alc OH_alc --> the first number is a running index for LAMMPS, the 2nd is the force field bond type index (as defined in bonds_running_number),
         # and the 3th and 4th are the atoms in this bond (as defined in self.bond_numbers)
-        self.bonds_running_number    = np.concatenate( [mol.unique_bond_inverse + add_bonds[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
+        self.bonds_running_number = [ mol.unique_bond_inverse + add_bonds[i] for i,mol in enumerate(self.mol_list) ]
 
         # These are the !unique! bond force field types from "bonds_running_number". This is used in the bonds definition section of the data file.
         # As just the unique bond force field types are defined in LAMMPS. 
-        self.bond_numbers_ges        = np.unique( self.bonds_running_number )
+        self.bond_numbers_ges = np.unique( self.bonds_running_number )
         
         # This identify the atoms of each bond in the molecule. This is used in #Bonds section, where each Atom is assigned a bond, as well as the bond force field type. 
         # To these indicies the number of preceeding atoms in the system will be added (in the write_lammps_data function).
         # Thus the direct list from molecule graph can be used, without further refinement. 
         # (E.g.: Bond_list for ethanediol: [ [1,2], [2,3], [3,4], [4,5], [5,6] ] )
-        # As these lists are 2D, an empty list can't be parsed to np.concatenate, these need to be skipped.
-        self.bond_numbers            = np.concatenate( [mol.bond_list + 1 for mol in self.mol_list if mol.bond_list.any()], axis=0 ).astype("int")
+        self.bond_numbers = [ mol.bond_list + 1 for mol in self.mol_list ]
 
         # This is just the name of each the bonds defined above. This is written as information that one knows what which bond is defined in the data file.
-        self.bond_names              = np.concatenate( [[[mol.atom_names[i] for i in bl] for bl in mol.bond_list] for mol in self.mol_list if mol.bond_list.any()], axis=0 )
+        self.bond_names = [ [ [mol.atom_names[i] for i in bl] for bl in mol.bond_list ] for mol in self.mol_list ]
 
         # Get the number of bonds per component. This will later be multiplied with the number of molecules per component to get the total number of bonds in the system
-        self.number_of_bonds         = [ len(mol.bond_keys) for mol in self.mol_list ]
-
-        # If several bond styles are used, these needs to be added in the data file, as well as the "hybrid" style.
-        self.bond_styles             = list( { p["style"] for p in self.bonds } )
-
-        # Defines the total number of bond types
-        self.bond_type_number        = len( self.bond_numbers_ges )
+        self.number_of_bonds = [ len(mol.bond_keys) for mol in self.mol_list ]
 
 
         ## Definitions for angles in the system --> (all elements here have the same meaning as above for bonds just for angles) ##
         
         add_angles = [1] + [ sum(len(mol.unique_angle_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
 
-        self.angles_running_number   = np.concatenate( [mol.unique_angle_inverse + add_angles[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
-        self.angle_numbers_ges       = np.unique( self.angles_running_number )
-        self.angle_numbers           = np.concatenate( [mol.angle_list + 1 for mol in self.mol_list if mol.angle_list.any()], axis=0 ).astype("int")
-        self.angle_names             = np.concatenate( [[[mol.atom_names[i] for i in al] for al in mol.angle_list] for mol in self.mol_list if mol.angle_list.any()], axis=0 )
-        self.number_of_angles        = [ len(mol.angle_keys) for mol in self.mol_list ]
-
-        self.angle_styles            = list( { p["style"] for p in self.angles } )
-        self.angle_type_number       = len(self.angle_numbers_ges)
+        self.angles_running_number = [ mol.unique_angle_inverse + add_angles[i] for i,mol in enumerate(self.mol_list) ]
+        self.angle_numbers_ges = np.unique( self.angles_running_number )
+        self.angle_numbers = [ mol.angle_list + 1 for mol in self.mol_list ]
+        self.angle_names  = [ [ [mol.atom_names[i] for i in al] for al in mol.angle_list ] for mol in self.mol_list ]
+        self.number_of_angles = [ len(mol.angle_keys) for mol in self.mol_list ]
 
 
         ## Definitions for torsions in the system --> (all elements here have the same meaning as above for bonds just for torsions) ##
         
         add_torsions = [1] + [ sum(len(mol.unique_torsion_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
         
-        self.torsions_running_number = np.concatenate( [mol.unique_torsion_inverse + add_torsions[i] for i,mol in enumerate(self.mol_list)], axis=0 ).astype("int")
-        self.torsion_numbers_ges     = np.unique( self.torsions_running_number )
-        self.torsion_numbers         = np.concatenate( [mol.torsion_list + 1 for mol in self.mol_list if mol.torsion_list.any()], axis=0 ).astype("int")
-        self.torsion_names           = np.concatenate( [[[mol.atom_names[i] for i in tl] for tl in mol.torsion_list ] for mol in self.mol_list if mol.torsion_list.any() ], axis=0 )
-        self.number_of_torsions      = [ len(mol.torsion_keys) for mol in self.mol_list ]
-
-        self.torsion_styles          = list( { p["style"] for p in self.torsions } )
-        self.torsion_type_number     = len(self.torsion_numbers_ges)
+        self.torsions_running_number = [ mol.unique_torsion_inverse + add_torsions[i] for i,mol in enumerate(self.mol_list) ]
+        self.torsion_numbers_ges = np.unique( self.torsions_running_number )
+        self.torsion_numbers = [ mol.torsion_list + 1 for mol in self.mol_list ]
+        self.torsion_names = [ [ [mol.atom_names[i] for i in tl] for tl in mol.torsion_list ] for mol in self.mol_list ]
+        self.number_of_torsions = [ len(mol.torsion_keys) for mol in self.mol_list ]
         
         return
 
@@ -178,47 +167,24 @@ class LAMMPS_molecules():
         self.atom_paras = zip(self.atom_numbers_ges, self.nonbonded)
 
         # Total atoms in system (summation of the number of atoms of each component times the number of molecules of each component)
-        self.total_number_of_atoms    = np.dot( self.number_of_atoms, nmol_list )
+        self.total_number_of_atoms = np.dot( self.number_of_atoms, nmol_list )
 
         # Total bonds in system 
-        self.total_number_of_bonds    = np.dot( self.number_of_bonds, nmol_list )
+        self.total_number_of_bonds = np.dot( self.number_of_bonds, nmol_list )
         
         # Total angles in system 
-        self.total_number_of_angles   = np.dot( self.number_of_angles, nmol_list) 
+        self.total_number_of_angles = np.dot( self.number_of_angles, nmol_list) 
         
         # Total torsions in system 
         self.total_number_of_torsions = np.dot( self.number_of_torsions, nmol_list )
 
+        
+        # Get the box dimensions
+        molar_masses = [ sum( a["mass"] for a in mol_nb ) for mol_nb in self.ff_all ]
 
-        ## Mass, mol, volume and box size of the system ##
+        box_dimensions = get_system_volume( molar_masses = molar_masses, molecule_numbers = nmol_list, 
+                                            density = density, box_type = "cubic" )
 
-        # Molar masses of each species [g/mol]
-        Mol_masses = np.array( [ np.sum( [ a["mass"] for a in molecule.map_molecule( molecule.atom_names, self.ff["atoms"] ) ] ) for molecule in self.mol_list ] )
-
-        # Account for mixture density --> in case of pure component this will not alter anything
-
-        # mole fraction of mixture (== numberfraction)
-        x = np.array( nmol_list ) / np.sum( nmol_list )
-
-        # Average molar weight of mixture [g/mol]
-        M_avg = np.dot( x, Mol_masses )
-
-        # Total mole n = N/NA [mol] #
-        n = np.sum( nmol_list ) / Avogadro
-
-        # Total mass m = n*M [kg]
-        mass = n * M_avg / 1000
-
-        # Compute box volume V=m/rho and with it the box lenght L (in Angstrom) --> assuming orthogonal box
-        # With mass (kg) and rho (kg/m^3 --> convert in g/A^3 necessary as lammps input)
-
-        # Volume = mass / mass_density = mol / mol_density [A^3]
-        volume = mass / density * 1e30
-
-        boxlen = volume**(1/3) / 2
-
-        box = [ -boxlen, boxlen ]
-    
         # Running counts of atoms, bonds, angles, and torsions.
         atom_count       = 0
         bond_count       = 0
@@ -236,22 +202,8 @@ class LAMMPS_molecules():
 
         # Read in the specified coordinates --> the atom names are also read in (these are the atom names given in playmol setup. Double check if they match the force field type you expect!)
         coordinates      = moleculegraph.general_utils.read_xyz(xyz_path)
-        
-        # Get the number of atoms per component as list
-        component_atom_numbers = [mol.atom_number for mol in self.mol_list] 
 
         for m,mol in enumerate(self.mol_list):
-
-            # All the lists produced yet are one flat 1D list, containing the information of every atom of every component.
-            # As we here loop through every component individually, the correct entries of all the lists need to be taken.
-            # (E.g.: For the correct atoms_running_number of component 1, one needs to take the list entries from 0 to n° of atoms of component 1
-            # The same needs to be done for component 2: from n° of atoms of component 1 to n° of atoms of component 1 + component 2, and so on...)
-            # The same is true for the bonds, angles and torsions
-            idx  = mol.atom_numbers + sum( mole.atom_number for mole in self.mol_list[:m] )
-            idx1 = np.arange( len(mol.bond_keys) ) + sum( len(mole.bond_keys) for mole in self.mol_list[:m] )
-            idx2 = np.arange( len(mol.angle_keys) ) + sum( len(mole.angle_keys) for mole in self.mol_list[:m] )
-            idx3 = np.arange( len(mol.torsion_keys) ) + sum( len(mole.torsion_keys) for mole in self.mol_list[:m] )
-            
 
             ## Now write LAMMPS input for every molecule of each component ##
 
@@ -260,21 +212,21 @@ class LAMMPS_molecules():
                 # The atom index in the bond, angle, torsion list starts always at 1. Thus to write the correct atoms for each bond, angle, torsion one need to 
                 # know the indcies of the atoms of the current molecule. To do so, add the dot product of all atom numbers and molecules of each component
                 # to the atom index in the current bond, angle, torsion.
-                add_atom_count = np.dot( mol_count, component_atom_numbers ).astype("int")
+                add_atom_count = np.dot( mol_count, self.number_of_atoms ).astype("int")
 
                 # Define atoms
-                for atomtype,ff_atom in zip( self.atoms_running_number[idx], self.ff_all[idx] ):
+                for atomtype,ff_atom in zip( self.atoms_running_number[m], self.ff_all[m] ):
                     
                     atom_count +=1
 
                     # LAMMPS INPUT: total n° of atom in system, mol n° in system, atomtype, partial charges,coordinates
-                    line = [ atom_count, sum(mol_count)+1, atomtype, ff_atom["charge"],*coordinates[atom_count-1]["xyz"], coordinates[atom_count-1]["atom"] ]
+                    line = [ atom_count, sum(mol_count)+1, atomtype, ff_atom["charge"], *coordinates[atom_count-1]["xyz"], coordinates[atom_count-1]["atom"] ]
 
                     lmp_atom_list.append(line)
 
 
                 # Define bonds 
-                for bondtype,bond,bond_name in zip( self.bonds_running_number[idx1], self.bond_numbers[idx1], self.bond_names[idx1] ):
+                for bondtype,bond,bond_name in zip( self.bonds_running_number[m], self.bond_numbers[m], self.bond_names[m] ):
 
                     bond_count += 1
 
@@ -287,7 +239,7 @@ class LAMMPS_molecules():
                     lmp_bond_list.append(line)
 
                 # Define angles
-                for angletype,angle,angle_name in zip (self.angles_running_number[idx2], self.angle_numbers[idx2], self.angle_names[idx2] ):
+                for angletype,angle,angle_name in zip (self.angles_running_number[m], self.angle_numbers[m], self.angle_names[m] ):
 
                     angle_count += 1
 
@@ -300,7 +252,7 @@ class LAMMPS_molecules():
                     lmp_angle_list.append(line)
 
                 # Define torsions
-                for torsiontype,torsion,torsion_name in zip( self.torsions_running_number[idx3], self.torsion_numbers[idx3], self.torsion_names[idx3] ):
+                for torsiontype,torsion,torsion_name in zip( self.torsions_running_number[m], self.torsion_numbers[m], self.torsion_names[m] ):
 
                     torsion_count += 1
 
@@ -315,11 +267,11 @@ class LAMMPS_molecules():
                 # Increase the molecule count of the current component by one.
                 mol_count[m] += 1
 
-        renderdict = { "box_x": box, "box_y": box, "box_z": box,
-                       "atom_type_number": self.atom_type_number,
-                       "bond_type_number": self.bond_type_number,
-                       "angle_type_number": self.angle_type_number,
-                       "torsion_type_number": self.torsion_type_number,
+        renderdict = { **box_dimensions,
+                       "atom_type_number": len( self.atom_numbers_ges ),
+                       "bond_type_number": len( self.bond_numbers_ges ),
+                       "angle_type_number": len( self.angle_numbers_ges ),
+                       "torsion_type_number": len( self.torsion_numbers_ges ),
                        "atom_paras": self.atom_paras  }
 
         renderdict["atoms"]    = lmp_atom_list

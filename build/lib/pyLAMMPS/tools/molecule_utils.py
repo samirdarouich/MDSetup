@@ -135,14 +135,14 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         # Get moleculegraph representation of the molecules
         raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
 
-        if verbose:
-            print("\nMoleculegraph representation\n")
-            for name,raw_mol in zip( molecule_name_list, raw_mol_list) :
-                print("Molecule: %s"%name)
-                raw_mol.visualize()
-
         # This is done by checking the number of atoms in the graph vs the real number of atoms
         UA_list = [ raw_mol.atom_number == mol.atoms for raw_mol, mol in zip(raw_mol_list,mol_list) ]
+
+        if verbose:
+            print("\nMoleculegraph representation\n")
+            for i,(name,raw_mol) in enumerate(zip( molecule_name_list, raw_mol_list)):
+                print(f"Molecule ({'united' if UA_list[i] else 'all'}-atom): {name}")
+                raw_mol.visualize()
 
         for i,(atom,bonds) in enumerate(zip( bond_atomtypes, bond_list )):
             dummy1 = []

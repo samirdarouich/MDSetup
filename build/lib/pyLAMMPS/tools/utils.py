@@ -20,7 +20,7 @@ def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destinat
                                 molecule_smiles_list = [ mol["smiles"] for mol in molecules_dict_list ],
                                 xyz_destinations = xyz_destinations, 
                                 template_xyz = template_xyz,
-                                verbose = False
+                                verbose = True
                             )
     
     # Build system with PLAYMOL

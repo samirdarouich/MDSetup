@@ -1,7 +1,7 @@
 # General definitions of the system
 
 # Simulation folder (simulations will be saved in this folder + the system name)
-folder: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/liquid_systems
+folder: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/example/liquid_systems
 
 # System name
 name: butane_hexane
@@ -22,18 +22,18 @@ paths:
 
   # Force field toml files
   force_field_paths: 
-    - /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/force-fields/forcefield_UA_TAMie_alkanes.toml
+    - /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/force-fields/forcefield_UA_TAMie_alkanes.toml
 
   # Template files
   template:
-    xyz_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/general/template_write.xyz
-    playmol_ff_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/template_playmol.playmol
-    playmol_input_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/template_playmol.mol
-    playmol_bash_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/playmol/build_system_pbs.sh
-    lammps_data_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.data
-    lammps_input_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.in
-    lammps_ff_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/lammps/template_lammps.params
-    job_file: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/templates/bash/template_job_pbs.sh
+    xyz_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/general/template_write.xyz
+    playmol_ff_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/playmol/template_playmol.playmol
+    playmol_input_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/playmol/template_playmol.mol
+    playmol_bash_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/playmol/build_system_pbs.sh
+    lammps_data_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/lammps/template_lammps.data
+    lammps_input_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/lammps/template_lammps.in
+    lammps_ff_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/lammps/template_lammps.params
+    job_file: /home/st/st_us-041610/st_ac137577/software/pyLAMMPS/templates/bash/template_job_pbs.sh
 
 # Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied
 temperature:

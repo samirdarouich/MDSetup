@@ -5,15 +5,16 @@ system:
   dt : 1
 
 # Define nonbonded settings (directly parsed in lammps ff template)
-non_bonded:
+nonbonded:
   # Pair style arguments
   pair_style:
     lj/cut: [ rcut ]
+    mie/cut: [ rcut ]
     coul/long: [ rcut ]
   # VdW style arguments
   vdw_style:
-    lj/cut: [ epsilon, sigma ]
-    mie/cut: [ epsilon, sigma, "n", m ]
+    lj/cut: [ epsilon_ij, sigma_ij ]
+    mie/cut: [ epsilon_ij, sigma_ij, "n_ij", m_ij ]
   # Coulomb style argument
   coulomb_style:
     coul/long: []
