@@ -136,7 +136,7 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
 
         # This is done by checking the number of atoms in the graph vs the real number of atoms
-        UA_list = [ raw_mol.atom_number == mol.atoms for raw_mol, mol in zip(raw_mol_list,mol_list) ]
+        UA_list = [ not raw_mol.atom_number == len(mol.atoms) for raw_mol, mol in zip(raw_mol_list,mol_list) ]
 
         if verbose:
             print("\nMoleculegraph representation\n")
@@ -200,7 +200,7 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
             reference_names = [n.split("_")[0] for n in mol.atom_names]
 
             # This function matches the distance matrix and thus reorder the cleaned coordinates to match the moleculegraph description
-            fc,idx = assign_coos_via_distance_mat_local(  cc, dm, ca, mol.distance_matrix, reference_names )
+            fc,_ = assign_coos_via_distance_mat_local(  cc, dm, ca, mol.distance_matrix, reference_names )
 
             final_coordinates.append( fc )
     

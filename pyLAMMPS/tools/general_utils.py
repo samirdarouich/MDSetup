@@ -44,7 +44,7 @@ def flatten_list(lst: List[Any]):
     flatten_list(a)
     >> [1,2,3,4,5,6]
     """
-    return [ item for sublist in lst for item in (sublist if isinstance(sublist, list) else [sublist]) ]
+    return [ item for sublist in lst for item in (sublist if isinstance(sublist, list) or isinstance(sublist, np.ndarray) else [sublist]) ]
 
 
 

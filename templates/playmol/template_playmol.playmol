@@ -4,7 +4,7 @@
 {% set seen = [] %}
 {%- for n, a in rd.nonbonded %}
 {%-if n not in seen%}
-atom_type {{n}}  mie/cut {{a.epsilon}} {{a.sigma}} {{a.m}} 6.0
+atom_type {{n}}  mie/cut {{a.epsilon}} {{a.sigma}} {{a.n}} {{a.m}}
 diameter {{n}}  {{a.sigma}}
 mass {{n}}  {{a.mass}}
 charge {{n}}  {{a.charge}}
@@ -15,20 +15,20 @@ charge {{n}}  {{a.charge}}
 # Bonds
 {%- if rd.bonds %}
 {% for n, b in rd.bonds %}
-bond_type  {{n.0}}  {{n.1}}  {{b.style}}  {{b.p|join(' ')}}
+bond_type  {{n|join(' ')}}  {{b.style}}  {{b.p|join(' ')}}
 {%- endfor %}
 {% endif %}
 
 # Angles
 {%- if rd.angles %}
 {% for n, a in rd.angles %}
-angle_type {{n.0}} {{n.1}} {{n.2}} {{a.style}}  {{a.p|join(' ')}}
+angle_type {{n|join(' ')}} {{a.style}}  {{a.p|join(' ')}}
 {%- endfor %}
 {% endif %}
 
 # Torsions
 {%- if rd.torsions %}
 {% for n, t in rd.torsions %}
-dihedral_type {{n.0}} {{n.1}} {{n.2}} {{n.3}} {{t.style}} {{t.p|join(' ')}}
+dihedral_type {{n|join(' ')}} {{t.style}} {{t.p|join(' ')}}
 {%- endfor %}
 {% endif %}

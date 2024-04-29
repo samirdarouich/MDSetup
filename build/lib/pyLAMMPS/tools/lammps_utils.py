@@ -83,7 +83,7 @@ class LAMMPS_molecules():
         
         # These are the !unique! atom force field types from "atoms_running_number". This is used in the atom definition section of the data file.
         # As just the unique atom force field types are defined in LAMMPS. 
-        self.atom_numbers_ges = np.unique( self.atoms_running_number )
+        self.atom_numbers_ges = np.unique( flatten_list( self.atoms_running_number ) )
 
         # Get the number of atoms per component. This will later be multiplied with the number of molecules per component to get the total number of atoms in the system
         self.number_of_atoms = [ mol.atom_number for mol in self.mol_list ]
@@ -106,7 +106,7 @@ class LAMMPS_molecules():
 
         # These are the !unique! bond force field types from "bonds_running_number". This is used in the bonds definition section of the data file.
         # As just the unique bond force field types are defined in LAMMPS. 
-        self.bond_numbers_ges = np.unique( self.bonds_running_number )
+        self.bond_numbers_ges = np.unique( flatten_list( self.bonds_running_number ) )
         
         # This identify the atoms of each bond in the molecule. This is used in #Bonds section, where each Atom is assigned a bond, as well as the bond force field type. 
         # To these indicies the number of preceeding atoms in the system will be added (in the write_lammps_data function).
@@ -126,7 +126,7 @@ class LAMMPS_molecules():
         add_angles = [1] + [ sum(len(mol.unique_angle_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
 
         self.angles_running_number = [ mol.unique_angle_inverse + add_angles[i] for i,mol in enumerate(self.mol_list) ]
-        self.angle_numbers_ges = np.unique( self.angles_running_number )
+        self.angle_numbers_ges = np.unique( flatten_list( self.angles_running_number ) )
         self.angle_numbers = [ mol.angle_list + 1 for mol in self.mol_list ]
         self.angle_names  = [ [ [mol.atom_names[i] for i in al] for al in mol.angle_list ] for mol in self.mol_list ]
         self.number_of_angles = [ len(mol.angle_keys) for mol in self.mol_list ]
@@ -137,7 +137,7 @@ class LAMMPS_molecules():
         add_torsions = [1] + [ sum(len(mol.unique_torsion_keys) for mol in self.mol_list[:(i+1)]) + 1 for i in range( len(self.mol_list[1:]) ) ]
         
         self.torsions_running_number = [ mol.unique_torsion_inverse + add_torsions[i] for i,mol in enumerate(self.mol_list) ]
-        self.torsion_numbers_ges = np.unique( self.torsions_running_number )
+        self.torsion_numbers_ges = np.unique( flatten_list( self.torsions_running_number ) )
         self.torsion_numbers = [ mol.torsion_list + 1 for mol in self.mol_list ]
         self.torsion_names = [ [ [mol.atom_names[i] for i in tl] for tl in mol.torsion_list ] for mol in self.mol_list ]
         self.number_of_torsions = [ len(mol.torsion_keys) for mol in self.mol_list ]

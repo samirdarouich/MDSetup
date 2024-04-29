@@ -5,6 +5,7 @@ import moleculegraph
 from jinja2 import Template
 from typing import List, Dict
 from .submission_utils import submit_and_wait
+from .general_utils import flatten_list
 
 def prepare_playmol_input(mol_str: List[str], ff: Dict[str,Dict[str,float]], playmol_template: str, playmol_ff_path: str):
     """
@@ -20,25 +21,31 @@ def prepare_playmol_input(mol_str: List[str], ff: Dict[str,Dict[str,float]], pla
     # Get moleculegraph representation for each molecule
     mol_list  =  [ moleculegraph.molecule(mol) for mol in mol_str ]
 
-    # Get (unique) atom types and parameters 
-    nonbonded = [j for sub in [molecule.map_molecule( molecule.unique_atom_keys, ff["atoms"] ) for molecule in mol_list] for j in sub]
+     # Get (unique) atom types and parameters
+    nonbonded =  flatten_list( molecule.map_molecule( molecule.unique_atom_keys, ff["atoms"] ) for molecule in mol_list )
     
     # Get (unique) bond types and parameters
-    bonds     = [j for sub in [molecule.map_molecule( molecule.unique_bond_keys, ff["bonds"] ) for molecule in mol_list] for j in sub]
+    bonds     =  flatten_list( molecule.map_molecule( molecule.unique_bond_keys, ff["bonds"] ) for molecule in mol_list )
     
     # Get (unique) angle types and parameters
-    angles    = [j for sub in [molecule.map_molecule( molecule.unique_angle_keys, ff["angles"] ) for molecule in mol_list] for j in sub]
+    angles    =  flatten_list( molecule.map_molecule( molecule.unique_angle_keys, ff["angles"] ) for molecule in mol_list )
     
-    # Get (unique) torsion types and parameters
-    torsions  = [j for sub in [molecule.map_molecule( molecule.unique_torsion_keys, ff["torsions"] ) for molecule in mol_list] for j in sub]
+    # Get (unique) torsion types and parameters 
+    torsions  =  flatten_list( molecule.map_molecule( molecule.unique_torsion_keys, ff["torsions"] ) for molecule in mol_list )
     
+    # Add n and m in case Lennard jones is used
+    for nb in nonbonded:
+        if not "n" in nb.keys():
+            nb["n"] = 12
+            nb["m"] = 6
+
 
     # Prepare dictionary for jinja2 template to write force field input for Playmol 
     renderdict              = {}
-    renderdict["nonbonded"] = list( zip( [j for sub in [molecule.unique_atom_keys for molecule in mol_list] for j in sub], nonbonded ) )
-    renderdict["bonds"]     = list( zip( [j for sub in [molecule.unique_bond_names for molecule in mol_list] for j in sub], bonds ) )
-    renderdict["angles"]    = list( zip( [j for sub in [molecule.unique_angle_names for molecule in mol_list] for j in sub], angles ) )
-    renderdict["torsions"]  = list( zip( [j for sub in [molecule.unique_torsion_names for molecule in mol_list] for j in sub], torsions ) )
+    renderdict["nonbonded"] = list( zip( flatten_list( molecule.unique_atom_keys for molecule in mol_list ), nonbonded ) )
+    renderdict["bonds"]     = list( zip( flatten_list( molecule.unique_bond_names for molecule in mol_list ), bonds ) )
+    renderdict["angles"]    = list( zip( flatten_list( molecule.unique_angle_names for molecule in mol_list ), angles ) )
+    renderdict["torsions"]  = list( zip( flatten_list( molecule.unique_torsion_names for molecule in mol_list ), torsions ) )
     
     # Generate force field file for playmol using jinja2 template
     os.makedirs( os.path.dirname(playmol_ff_path), exist_ok=True )

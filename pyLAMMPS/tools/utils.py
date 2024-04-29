@@ -3,8 +3,9 @@ import numpy as np
 from jinja2 import Template
 from typing import List, Dict, Any
 from .lammps_utils import LAMMPS_molecules
-from .playmol_utils import prepare_playmol_input, write_playmol_input
+from .general_utils import flatten_list
 from .molecule_utils import get_molecule_coordinates
+from .playmol_utils import prepare_playmol_input, write_playmol_input
 
 def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destination_folder: str,
                                     molecules_dict_list: List[Dict[str,str|float]], density: float,
@@ -20,7 +21,7 @@ def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destinat
                                 molecule_smiles_list = [ mol["smiles"] for mol in molecules_dict_list ],
                                 xyz_destinations = xyz_destinations, 
                                 template_xyz = template_xyz,
-                                verbose = True
+                                verbose = False
                             )
     
     # Build system with PLAYMOL
@@ -39,7 +40,7 @@ def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destinat
     playmol_xyz = write_playmol_input( mol_str = lammps_molecules.mol_str, 
                                         molecule_numbers = [ mol["number"] for mol in molecules_dict_list ], 
                                         density = density, 
-                                        nb_all = lammps_molecules.ff_all, 
+                                        nb_all = flatten_list(lammps_molecules.ff_all), 
                                         playmol_template = playmol_input_template,
                                         playmol_path = playmol_mol, 
                                         playmol_ff_path = playmol_relative_ff_path, 
