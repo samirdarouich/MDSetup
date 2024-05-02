@@ -6,6 +6,12 @@ folder: /home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/liquid_sy
 # System name
 name: butane_hexane
 
+# Box type (dimension is computed by the type and the density)
+box: 
+  type: cubic
+  z_x_relation: 1.0
+  z_y_relation: 1.0
+
 # Define the components
 molecules:
   - name: butane

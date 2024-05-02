@@ -161,11 +161,13 @@ class LAMMPS_setup():
 
             # Build system with PLAYMOL and write LAMMPS data if no initial system is provided
             if not initial_systems:
-                
                 lammps_data_file = generate_initial_configuration( lammps_molecules = lammps_molecules,
                                                                    destination_folder = state_folder,
                                                                    molecules_dict_list = system_molecules,
                                                                    density = density,
+                                                                   box_type = self.system_setup["box"]["type"],
+                                                                   z_x_relation = self.system_setup["box"]["z_x_relation"], 
+                                                                   z_y_relation= self.system_setup["box"]["z_y_relation"],
                                                                    template_xyz = self.system_setup["paths"]["template"]["xyz_file"],
                                                                    playmol_ff_template = self.system_setup["paths"]["template"]["playmol_ff_file"],
                                                                    playmol_input_template = self.system_setup["paths"]["template"]["playmol_input_file"],
@@ -556,7 +558,8 @@ class LAMMPS_setup():
 
     def analysis_free_energy( self, analysis_folder: str, solute: str, ensemble: str, 
                               method: str="MBAR", fraction: float=0.0, 
-                              decorrelate: bool=True, visualize: bool=False  ):
+                              decorrelate: bool=True, visualize: bool=False,
+                              coupling: bool=True ):
         """
         Extracts free energy difference for a specified folder and solute and ensemble.
 
@@ -567,6 +570,8 @@ class LAMMPS_setup():
         - method (str, optional): The free energy method that should be used. Defaults to "MBAR".
         - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
         - decorrelate (bool, optional): Whether to decorrelate the data before estimating the free energy difference. Defaults to True.
+        - coupling (bool, optional): If coupling (True) or decoupling (False) is performed. If decoupling, 
+                                     multiply free energy results *-1 to get solvation free energy. Defaults to True.
 
         Returns:
             None
@@ -613,10 +618,10 @@ class LAMMPS_setup():
             if len(files) == 0:
                 raise KeyError(f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}")
 
-            print(f"Temperature: {temperature}, Pressure: {pressure}\n   "+"\n   ".join(files) + "\n")
+            print(f"Temperature: {temperature} K, Pressure: {pressure} bar\n   "+"\n   ".join(files) + "\n")
             
             # Sort in copies 
-            mean_std_list = [ get_free_energy_difference(list(copy_files), temperature, method, fraction, decorrelate) for 
+            mean_std_list = [ get_free_energy_difference(list(copy_files), temperature, method, fraction, decorrelate, coupling) for 
                             _,copy_files in groupby( files, key=lambda x: int(copy_pattern.search(x).group(1)) ) 
                             ]
 

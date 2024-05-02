@@ -11,19 +11,34 @@ def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destinat
                                     molecules_dict_list: List[Dict[str,str|float]], density: float,
                                     template_xyz: str, playmol_ff_template: str, 
                                     playmol_input_template: str, playmol_bash_file: str,
-                                    lammps_data_template: str,
+                                    lammps_data_template: str,  box_type: str="cubic",
+                                    z_x_relation: float=1.0, z_y_relation: float=1.0,
                                     submission_command: str="qsub", on_cluster: bool=False ):   
                 
     # Get molecule xyz from pubchem
     xyz_destinations = [ f'{destination_folder}/build/{mol["name"]}.xyz' for mol in molecules_dict_list ]
-    get_molecule_coordinates( molecule_name_list = [ mol["name"] for mol in molecules_dict_list ], 
-                                molecule_graph_list = [ mol["graph"] for mol in molecules_dict_list ],
-                                molecule_smiles_list = [ mol["smiles"] for mol in molecules_dict_list ],
-                                xyz_destinations = xyz_destinations, 
-                                template_xyz = template_xyz,
-                                verbose = False
-                            )
-    
+    (raw_atom_numbers, final_atomtyps, 
+    final_atomsymbols, final_coordinates) = get_molecule_coordinates( molecule_name_list = [ mol["name"] for mol in molecules_dict_list ], 
+                                                                      molecule_graph_list = [ mol["graph"] for mol in molecules_dict_list ],
+                                                                      molecule_smiles_list = [ mol["smiles"] for mol in molecules_dict_list ],
+                                                                      verbose = False
+                                                                    )
+
+    # Write coordinates to xyz files.
+    for xyz_destination, raw_atom_number, final_atomtyp, final_coordinate in zip( xyz_destinations, raw_atom_numbers, final_atomtyps, final_coordinates ):
+        # Make folder if not already done
+        os.makedirs( os.path.dirname(xyz_destination), exist_ok = True)
+
+        # Write template for xyz file
+        with open(template_xyz) as file:
+            template = Template(file.read())
+
+        rendered = template.render( atno  = len(raw_atom_number), 
+                                    atoms = zip( final_atomtyp, final_coordinate ) )
+
+        with open(xyz_destination, "w") as fh:
+            fh.write( rendered )
+
     # Build system with PLAYMOL
     playmol_ff  = f'{destination_folder}/build/force_field.playmol'
     playmol_mol = f'{destination_folder}/build/build_script.mol'
@@ -58,7 +73,10 @@ def generate_initial_configuration( lammps_molecules: LAMMPS_molecules, destinat
                                         data_template = lammps_data_template,
                                         data_path = lammps_data_file,
                                         nmol_list = [ mol["number"] for mol in molecules_dict_list ],
-                                        density = density 
+                                        density = density,
+                                        box_type = box_type,
+                                        z_x_relation = z_x_relation,
+                                        z_y_relation = z_y_relation
                                     )
     
     if not os.path.exists(lammps_data_file):

@@ -7,7 +7,7 @@ import networkx as nx
 import pubchempy as pcp
 import matplotlib.pyplot as plt
 from jinja2 import Template
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 
 options = {
@@ -102,8 +102,8 @@ def assign_coos_via_distance_mat_local( coos_list: np.ndarray, distance_matrix: 
     
     return coos_list[idx], idx 
 
-def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list: List[str], molecule_smiles_list: List[str], 
-                              xyz_destinations: List[str], template_xyz: str, UA: bool=True, verbose: bool=False ) -> None:
+def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list: List[str], 
+                              molecule_smiles_list: List[str], verbose: bool=False ) -> Tuple[List[np.ndarray],List[np.ndarray],List[np.ndarray],List[np.ndarray]]:
 
     # Get molecule objects via PupChem and visualize them
     try:    
@@ -186,6 +186,9 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         raw_atom_numbers  = [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(raw_mol_list) ]
         raw_atom_types    = [ mol.atom_names for mol in raw_mol_list ]  
         final_atomtyps    = [ ["%s%d"%(a,i) for a,i in zip( atn, idx ) ] for atn,idx in zip( raw_atom_types, raw_atom_numbers ) ]
+        
+        # Get the atomic symbol of each atomtyp
+        final_atomsymbol  = cleaned_atomtyps
 
         # Get the correct coordinates from the PubChem coordinates
         final_coordinates = []
@@ -217,19 +220,4 @@ def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list
         # Just give every single atom molecule the origin as coordinates
         final_coordinates = [ np.array([0.0, 0.0, 0.0]) for _ in molecule_graph_list ]
     
-    # Write coordinates to xyz files. These coordinates are sorted in the way the molecule is defined in 
-    # the moleculegraph. This is important for step 2 of this workflow
-    for xyz_destination, raw_atom_number, final_atomtyp, final_coordinate in zip( xyz_destinations, raw_atom_numbers, final_atomtyps, final_coordinates ):
-        # Make folder if not already done
-        os.makedirs( os.path.dirname(xyz_destination), exist_ok = True)
-
-        # Write template for xyz file
-        with open(template_xyz) as file:
-            template = Template(file.read())
-
-        rendered = template.render( atno  = len(raw_atom_number), 
-                                    atoms = zip( final_atomtyp, final_coordinate ) )
-
-        with open(xyz_destination, "w") as fh:
-            fh.write( rendered )
-
+    return raw_atom_numbers, final_atomtyps, final_atomsymbol, final_coordinates

@@ -7,6 +7,27 @@ import numpy as np
 from scipy.constants import Avogadro
 from typing import List, Tuple, Dict, Any
 
+def unique_by_key(dicts: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
+    """
+    Filters a list of dictionaries, returning a list containing only the first occurrence of each unique value associated with a specified key.
+
+    Args:
+        dicts (List[Dict[str, Any]]): A list of dictionaries from which to filter unique items.
+        key (str): The key in the dictionaries used to determine uniqueness.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries that contains only the first dictionary for each unique value found under the specified key.
+    """
+    seen = []
+    unique_dicts = []
+    for d in dicts:
+        name = d[key]
+        if name not in seen:
+            seen.append(name)
+            unique_dicts.append(d)
+    return unique_dicts
+
+
 def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
     """
     Function that searches an (nested) python object and extract the item at the end of the key chain.
@@ -45,8 +66,6 @@ def flatten_list(lst: List[Any]):
     >> [1,2,3,4,5,6]
     """
     return [ item for sublist in lst for item in (sublist if isinstance(sublist, list) or isinstance(sublist, np.ndarray) else [sublist]) ]
-
-
 
 def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     """
@@ -139,7 +158,8 @@ def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
         raise KeyError("Wrong task defined: %s"%to_do)
 
 
-def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, box_type: str="cubic" ):
+def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, box_type: str="cubic",
+                       z_x_relation: float=1.0, z_y_relation: float=1.0 ):
     """
     Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
 
@@ -148,12 +168,14 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
     - density (float): The density of the mixture in kg/m^3.
     - box_type (str, optional): The type of box to calculate dimensions for. Currently, only 'cubic' is implemented.
+    - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
+    - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
 
     Returns:
     - dict: A dictionary with keys 'box_x', 'box_y', and 'box_z', each containing a list with the negative and positive half-lengths of the box in Angstroms.
 
     Raises:
-    - KeyError: If the `box_type` is not 'cubic', since other box types are not implemented yet.
+    - KeyError: If the `box_type` is not 'cubic' or 'orthorhombic', since other box types are not implemented yet.
     """
     # Account for mixture density
     molar_masses = np.array( molar_masses )
@@ -164,7 +186,7 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     # Average molar weight of mixture [g/mol]
     M_avg = np.dot( x, molar_masses )
 
-    # Total mole n = N/NA [mol] #
+    # Total mole n = N/NA [mol]
     n = np.sum( molecule_numbers ) / Avogadro
 
     # Total mass m = n*M, convert from g in kg. [kg]
@@ -173,8 +195,7 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     # Volume = mass / mass_density = kg / kg/m^3, convert from m^3 to A^3. [A^3]
     volume = mass / density * 1e30
 
-
-    # Compute box lenght L (in Angstrom) using the volume V=m/rho
+    # Compute box lenghts (in Angstrom) using the volume V=m/rho
     if box_type == "cubic":
         # Cubix box: L/2 = V^(1/3) / 2
         boxlen = volume**(1/3) / 2
@@ -183,7 +204,20 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
                 "box_y": [ -boxlen, boxlen ],
                 "box_z": [ -boxlen, boxlen ]
                 }
+    elif box_type == "orthorhombic":
+        # Orthorhombic: V = x * y * z, with x = z / z_x_relation and y = z / z_y_relation
+        # V = z^3 * 1 / z_x_relation * 1 / z_y_relation
+        # z = (V*z_x_relation*z_y_relation)^(1/3)
+        z = (volume * z_x_relation * z_y_relation)**(1/3)
+        x = z / z_x_relation
+        y = z / z_y_relation
+
+        box = { "box_x": [ -x/2, x/2 ],
+                "box_y": [ -y/2, y/2 ],
+                "box_z": [ -z/2, z/2 ]
+                }
+
     else:
-        raise KeyError(f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic'.")
+        raise KeyError(f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'.")
 
     return box

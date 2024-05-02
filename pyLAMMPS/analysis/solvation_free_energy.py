@@ -233,7 +233,7 @@ class TI_spline():
         pass
 
 def get_free_energy_difference( fep_files: List[str], T: float, method: str="MBAR", fraction: float=0.0, 
-                                decorrelate: bool=True ):
+                                decorrelate: bool=True, coupling: bool=True ):
     """
     Calculate the free energy difference using different methods.
 
@@ -243,7 +243,8 @@ def get_free_energy_difference( fep_files: List[str], T: float, method: str="MBA
      - method (str, optional): The method to use for estimating the free energy difference. Defaults to "MBAR".
      - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
      - decorrelate (bool, optional): Whether to decorrelate the data before estimating the free energy difference. Defaults to True.
-
+     - coupling (bool, optional): If coupling (True) or decoupling (False) is performed. If decoupling, 
+                                  multiply free energy results *-1 to get solvation free energy. Defaults to True.
     Returns:
      - df (pd.DataFrame): Pandas dataframe with mean, std and unit of the free energy difference
 
@@ -281,6 +282,10 @@ def get_free_energy_difference( fep_files: List[str], T: float, method: str="MBA
     
     # Extract mean and std
     mean, std = FE.delta_f_.iloc[0,-1], FE.d_delta_f_.iloc[0,-1]
+
+    # In case decoupling is performed, negate the value to get solvation free energy
+    if not coupling:
+        mean *= -1
 
     # BAR only provides the standard deviation from adjacent intermediates. Hence, to get the global std propagate the error
     if method == "BAR":

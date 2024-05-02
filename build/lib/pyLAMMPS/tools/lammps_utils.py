@@ -13,6 +13,8 @@ from .general_utils import merge_nested_dicts, flatten_list, get_system_volume
 
 #### to do:
 # include check if playmol defined atom name matches expected atom ff type 
+# data add '#' and change template to use join
+
 class LAMMPS_molecules():
     """
     This class writes LAMMPS data input for arbitrary mixtures using moleculegraph.
@@ -145,7 +147,8 @@ class LAMMPS_molecules():
         return
 
     def write_lammps_data( self, xyz_path: str, data_template: str, data_path: str,
-                           nmol_list: List[int], density: float):
+                           nmol_list: List[int], density: float, box_type: str="cubic",
+                           z_x_relation: float=1.0, z_y_relation: float=1.0 ):
         """
         Function that generates a LAMMPS data file.
 
@@ -183,7 +186,8 @@ class LAMMPS_molecules():
         molar_masses = [ sum( a["mass"] for a in mol_nb ) for mol_nb in self.ff_all ]
 
         box_dimensions = get_system_volume( molar_masses = molar_masses, molecule_numbers = nmol_list, 
-                                            density = density, box_type = "cubic" )
+                                            density = density, box_type = box_type, 
+                                            z_x_relation = z_x_relation, z_y_relation = z_y_relation )
 
         # Running counts of atoms, bonds, angles, and torsions.
         atom_count       = 0
@@ -402,14 +406,14 @@ def get_mixed_parameter( sigma_i: float, sigma_j: float, epsilon_i: float, epsil
     
     return np.round(sigma_ij, precision), np.round(epsilon_ij, precision)
 
-def get_bonded_style( bonded_numbers: List[int], bonded_dict: Dict[str,Any], n_eval: int=1000 ):
+def get_bonded_style( bonded_numbers: List[int], bonded_dict: List[Dict[str,Any]], n_eval: int=1000 ):
     """
     Get bonded styles and parameters for a given list of bonded numbers and bonded dictionary for LAMMPS ff input. 
     This can be used for bonds, angles, dihedrals, etc...
 
     Parameters:
     - bonded_numbers (List[int]): A list of integers representing the bonded numbers.
-    - bonded_dict (Dict[str, Any]): A dictionary containing the bonded styles and parameters.
+    - bonded_dict (List[Dict[str, Any]]): A list with dictionaries containing the bonded styles and parameters.
     - n_eval (int, optional): The number of evaluations. Default is 1000.
 
     Returns:
@@ -439,7 +443,7 @@ def get_coupling_lambdas( combined_lambdas: List[float], coupling: bool = True, 
 
     Parameters:
     - combined_lambdas (List[float]): A list of combined lambdas.
-    - coupling (bool, optional): Whether to calculate coupling lambdas (default is True).
+    - coupling (bool, optional): Whether to calculate coupling or decoupling lambdas. Defaults to true.
     - precision (int, optional): The precision of the lambdas (default is 3).
 
     Returns:
@@ -478,7 +482,7 @@ def write_fep_sampling( fep_template: str, fep_outfile: str, combined_lambdas: L
     - charge_list (List[List[int|float]]): A list of charge lists, where each charge list contains the charges for each atom in the system.
     - current_state (int): The index of the current state in the combined_lambdas list.
     - precision (int, optional): The precision of the lambda values. Defaults to 3.
-    - coupling (bool, optional): Whether to couple the lambda values. Defaults to True.
+    - coupling (bool, optional): Whether to use coupling or decoupling lambdas. Defaults to true.
     - kwargs (Dict[str,Any], optional): Additional keyword arguments to be passed to the template rendering. Defaults to {}.
 
     Returns:
