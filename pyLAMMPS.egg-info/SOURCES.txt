@@ -1,7 +1,7 @@
 README.md
 setup.py
 pyLAMMPS/__init__.py
-pyLAMMPS/module_lammps_input.py
+pyLAMMPS/module_lammps_setup.py
 pyLAMMPS.egg-info/PKG-INFO
 pyLAMMPS.egg-info/SOURCES.txt
 pyLAMMPS.egg-info/dependency_links.txt

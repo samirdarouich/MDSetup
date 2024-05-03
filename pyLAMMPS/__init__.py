@@ -1,1 +1,1 @@
-from .module_lammps_input import LAMMPS_setup
+from .module_lammps_setup import LAMMPS_setup

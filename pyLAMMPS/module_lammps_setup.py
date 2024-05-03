@@ -24,6 +24,9 @@ from .tools import ( LAMMPS_molecules, generate_initial_configuration,
 # Precision to write folders
 FOLDER_PRECISION = 1
 
+# Precision for job names
+JOB_PRECISION = 0
+
 class LAMMPS_setup():
     """
     This class sets up structured and FAIR LAMMPS simulations. It also has the capability to build a system based on a list of molecules.
@@ -215,8 +218,8 @@ class LAMMPS_setup():
                                                      job_template = self.system_setup["paths"]["template"]["job_file"], 
                                                      input_files = input_files, 
                                                      ensembles = ensembles,
-                                                     job_name = f'{self.system_setup["name"]}_{temperature:.0f}_{pressure:.0f}',
-                                                     job_out = f"job_{temperature:.0f}_{pressure:.0f}.sh", 
+                                                     job_name = f'{self.system_setup["name"]}_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}',
+                                                     job_out = f"job_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}.sh", 
                                                      off_set = off_set 
                                                     ) 
                                 )
@@ -304,8 +307,6 @@ class LAMMPS_setup():
 
         # Sort out molecules that are not present in system and add the solute as first molecule
         system_molecules = [ solute_molecule_dict ] + [ mol for mol in self.system_setup["molecules"] if mol["number"] > 0 ]
-
-        # Write LAMMPS force field file
 
         # Call the LAMMPS molecule class
         lammps_molecules = LAMMPS_molecules( mol_str = [ mol["graph"] for mol in system_molecules ],
@@ -415,8 +416,8 @@ class LAMMPS_setup():
                                                         job_template = self.system_setup["paths"]["template"]["job_file"], 
                                                         input_files = input_files, 
                                                         ensembles = ensembles,
-                                                        job_name = f'{self.system_setup["name"]}_{solute}_{temperature:.0f}_{pressure:.0f}',
-                                                        job_out = f"job_{temperature:.0f}_{pressure:.0f}.sh", 
+                                                        job_name = f'{self.system_setup["name"]}_{solute}_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}',
+                                                        job_out = f"job_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}.sh", 
                                                         off_set = off_set 
                                                         ) 
                                     )
@@ -434,7 +435,7 @@ class LAMMPS_setup():
             None
         """
         for temperature, pressure, job_files in zip( self.system_setup["temperature"], self.system_setup["pressure"], self.job_files ):
-            print(f"\nSubmitting simulations at Temperature = {temperature:.0f} K, Pressure = {pressure:.0f} bar\n")
+            print(f"\nSubmitting simulations at Temperature = {temperature:.{FOLDER_PRECISION}f} K, Pressure = {pressure:.{FOLDER_PRECISION}f} bar\n")
 
             for job_file in job_files:
                 print(f"Submitting job: {job_file}")
