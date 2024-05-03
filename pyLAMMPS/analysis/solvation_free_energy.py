@@ -292,7 +292,7 @@ def get_free_energy_difference( fep_files: List[str], T: float, method: str="MBA
         std = np.sqrt( ( np.array( [ FE.d_delta_f_.iloc[i, i+1] for i in range(FE.d_delta_f_.shape[0]-1) ] )**2 ).sum() )
 
     # Convert from dimensionless to kJ/mol
-    df = pd.DataFrame( { "property": "solvation_free_energy", "mean": mean * R * T, "std": std * R * T, "unit": "kJ/mol" }, index = [0] )
+    df = pd.DataFrame( { "property": "solvation_free_energy", "mean": mean * R * T / 1000, "std": std * R * T / 1000, "unit": "kJ/mol" }, index = [0] )
 
     return df
 

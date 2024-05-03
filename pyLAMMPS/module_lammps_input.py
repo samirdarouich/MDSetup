@@ -21,6 +21,9 @@ from .tools import ( LAMMPS_molecules, generate_initial_configuration,
 ## to do:
 # add decorrelation in postprocessing
 
+# Precision to write folders
+FOLDER_PRECISION = 1
+
 class LAMMPS_setup():
     """
     This class sets up structured and FAIR LAMMPS simulations. It also has the capability to build a system based on a list of molecules.
@@ -157,7 +160,7 @@ class LAMMPS_setup():
             
             job_files = []
             # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
+            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
 
             # Build system with PLAYMOL and write LAMMPS data if no initial system is provided
             if not initial_systems:
@@ -341,7 +344,7 @@ class LAMMPS_setup():
             
             job_files = []
             # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
+            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
 
             # Build system with PLAYMOL and write LAMMPS data if no initial system is provided
             if not initial_systems:
@@ -479,7 +482,7 @@ class LAMMPS_setup():
                                                     ) ):
             
             # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
+            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
 
             # Search for available copies
             files = glob.glob( f"{state_folder}/copy_*/{ensemble}/{ensemble_name}.{output_suffix}" )
@@ -605,7 +608,7 @@ class LAMMPS_setup():
         for temperature, pressure in zip( self.system_setup["temperature"], self.system_setup["pressure"] ):
             
             # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.1f}_pres_{pressure:.1f}"
+            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
 
             # Search for available copies
             files = glob.glob( f"{state_folder}/copy_*/lambda_*/{ensemble}/{ensemble_name}.fep" )
@@ -662,7 +665,7 @@ class LAMMPS_setup():
             
             work_json( json_path, { "temperature": temperature, "pressure": pressure,
                                     ensemble: { method : { "data": json_data, "paths": files, "fraction_discarded": fraction, 
-                                                "combined_states": combined_states } } }, "append" )
+                                                           "decorrelate": decorrelate, "combined_states": combined_states } } }, "append" )
         
             # Add the extracted values for the analysis_folder and ensemble to the class
             merge_nested_dicts( self.analysis_dictionary, { (temperature, pressure): { analysis_folder: { ensemble: final_df }  } } )

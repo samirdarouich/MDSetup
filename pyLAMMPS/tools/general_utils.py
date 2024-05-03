@@ -5,27 +5,34 @@ import json
 import numpy as np
 
 from scipy.constants import Avogadro
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Callable
 
-def unique_by_key(dicts: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
+def find_key_by_value(my_dict: Dict[str,Any], target_value: str|float|int):
+    for key, values in my_dict.items():
+        if target_value in values:
+            return key
+    raise KeyError(f"Target value '{target_value}' is not pressented in any value of the dictionary.")
+
+
+def unique_by_key(iterables: List[Dict[str, Any]|List[Any]], key: str|int) -> List[Dict[str, Any]]:
     """
-    Filters a list of dictionaries, returning a list containing only the first occurrence of each unique value associated with a specified key.
+    Filters a list of dictionaries or other iterables, returning a list containing only the first occurrence of each unique value associated with a specified key.
 
     Args:
-        dicts (List[Dict[str, Any]]): A list of dictionaries from which to filter unique items.
-        key (str): The key in the dictionaries used to determine uniqueness.
+        dicts (List[Dict[str, Any]|List[Any]]): A list of dictionaries or lists from which to filter unique items.
+        key (str|int): The key in the dictionaries or list used to determine uniqueness.
 
     Returns:
         List[Dict[str, Any]]: A list of dictionaries that contains only the first dictionary for each unique value found under the specified key.
     """
     seen = []
-    unique_dicts = []
-    for d in dicts:
+    unique_iterables = []
+    for d in iterables:
         name = d[key]
         if name not in seen:
             seen.append(name)
-            unique_dicts.append(d)
-    return unique_dicts
+            unique_iterables.append(d)
+    return unique_iterables
 
 
 def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
@@ -57,15 +64,26 @@ def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
 
     return d
 
-def flatten_list(lst: List[Any]):
+def flatten_list(lst: List[List|np.ndarray|float|int|str], filter_function: Callable[...,bool]=lambda p: True ):
     """
-    Function that flattens a list with sublists, of items.
+    Function that flattens a list with sublists, of items. Possibility to filter out certain types is possible via filter function.
+
+    Parameters:
+     - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can contain sublists or numpy arrays.
+     - filter_function (Callable[...,bool]): Callable to filter out certain values if wanted. Defaults to 'lambda p: True', so no filter aplied.
+    
+    Returns:
+     - filtered_list (List[float|int|str]): Flattended and (filtered) list.
+    
     E.g: 
     test = [1,2,3,[4,5,6]] 
     flatten_list(a)
     >> [1,2,3,4,5,6]
     """
-    return [ item for sublist in lst for item in (sublist if isinstance(sublist, list) or isinstance(sublist, np.ndarray) else [sublist]) ]
+
+    flattened_list = [ item for sublist in lst for item in (sublist if isinstance(sublist, list) or isinstance(sublist, np.ndarray) else [sublist]) ]
+    filtered_list = [ item for item in flattened_list if filter_function(item) ]
+    return filtered_list
 
 def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     """

@@ -12,6 +12,8 @@ pyLAMMPS/analysis/general_analysis.py
 pyLAMMPS/analysis/mechanical_properties.py
 pyLAMMPS/analysis/solvation_free_energy.py
 pyLAMMPS/tools/__init__.py
+pyLAMMPS/tools/convert_functions.py
+pyLAMMPS/tools/convert_utils.py
 pyLAMMPS/tools/general_utils.py
 pyLAMMPS/tools/lammps_utils.py
 pyLAMMPS/tools/molecule_utils.py

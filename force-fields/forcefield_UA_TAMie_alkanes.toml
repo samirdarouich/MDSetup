@@ -1,3 +1,6 @@
+# Define force field format
+format = "LAMMPS"
+
 [atoms.CH3_alkane]
 name = "CH3_alkane"
 mass = 15.035
@@ -24,42 +27,35 @@ coulomb_style = ""
 
 [bonds."[CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane",]
-type = 1
 p = [ 200.0, 1.74 ]
 style = "harmonic"
 
 [bonds."[CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane",]
-type = 1
 p = [ 200.0, 1.54 ]
 style = "harmonic"
 
 [angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
-type = 2
 p = [ 62.1001, 114.0 ]
 style = "harmonic"
 
 [angles."[CH2_alkane][CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane",]
-type = 2
 p = [ 62.1001, 114.0 ]
 style = "harmonic"
 
 [torsions."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
-type = 1
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
 
 [torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
-type = 1
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
 
 [torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
-type = 1
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
