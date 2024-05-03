@@ -17,14 +17,16 @@ setup(
     license_files = ('LICENSE'),
     packages=find_packages(),
     install_requires=['numpy',
-                      'toml',
-                      'jinja2',
-                      'scipy',
-                      'Pubchempy',
+                      'pandas',
                       'seaborn',
+                      'scipy',
+                      'toml',
+                      'PyYAML',
+                      'jinja2',
+                      'Pubchempy',
+                      'alchemlyb',
                       'moleculegraph @ git+https://github.com/maxfleck/moleculegraph.git'
                       ],
-
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Users",

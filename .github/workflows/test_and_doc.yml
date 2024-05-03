@@ -38,7 +38,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: build your documentation into docs
       run: |
-        pdoc moleculegraph/ -o docs/
+        pdoc pyLAMMPS/ -o docs/
     - uses: actions/upload-pages-artifact@v3
       with:
         path: docs/
