@@ -4,3 +4,4 @@ jinja2
 scipy
 Pubchempy
 seaborn
+moleculegraph@ git+https://github.com/maxfleck/moleculegraph.git

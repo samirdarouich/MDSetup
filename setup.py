@@ -21,8 +21,9 @@ setup(
                       'jinja2',
                       'scipy',
                       'Pubchempy',
-                      'seaborn'
-                      ],
+                      'seaborn',
+                      'moleculegraph @ git+https://github.com/maxfleck/moleculegraph.git'
+                      ]
 
     classifiers=[
         "Development Status :: 1 - Planning",

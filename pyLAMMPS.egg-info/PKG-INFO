@@ -17,3 +17,4 @@ Requires-Dist: jinja2
 Requires-Dist: scipy
 Requires-Dist: Pubchempy
 Requires-Dist: seaborn
+Requires-Dist: moleculegraph@ git+https://github.com/maxfleck/moleculegraph.git
