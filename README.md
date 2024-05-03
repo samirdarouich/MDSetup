@@ -1,7 +1,7 @@
 <h1 align="center">
   pyLAMMPS
 </h1>
-<p align="center">This repository enables users to perform molecular dynamics simulations utilizing LAMMPS. It can either start from given parameter and data file, or create them itself by using moleculegraph, PLAYMOL and supplementary Python code. YAML files are utilized to parse simulation settings, such as ensemble definitions, sampling properties and system specific input. </p>
+<p align="center">This repository enables users to perform molecular dynamics simulations utilizing LAMMPS. It can either start from given parameter and data file, or create them itself by using moleculegraph, PLAYMOL and supplementary Python code. YAML files are utilized to parse simulation settings, such as ensemble definitions, sampling properties and system specific input. Online documentation is available at: https://samirdarouich.github.io/pyLAMMPS/pyLAMMPS.html </p>
 
 
 ## 🚀 Getting Started
