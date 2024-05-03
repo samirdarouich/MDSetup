@@ -15,14 +15,14 @@ PRECISION = 4
 
 # MAPPING DICTS
 
-BOND_MAP = { 1: convert_harmonic_bond, "harmonic": convert_harmonic_bond, 
+BOND_MAP = { "1": convert_harmonic_bond, "harmonic": convert_harmonic_bond, 
             }
 
-ANGLE_MAP = { 1: convert_harmonic_angle, "harmonic": convert_harmonic_angle 
+ANGLE_MAP = { "1": convert_harmonic_angle, "harmonic": convert_harmonic_angle 
              }
 
-DIHEDRAL_MAP = { 1: convert_harmonic_dihedral, "harmonic": convert_harmonic_dihedral,
-                 3: convert_opls_dihedral, "opls": convert_opls_dihedral 
+DIHEDRAL_MAP = { "1": convert_harmonic_dihedral, "harmonic": convert_harmonic_dihedral,
+                 "3": convert_opls_dihedral, "opls": convert_opls_dihedral 
                 }
 
 
@@ -571,4 +571,3 @@ def extract_ff_file( ff_file: str ):
                 in_atom_section = True
 
     return mixing, fudgeLJ, fudgeQQ, atom_section, bond_section, angle_section, dihedral_section
-
