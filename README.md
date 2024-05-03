@@ -8,21 +8,16 @@
 
 Get started by running the following command to install:
 
-1. moleculegraph
 ```
-git clone https://github.com/maxfleck/moleculegraph
-cd moleculegraph
-pip install -I .
-```
-2. pyLAMMPS
+1. pyLAMMPS
 ```
 git clone https://github.com/samirdarouich/pyLAMMPS.git
 cd pyLAMMPS
 pip install -I .
 ```
-3. PLAYMOL
+2. PLAYMOL
 ```
-git clone git clone https://github.com/atoms-ufrj/playmol
+git clone https://github.com/atoms-ufrj/playmol
 cd playmol
 make
 ```
