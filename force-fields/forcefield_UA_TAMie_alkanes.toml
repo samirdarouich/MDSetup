@@ -10,6 +10,7 @@ n = 14.0
 m = 6
 cut = 14.0
 charge = 0.0
+atom_no = 6
 vdw_style = "mie/cut"
 coulomb_style = ""
 
@@ -22,6 +23,7 @@ n = 14.0
 m = 6
 cut = 14.0
 charge = 0.0
+atom_no = 6
 vdw_style = "mie/cut"
 coulomb_style = ""
 

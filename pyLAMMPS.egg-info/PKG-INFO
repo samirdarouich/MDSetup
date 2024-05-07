@@ -18,6 +18,7 @@ Requires-Dist: scipy
 Requires-Dist: toml
 Requires-Dist: PyYAML
 Requires-Dist: jinja2
+Requires-Dist: rdkit
 Requires-Dist: Pubchempy
 Requires-Dist: alchemlyb
 Requires-Dist: moleculegraph@ git+https://github.com/maxfleck/moleculegraph.git
