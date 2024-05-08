@@ -11,8 +11,8 @@ from itertools import groupby
 from .analysis import read_lammps_output
 from typing import Any, List, Dict, Callable
 from .tools.general_utils import work_json, merge_nested_dicts, map_function_input, flatten_list
-from pyLAMMPS.analysis.solvation_free_energy import ( get_free_energy_difference, visualize_dudl, 
-                                                      extract_combined_states )
+from .analysis.solvation_free_energy import ( get_free_energy_difference, visualize_dudl, 
+                                                extract_combined_states )
 from .tools import ( LAMMPS_molecules, generate_initial_configuration, 
                      generate_input_files, generate_job_file, 
                      write_lammps_ff, write_coupled_lammps_ff, 
