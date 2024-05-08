@@ -1,18 +1,18 @@
 <h1 align="center">
-  pyLAMMPS
+  pyLMP
 </h1>
 <p align="center">This repository enables users to perform molecular dynamics simulations utilizing LAMMPS. It can either start from given parameter and data file, or create them itself by using moleculegraph, PLAYMOL and supplementary Python code. YAML files are utilized to parse simulation settings, such as ensemble definitions, sampling properties and system specific input.  </p>
 
-Online documentation is available at: https://samirdarouich.github.io/pyLAMMPS
+Online documentation is available at: https://samirdarouich.github.io/pyLMP
 
 ## 🚀 Getting Started
 
 Get started by running the following command to install:
 
-1. pyLAMMPS
+1. pyLMP
 ```
-git clone https://github.com/samirdarouich/pyLAMMPS.git
-cd pyLAMMPS
+git clone https://github.com/samirdarouich/pyLMP.git
+cd pyLMP
 pip install -I .
 ```
 2. PLAYMOL
@@ -25,10 +25,10 @@ make
 
 ## 🐍 Example program
 
-# pyLAMMPS
+# pyLMP
 
 This module enables users to perform molecular dynamics simulations utilizing LAMMPS with any force field provided as toml/json file. 
-There is the possiblity to provide data and LAMMPS compatible parameter files, or to build a system and write all necessary input using pyLAMMPS, PLAYMOL, and moleculegraph.
+There is the possiblity to provide data and LAMMPS compatible parameter files, or to build a system and write all necessary input using pyLMP, PLAYMOL, and moleculegraph.
 
 1) Read in the YAML files to define the system and simulation/sampling settings.
 
@@ -60,7 +60,7 @@ simulation_times = [ 0, 10.0 ]
 # Define initial systems, in case the simulation should be continued from a prior simulation.
 # In that case, provide one initial structure for each temperature & pressure state.
 # If the simulation should start from an initial configuration, provide an empty list.
-initial_systems = [ "/home/st/st_st/st_ac137577/workspace/software/pyLAMMPS/example/butane_hexane/md_thermo/temp_343_pres_4/build/system.data" ]
+initial_systems = [ "/home/st/st_st/st_ac137577/workspace/software/pyLMP/example/butane_hexane/md_thermo/temp_343_pres_4/build/system.data" ]
 
 # Define if there is already a force field file
 ff_file = ""
