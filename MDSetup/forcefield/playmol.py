@@ -4,8 +4,8 @@ import subprocess
 import moleculegraph
 from jinja2 import Template
 from typing import List, Dict
-from .submission_utils import submit_and_wait
-from .general_utils import flatten_list
+from ..tools.submission import submit_and_wait
+from ..tools.general import flatten_list
 
 def prepare_playmol_input(mol_str: List[str], ff: Dict[str,Dict[str,float]], playmol_template: str, playmol_ff_path: str):
     """

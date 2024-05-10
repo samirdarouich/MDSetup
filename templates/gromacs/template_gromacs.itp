@@ -1,0 +1,38 @@
+; itp file automaticly created by pyGROMACS
+
+[ moleculetype ]
+; name  nrexcl
+{{residue}}   {{nrexcl}}
+
+[ atoms ]
+; nr     type     resnr    residu     atom      cgnr      charge        mass
+{% for atom in atoms %}
+   {{atom|join('   ')}}
+{%- endfor %}
+
+{%- if bonds|length > 0%}
+
+[ bonds ]
+;  ai    aj
+{% for bond in bonds %}
+   {{bond|join('   ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if angles|length > 0%}
+
+[ angles ]
+;  ai    aj    ak
+{% for angle in angles %}
+   {{angle|join('   ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if dihedrals|length > 0%}
+
+[ dihedrals ]
+;  ai    aj    ak    al
+{% for dihedral in dihedrals %}
+   {{dihedral|join('   ')}}
+{%- endfor %}
+{%- endif %}

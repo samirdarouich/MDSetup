@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "pyLMP"
+name = "MDSetup"
 version = "0.0.1"
-description = ""
+description = "This tool allows to setup and analyze molecular dynamic (MD) simulations for LAMMPS and GROMACS"
 authors = ["Samir Darouich <samir.darouich@itt.uni-stuttgart.de>"]
 readme = "README.md"
-packages = [{include = "pyLMP"}]
-repository = "https://github.com/samirdarouich/pyLMP.git"
-documentation = "https://samirdarouich.github.io/pyLMP"
+packages = [{include = "MDSetup"}]
+repository = "https://github.com/samirdarouich/MDSetup.git"
+documentation = "https://samirdarouich.github.io/MDSetup"
 
 [tool.poetry.dependencies]
 python = "^3.9"

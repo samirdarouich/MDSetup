@@ -1,0 +1,54 @@
+; topology file automaticly created by pyGROMACS
+
+[ defaults ]
+; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ
+1               {{comb_rule}}               yes             {{fudgeLJ}}     {{fudgeQQ}}
+
+[ atomtypes ]
+; name      at.num  mass     charge ptype  sigma      epsilon
+{% for atom in atoms %}
+   {{atom|join('   ')}}
+{%- endfor %}
+
+{%- if bonds|length > 0%}
+
+[ bondtypes ]
+; i    j  func       b0          kb
+{% for bond in bonds %}
+   {{bond|join('   ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if angles|length > 0%}
+
+[ angletypes ]
+; i    j    k func       th0         cth
+{% for angle in angles %}
+   {{angle|join('   ')}}
+{%- endfor %}
+{%- endif %}
+
+{%- if dihedrals|length > 0%}
+
+[ dihedrals ]
+;   ai    aj    ak    al funct  definition
+{% for dihedral in dihedrals %}
+   {{dihedral|join('   ')}}
+{%- endfor %}
+{%- endif %}
+
+
+; Include structure itp file 
+{% for itp_file in itp_files %}
+#include "{{itp_file}}"
+{%- endfor %}
+
+
+[ system ]
+{{system_name}}
+
+[ molecules ]
+;molecule name   nr.
+{% for res, no in residue_dict.items() %}
+{{res}}             {{no}}
+{%- endfor %}

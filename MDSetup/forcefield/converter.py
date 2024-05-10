@@ -2,13 +2,16 @@ import os
 import numpy as np
 import yaml, toml, json
 
-from typing import Dict
+from typing import Dict, List
 from jinja2 import Template
-from .general_utils import flatten_list, unique_by_key, find_key_by_value
-from .convert_functions import ( convert_harmonic_bond, convert_harmonic_angle, 
-                                 convert_harmonic_dihedral, convert_opls_dihedral,
-                                 source_destination_error 
+from ..tools.general import unique_by_key, find_key_by_value
+from .convertfunctions import ( convert_harmonic_bond, convert_harmonic_angle, 
+                                convert_harmonic_dihedral, convert_opls_dihedral,
+                                source_destination_error 
                                 )
+
+from moleculegraph.molecule_utils import sort_force_fields, sort_graph_key
+from .reader import extract_data_file, extract_ff_file, extract_itp_file, extract_top_file
 
 # Define precision of converting
 PRECISION = 4
@@ -63,6 +66,8 @@ def convert_dihedral( source: str, destination: str, dihedral: Dict[str,str|floa
 
     return new_dihedral
 
+
+# Convert force field from LAMMPS to GROMACS / other way around
 def convert_force_field( force_field_path: str, output_path: str ):
     
     if not os.path.exists(force_field_path):
@@ -111,7 +116,155 @@ def convert_force_field( force_field_path: str, output_path: str ):
     elif ".toml" in output_path:
         toml.dump( converted_ff, open(output_path,"w") ) 
 
+def extract_force_field_gromacs( itp_files: List[str], top_file: str, output_path: str ):
+    
+    print("Starting to extract GROMACS force field...\n")
 
+    # Define force field dictionary
+    force_field = { "format": "GROMACS", "atoms": {}, "bonds": {}, "angles": {}, "torsions": {} }
+
+    # Read in topology
+    default_section, atom_section, bond_section, angle_section, dihedral_section = extract_top_file( top_file )
+
+    # Read in itp_files
+    itp_atoms = []
+    itp_bonds = []
+    itp_angles = []
+    itp_dihedrals = []
+
+    for itp_file in itp_files:
+        _, itp_atom, itp_bond, itp_angle, itp_dihedral = extract_itp_file( itp_file )
+        itp_atoms.extend( itp_atom )
+        itp_bonds.extend( itp_bond )
+        itp_angles.extend( itp_angle )
+        itp_dihedrals.extend( itp_dihedral )
+
+    # Define mapping from atom no to force field key.
+    atom_map = { atom[0]: [] for atom in atom_section }
+    for atom in itp_atoms:
+        atom_map[ atom[1] ].append( atom[0] )
+
+    # Define charge map, in case itp and topology has different charges
+    # First use topology charges and then overwrite with itp charges
+    charge_map = { atom[0]: float(atom[3]) for atom in atom_section } 
+    charge_map.update( { atom[1]: float(atom[6]) for atom in itp_atoms } )
+
+    # If topology has no informaton about bonds, angles, dihedrals, but itp does, add the information.
+    if any( itp_bonds ) and not bond_section:  
+        bond_section = []
+        for bond in itp_bonds:
+            name1, name2, style, *p = bond
+            name1 = find_key_by_value( atom_map, name1 )
+            name2 = find_key_by_value( atom_map, name2 )
+
+            bond_section.append( [ name1, name2, style, *p ] )
+    
+    if any( itp_angles ) and not angle_section:
+        angle_section = []
+        for angle in itp_angles:
+            name1, name2, name3, style, *p = angle
+            name1 = find_key_by_value( atom_map, name1 )
+            name2 = find_key_by_value( atom_map, name2 )
+            name3 = find_key_by_value( atom_map, name3 )
+            
+            angle_section.append( [ name1, name2, name3, style, *p ] )
+
+    if any( itp_dihedrals ) and not dihedral_section:
+        dihedral_section = []
+        for dihedral in itp_dihedrals:
+            name1, name2, name3, name4, style, *p = dihedral
+            name1 = find_key_by_value( atom_map, name1 )
+            name2 = find_key_by_value( atom_map, name2 )
+            name3 = find_key_by_value( atom_map, name3 )
+            name4 = find_key_by_value( atom_map, name4 )
+
+            dihedral_section.append( [ name1, name2, name3, name4, style, *p ] )
+
+
+    # Write information
+
+    for atom in atom_section:
+        name, atom_no, mass, _, _, sigma, epsilon = atom
+        charge = charge_map[name]
+        force_field["atoms"][name] = { "name": name,
+                                        "mass": round(float(mass),PRECISION),
+                                        "charge": float(charge),
+                                        "sigma": round(float(sigma),PRECISION),
+                                        "epsilon": round(float(epsilon),PRECISION),
+                                        "atom_no": int(atom_no)
+                                    }
+
+    for bond in bond_section:
+        name1, name2, style, *p = bond
+
+        graph_key = sort_graph_key( "[" + "][".join([name1,name2]) + "]" )
+        name_list = sort_force_fields( [name1,name2] ).tolist()
+
+        if "#" in p:
+            p = p[:p.index("#")]
+        
+        force_field["bonds"][graph_key] = { "list": name_list,
+                            "p": [round(float(pp),PRECISION) for pp in p],
+                            "style": style
+                        }
+        
+    for angle in angle_section:
+        name1, name2, name3, style, *p = angle
+
+        graph_key = sort_graph_key( "[" + "][".join([name1,name2,name3]) + "]" )
+        name_list = sort_force_fields( [name1,name2,name3] ).tolist()
+
+        if "#" in p:
+            p = p[:p.index("#")]
+        
+        force_field["angles"][graph_key] = { "list": name_list,
+                            "p": [round(float(pp),PRECISION) for pp in p],
+                            "style": style
+                            }
+
+    for dihedral in dihedral_section:
+        name1, name2, name3, name4, style, *p = dihedral
+
+        graph_key = sort_graph_key( "[" + "][".join([name1,name2,name3,name4]) + "]" )
+        name_list = sort_force_fields( [name1,name2,name3,name4] ).tolist()
+
+        if "#" in p:
+            p = p[:p.index("#")]
+        
+        force_field["torsions"][graph_key] = { "list": name_list,
+                                "p": [round(float(pp),PRECISION) for pp in p],
+                                "style": style
+                                }
+
+    # In case bonds, anlges, or dihedrals are not provided, add dummy entries
+    if not force_field["bonds"]:
+        force_field["bonds"]["dummy"] = { "list": [ "dummy", "dummy" ],
+                                        "p": [],
+                                        "style": 0 
+                                        }
+    if not force_field["angles"]:
+        force_field["angles"]["dummy"] = { "list": [ "dummy", "dummy", "dummy" ],
+                                        "p": [],
+                                        "style": 0 
+                                        }
+    if not force_field["torsions"]:
+        force_field["torsions"]["dummy"] = { "list": [ "dummy", "dummy", "dummy", "dummy" ],
+                                        "p": [],
+                                        "style": 0 
+                                        }
+    
+    output_path = os.path.abspath( output_path )
+
+    os.makedirs( os.path.dirname( output_path ), exist_ok = True )
+
+    if ".yaml" in output_path:
+        yaml.dump( force_field, open(output_path,"w") )
+    elif ".json" in output_path:
+        json.dump( force_field, open(output_path,"w"), indent=2 )
+    elif ".toml" in output_path:
+        toml.dump( force_field, open(output_path,"w") ) 
+
+    print("Success!")
 
 class LMP2GRO:
 
@@ -330,244 +483,3 @@ class LMP2GRO:
 
         print("Success!\n")
 
-### Functions to read out LAMMPS data file and force field
-
-def represents_number(s):
-    try:
-        float(s)
-        return False
-    except ValueError:
-        return True
-        
-
-def extract_data_file( data_file: str ):
-
-    with open(data_file) as f:
-        lines = f.readlines()
-
-    # Convert from angstrom in nm
-    box_section = []
-    for line in lines[:lines.index("Masses\n")]:
-        if "xlo xhi" in line:
-            xlo,xhi,_,_ = line.split() 
-            box_section.append( ( float(xhi) - float(xlo) ) / 10 )
-        if "ylo yhi" in line:
-            ylo,yhi,_,_ = line.split() 
-            box_section.append( ( float(yhi) - float(ylo) ) / 10 )
-        if "zlo zhi" in line:
-            zlo,zhi,_,_ = line.split() 
-            box_section.append( ( float(zhi) - float(zlo) ) / 10 )
-            break
-    
-    mass_section = [ line.split() for line in lines[ lines.index("Masses\n")+1 : lines.index("Atoms\n") ] if line.strip() and not line.startswith("#") ]
-    atom_section = []
-    bond_section = []
-    angle_section = []
-    dihedral_section = []
-
-    in_atom_section = False
-    in_bond_section = False
-    in_angle_section = False
-    in_dihedral_section = False
-
-    for line in lines:
-        if in_atom_section:
-            if line.startswith("Bonds"):
-                in_atom_section = False
-                in_bond_section = True
-            elif line.strip() and not line.startswith("#"):
-                atom_section.append(line.split())
-        elif in_bond_section:
-            if line.startswith("Angles"):
-                in_bond_section = False
-                in_angle_section = True
-            elif line.strip() and not line.startswith("#"):
-                bond_section.append(line.split())
-        elif in_angle_section:
-            if line.startswith("Dihedrals"):
-                in_angle_section = False
-                in_dihedral_section = True
-            elif line.strip() and not line.startswith("#"):
-                angle_section.append(line.split())
-        elif in_dihedral_section:
-            if line.strip() and not line.startswith("#"):
-                dihedral_section.append(line.split())
-        elif line.startswith("Atoms"):
-            in_atom_section = True
-    
-    return box_section, mass_section, atom_section, bond_section, angle_section, dihedral_section
-
-def extract_ff_file( ff_file: str ):
-
-    with open(ff_file) as f:
-        lines = f.readlines()
-
-    # Extract mixing rule and scaling of 1-4 interactions
-    mixing = [ line for line in lines if "pair_modify" in line and "mix" in line ]
-
-    # Default LAMMPS mixing is geometric, this is combination rule n°3 in GROMACS
-    if not mixing:
-        mixing = "3"
-    else:
-        if "arithmetic" in mixing[-1]:
-            mixing = "2"
-        elif "geometric" in mixing[-1]:
-            mixing = "3"
-        else:
-            raise KeyError("Mixing rule sixthpower is not available in GROMACS")
-
-    special_bonds = [ line for line in lines if "special_bonds" in line ]
-
-    # Default LAMMPS uses 0 scaling for 1-4 pair interactions
-    if not special_bonds:
-        fudgeLJ, fudgeQQ = "0.0", "0.0"
-    else:
-        if "lj/coul" in special_bonds[-1]:
-            idx = special_bonds[-1].split().index("lj/coul")
-            fudgeLJ, fudgeQQ = special_bonds[-1].split()[idx+3]*2
-        elif "lj" in special_bonds[-1] and "coul" in special_bonds[-1]:
-            idx = special_bonds[-1].split().index("lj")
-            fudgeLJ = special_bonds[-1].split()[idx+3]
-            idx = special_bonds[-1].split().index("coul")
-            fudgeQQ = special_bonds[-1].split()[idx+3]
-        else:
-            fudgeLJ, fudgeQQ = "0.0", "0.0"
-
-    # Check which format is provided (in input or data format)
-    style_flag = any( "pair_coeff" in line for line in lines )
-
-    # Filter out numbers from the styles (cut offs etc)
-    atom_styles = flatten_list( [line.split()[1:] for line in lines if line.startswith("pair_style")], represents_number )
-    bond_styles = flatten_list( [line.split()[1:] for line in lines if line.startswith("bond_style")], represents_number )
-    angle_styles = flatten_list( [line.split()[1:] for line in lines if line.startswith("angle_style")], represents_number )
-    dihedral_styles = flatten_list( [line.split()[1:] for line in lines if line.startswith("dihedral_style")], represents_number )
-
-    atom_hybrid = len(atom_styles) > 1
-    bond_hybrid = len(bond_styles) > 1
-    angle_hybrid = len(angle_styles) > 1
-    dihedral_hybrid = len(dihedral_styles) > 1
-
-    atom_section = []
-    bond_section = []
-    angle_section = []
-    dihedral_section = []
-
-    in_atom_section = False
-    in_bond_section = False
-    in_angle_section = False
-    in_dihedral_section = False
-
-    if style_flag:
-
-        for line in lines:
-            # Only care about vdW pair interactions
-            if line.startswith("pair_coeff") and not "coul" in line:
-                if not atom_hybrid:
-                    _, i, j, epsilon, sigma, *params = line.split()
-                else:
-                    _, i, j, astyle, epsilon, sigma, *params = line.split()
-                
-                if i == j:
-                    atom_section.append( [ i, sigma, epsilon ] )
-
-            if line.startswith("bond_coeff"):
-                if not bond_hybrid:
-                    bstyle = bond_styles[0]
-                    _, i, *params = line.split()
-                else:
-                    _, i, bstyle, *params = line.split()
-
-                if "#" in params:
-                    params = params[:params.index("#")]
-
-                bond_section.append( [ i, bstyle, params ] )
-
-            if line.startswith("angle_coeff"):
-                if not angle_hybrid:
-                    astyle = angle_styles[0]
-                    _, i, *params = line.split()
-                else:
-                    _, i, astyle, *params = line.split()
-
-                if "#" in params:
-                    params = params[:params.index("#")]
-
-                angle_section.append( [ i, astyle, params ] )
-
-            if line.startswith("dihedral_coeff"):
-                if not dihedral_hybrid:
-                    dstyle = dihedral_styles[0]
-                    _, i, *params = line.split()
-                else:
-                    _, i, dstyle, *params = line.split()
-                
-                if "#" in params:
-                    params = params[:params.index("#")]
-
-                dihedral_section.append( [ i, dstyle, params ] )
-
-    else:
-
-        for line in lines:
-            if in_atom_section:
-                if line.startswith("Bond Coeffs"):
-                    in_atom_section = False
-                    in_bond_section = True
-                elif line.strip() and not line.startswith("#"):
-                    if not atom_hybrid:
-                        i, epsilon, sigma, *params = line.split()
-                    else:
-                        i, astyle, epsilon, sigma, *params = line.split()
-                    
-                    atom_section.append( [ i, sigma, epsilon ] )
-
-            elif in_bond_section:
-                if line.startswith("Angle Coeffs"):
-                    in_bond_section = False
-                    in_angle_section = True
-                elif line.strip() and not line.startswith("#"):
-                    if not bond_hybrid:
-                        bstyle = bond_styles[0]
-                        _, i, *params = line.split()
-                    else:
-                        _, i, bstyle, *params = line.split()
-
-                    if "#" in params:
-                        params = params[:params.index("#")]
-
-                    bond_section.append( [ i, bstyle, params ] )
-            
-            elif in_angle_section:
-
-                if line.startswith("Dihedral Coeffs"):
-                    in_angle_section = False
-                    in_dihedral_section = True
-                elif line.strip() and not line.startswith("#"):
-                    if not angle_hybrid:
-                        astyle = angle_styles[0]
-                        _, i, *params = line.split()
-                    else:
-                        _, i, astyle, *params = line.split()
-
-                    if "#" in params:
-                        params = params[:params.index("#")]
-
-                    angle_section.append( [ i, astyle, params ] )
-
-            elif in_dihedral_section:
-                if line.strip() and not line.startswith("#"):
-                    if not dihedral_hybrid:
-                        dstyle = dihedral_styles[0]
-                        _, i, *params = line.split()
-                    else:
-                        _, i, dstyle, *params = line.split()
-                    
-                    if "#" in params:
-                        params = params[:params.index("#")]
-
-                    dihedral_section.append( [ i, dstyle, params ] )
-
-            elif line.startswith("Pair Coeffs"):
-                in_atom_section = True
-
-    return mixing, fudgeLJ, fudgeQQ, atom_section, bond_section, angle_section, dihedral_section

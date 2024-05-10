@@ -1,0 +1,131 @@
+; mdp file automaticly created by pyGROMACS
+
+;====================================
+;    integrator
+;====================================
+
+{%- if ensemble.em is defined %}
+integrator               = steep
+emtol                    = 1000.0
+emstep                   = {{system.emstep}}
+nsteps                   = {{system.nsteps}} 
+nstlist                  = 1
+{%- else %}
+integrator               = {{system.integrator}}
+tinit                    = {{system.tinit}}
+init-step                = {{system.init_step}} 
+dt                       = {{system.dt}}
+comm_grps                = {{system.comm_grps}}
+nsteps                   = {{system.nsteps}} 
+nstxout                  = {{system.nstxout}}
+nstvout                  = {{system.nstvout}}
+nstfout                  = {{system.nstfout}}
+nstlog                   = {{system.nstlog}}
+nstenergy                = {{system.energy}}
+nstcalcenergy            = {{system.calc_energy}}
+energygrps               = {{system.energygrps}}
+nstlist                  = {{system.nstlist}}
+{%- endif %}
+pbc                      = {{system.pbc}}
+
+;====================================
+;    non-bonded
+;====================================
+cutoff-scheme            = {{non_bonded.cutoff_scheme}}
+rlist                    = {{non_bonded.rlist}}
+coulombtype              = {{non_bonded.coulombtype}}
+rcoulomb                 = {{non_bonded.rcoulomb}}
+pme_order                = {{non_bonded.pme_order}}          
+vdwtype                  = {{non_bonded.vdwtype}}
+rvdw                     = {{non_bonded.rvdw}}
+DispCorr                 = {{non_bonded.disp_corr}}
+
+{%- if ensemble.t is defined %}
+
+;====================================
+;     T-coupling:
+;====================================
+tcoupl                   = {{ensemble.t.tcoupl}}
+tc-grps                  = {{ensemble.t.tc_grps}}
+tau_t                    = {{ensemble.t.tau_t}}
+ref_t                    = {{ensemble.t.ref_t}}
+{%- endif %}
+
+{%- if ensemble.p is defined %}
+
+;====================================
+;     P-coupling:
+;====================================
+Pcoupl                   = {{ensemble.p.pcoupl}}
+pcoupltype               = {{ensemble.p.pcoupltype}}
+tau_p                    = {{ensemble.p.tau_p}}
+ref_p                    = {{ensemble.p.ref_p}}
+compressibility          = {{ensemble.p.compressibility}}
+{%- endif %}
+
+{%- if ensemble.t is defined %}
+
+;====================================
+;  initial velocities
+;====================================
+{%- if restart == "no" %}
+gen_vel                  = yes
+gen_temp                 = {{ensemble.t.ref_t}} 
+gen_seed                 = {{seed}}
+{%- else %}
+continuation             = {{restart}}
+{%- endif %}
+{%- endif %}
+
+{%- if constraints.constraints is not none %}
+
+;====================================
+;     constraints
+;====================================
+constraints              = {{constraints.constraints}}
+lincs_order              = {{constraints.lincs_order}}
+lincs_iter               = {{constraints.lincs_iter}}
+{%- endif %}
+
+{%- if nemd is defined %}
+
+;====================================
+;                NEMD
+;====================================
+cos-acceleration	     = {{nemd.cos_acceleration}}
+{%- endif %}
+
+{%- if annealing is defined %}
+
+;====================================
+;             annealing
+;====================================
+annealing                = {{annealing.type}}  
+annealing_npoints        = {{annealing.npoints}}       
+annealing_time           = {{annealing.time_start}} {{annealing.time_end}} 
+annealing_temp           = {{annealing.temp_start}} {{annealing.temp_end}} 
+{%- endif %}
+
+{%- if free_energy is defined %}
+
+;====================================
+; Free energy control
+;====================================
+free_energy               = yes
+init_lambda_state         = {{free_energy.init_lambda_state}}
+delta_lambda              = 0
+calc_lambda_neighbors     = {{free_energy.calc_lambda_neighbors}}
+; Vectors of lambda specified here
+; init_lambda_state         {{free_energy.init_lambda_states}}
+vdw_lambdas               = {{free_energy.vdw_lambdas}}
+coul_lambdas              = {{free_energy.coul_lambdas}}
+; Options for the decoupling
+sc-alpha                  = {{free_energy.sc_alpha}}
+sc-power                  = {{free_energy.sc_power}}
+sc-r-power                = {{free_energy.sc_r_power}}
+sc-coul                   = {{free_energy.sc_coul}}
+couple-moltype            = {{free_energy.couple_moltype}}
+couple-lambda0            = {{free_energy.couple_lambda0}}
+couple-lambda1            = {{free_energy.couple_lambda1}}
+nstdhdl                   = {{free_energy.nstdhdl}}
+{%- endif %}

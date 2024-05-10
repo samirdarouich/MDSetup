@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from typing import List, Dict, Any
 from collections.abc import Iterable
-from ..tools.general_utils import deep_get
+from ..tools.general import deep_get
 
 def add_nan_if_no_brackets(lst: List[Any]):
     """

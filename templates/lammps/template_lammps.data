@@ -21,27 +21,27 @@ Masses
 
 
 Atoms
-{% for a in atoms %}
-{{a.0}} {{a.1}} {{a.2}} {{a.3}} {{a.4}} {{a.5}} {{a.6}} # {{a.7}}
+{% for atom in atoms %}
+{{atom|join('   ')}}
 {%- endfor %}
 
 {% if bonds %}
 Bonds
-{% for a in bonds %}
-{{a.0}} {{a.1}} {{a.2}} {{a.3}} # {{a.4}} {{a.5}}
+{% for bond in bonds %}
+{{bond|join('   ')}}
 {%- endfor %}
 {% endif %}
 
 {% if angles %}
 Angles
-{% for a in angles %}
-{{a.0}} {{a.1}} {{a.2}} {{a.3}} {{a.4}} # {{a.5}} {{a.6}} {{a.7}}
+{% for angle in angles %}
+{{angle|join('   ')}}
 {%- endfor %}
 {% endif %}
 
 {% if torsions %}
 Dihedrals
-{% for a in torsions %}
-{{a.0}} {{a.1}} {{a.2}} {{a.3}} {{a.4}} {{a.5}} # {{a.6}} {{a.7}} {{a.8}} {{a.9}}
+{% for torsion in torsions %}
+{{torsion|join('   ')}}
 {%- endfor %}
 {% endif %}

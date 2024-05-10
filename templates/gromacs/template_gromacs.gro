@@ -1,0 +1,6 @@
+{{name}}
+{{no_atoms}}
+{%- for atom in atoms %}
+{{atom}}
+{%- endfor %}
+{{box_dimension}}
