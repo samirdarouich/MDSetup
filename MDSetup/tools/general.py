@@ -176,8 +176,9 @@ def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
         raise KeyError("Wrong task defined: %s"%to_do)
 
 
-def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, box_type: str="cubic",
-                       z_x_relation: float=1.0, z_y_relation: float=1.0 ):
+def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, 
+                       unit_conversion: float, box_type: str="cubic", z_x_relation: float=1.0, 
+                       z_y_relation: float=1.0 ):
     """
     Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
 
@@ -185,6 +186,7 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     - molar_masses (List[List[float]]): A list with the molar masses of each molecule in the system.
     - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
     - density (float): The density of the mixture in kg/m^3.
+    - unit_conversion (float): Unit conversion from Angstrom to xx.
     - box_type (str, optional): The type of box to calculate dimensions for. Currently, only 'cubic' is implemented.
     - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
     - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
@@ -216,17 +218,18 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     # Compute box lenghts (in Angstrom) using the volume V=m/rho
     if box_type == "cubic":
         # Cubix box: L/2 = V^(1/3) / 2
-        boxlen = volume**(1/3) / 2
+        boxlen = volume**(1/3) / 2 * unit_conversion
 
         box = { "box_x": [ -boxlen, boxlen ],
                 "box_y": [ -boxlen, boxlen ],
                 "box_z": [ -boxlen, boxlen ]
                 }
+    
     elif box_type == "orthorhombic":
         # Orthorhombic: V = x * y * z, with x = z / z_x_relation and y = z / z_y_relation
         # V = z^3 * 1 / z_x_relation * 1 / z_y_relation
         # z = (V*z_x_relation*z_y_relation)^(1/3)
-        z = (volume * z_x_relation * z_y_relation)**(1/3)
+        z = (volume * z_x_relation * z_y_relation)**(1/3) * unit_conversion
         x = z / z_x_relation
         y = z / z_y_relation
 

@@ -295,7 +295,7 @@ class LAMMPS_setup():
         current_name_list = [ mol["name"] for mol in self.system_setup["molecules"] ]
 
         if not solute in current_name_list:
-            raise KeyError("Provided solute species is not presented in the system setup! Available species are:\   ",", ".join(current_name_list) )
+            raise KeyError("Provided solute species is not presented in the system setup! Available species are:\n   ",", ".join(current_name_list) )
 
         idx_solute = current_name_list.index(solute)
 
@@ -590,7 +590,7 @@ class LAMMPS_setup():
         current_name_list = [ mol["name"] for mol in self.system_setup["molecules"] ]
 
         if not solute in current_name_list:
-            raise KeyError("Provided solute species is not presented in the system setup! Available species are:\   ",", ".join(current_name_list) )
+            raise KeyError("Provided solute species is not presented in the system setup! Available species are:\n   ",", ".join(current_name_list) )
 
         # Define folder for analysis
         sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}/{solute}'

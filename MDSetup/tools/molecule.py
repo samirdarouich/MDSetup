@@ -1,223 +1,259 @@
-#!/usr/bin/env python
-
-import os
-import moleculegraph
+import re
 import numpy as np
-import networkx as nx
+import moleculegraph
 import pubchempy as pcp
-import matplotlib.pyplot as plt
-from jinja2 import Template
-from typing import List, Dict, Tuple
 
+from typing import List, Set
+from moleculegraph.molecule_utils import (graph_from_bonds, get_longest_path, bond_list_from_simple_path, 
+                                          get_diff_in_bond_lists, get_next_index, get_shortest_nontrivial_path)
 
-options = {
-    "node_size": 2000,
-    "node_color": "white",
-    "edgecolors": "black",
-    "linewidths": 5,
-    "width": 5,
-    "alpha":.3,
-    "font_size":16,
-}
+class moleculegraph_syntax():
 
-def vis_mol(bond_list,bond_atomtypes):
-    graph  = nx.Graph()
-    for (b0,b1),(bt0,bt1) in zip(bond_list,bond_atomtypes):
-        graph.add_edge( "%s%d"%(bt0,b0), "%s%d"%(bt1,b1) )
+    def __init__(self,
+                 split="][",
+                 start="[", end="]",
+                 branch_operator="b",
+                 ring_operator="r"
+                ):
+        self.split = split
+        self.start = start
+        self.end   = end
+        self.branch_operator = branch_operator
+        self.ring_operator = ring_operator
+        return
+    
+    def get_from_string(self, molstring):
+        mol_array = self.splitter(molstring)
+        return self.get_from_array(mol_array)
         
-    labels = {}
-    nx.draw_networkx(graph, **options)
-    nx.draw_networkx_labels(graph, nx.spring_layout(graph) , labels, font_size=12, font_color="black")
-
-    # Set margins for the axes so that nodes aren't clipped
-    ax = plt.gca()
-    ax.margins(0.20)
-    plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+        
+    def get_from_array(self, mol_array):
+        """
+        - gets syntactic elemnts from a splitted molstring
+        - rings and brances are marked with letters followed
+          by a number giving the size
+        """
+        n=0
+        ff = np.zeros(len(mol_array))
+        nn = -1 * np.ones(len(mol_array))
+        for i,m in enumerate( mol_array ):
+            if re.sub(r"\d+","", m) == self.branch_operator:
+                ff[i] = int(re.sub("[^0-9]","", m ))
+            elif re.sub(r"\d+","", m) == self.ring_operator:
+                ff[i] = -int(re.sub("[^0-9]","", m ))
+            else:
+                nn[i] = n
+                n+=1
+        return ff.astype(int) ,nn.astype(int)        
+        
+    #def build_string_array(self, molecule):
+    def build_string_array(self, atom_names, funs):
+        def builder(x):
+            if x > 0:
+                x = self.branch_operator + str( int(np.abs(x)) )
+            elif x < 0:
+                x = self.ring_operator + str( int(np.abs(x)) )
+            return x
+        #dummy = molecule.f.copy().astype(str)
+        dummy = funs.copy().astype(str)
+        dummy[ funs==0 ] = atom_names #molecule.atom_names
+        #dummy[ molecule.f!=0]  = np.vectorize(builder)( molecule.f[ molecule.f!=0] )
+        dummy[ funs!=0]  = np.vectorize(builder)( funs[ funs!=0] )
+        return dummy
+        
+    #def build_string(self,molecule):
+    def build_string(self, atom_names, funs):
+        mol_array = self.build_string_array( atom_names, funs)
+        return self.stringer( mol_array )
     
-    return
-
-def adjust_bond_list_indexes(bond_list:np.ndarray):
-    """Function that takes a bond list with atom indices that are not consecutive (e.g.: after removing Hydrogens for a united atom approach)
-
-    Args:
-        bond_list (np.ndarray): Old bond list containing not consecutive atom indices
-
+    def splitter(self, molstring):
+        a = len(self.start)
+        b = len(self.end)
+        return np.array(molstring[a:-b].split(self.split))
+        
+    def stringer(self, mol_array ):
+        return self.start+ self.split.join(mol_array) + self.end 
+    
+def get_fun_arrays_set_main(graph, bond_list, names, main_path, 
+                             bond_types=[] ):
+    """
+    generates a graphstring from a bond list and atom names
+    uses the longest path from source to an end as main path
+    
+    Args:  
+        graph:
+            - networkx graph object  
+        bond_list: 
+            - np.array, bond list           
+        names: 
+            - np.array, atom names   
+        main_path: 
+            - np.array, main path to build graph from               
     Returns:
-        (np.ndarray): Same bond list, just with consecutive atom indices
+        str, graphstring to use with moleculegraph          
     """
-    old = np.unique(bond_list)
-    new = np.arange(old.size)
-    new_list = np.ones( bond_list.shape )*-1
-    for i,j in zip(old,new):
-        new_list[ bond_list == i ] = j
-    return new_list,old
+    funs       = np.zeros(main_path.shape)
+    fun_ranges = np.zeros(main_path.shape)
 
+    main_path_bond_list = bond_list_from_simple_path(main_path)
+    remaining_bonds     = get_diff_in_bond_lists(bond_list, main_path_bond_list)
 
-def assign_coos_via_distance_mat_local( coos_list: np.ndarray, distance_matrix: np.ndarray, atom_names: List[str],reference_matrix: np.ndarray, reference_names: List[str]):
-    """
-    Assigns coos to suit a reference based on a distance matrix relying to the coos.
-    Reference and distance matrix/ coos belong to the same molecule type but are sorted in
-    different ways.
-    
-    Args:
-        coos_list: 
-            - list of coordinates.
-        distance_matrix:
-            - distance matrix which belongs to the coos_list.
-        atom_names:
-            - names of the atoms corresponding to coos_list.
-        reference_matrix:
-            - distance matrix which belongs to the reference you want to apply the coos to.
-        reference_names:
-            - names of the reference molecule.
-            
-    Returns:
-        new_coos_list:
-            - list of coordinates fitting the reference.
-        idx:
-            - indexes to translate sth. to reference.
-    """
+    if remaining_bonds.size > 0:
+        while True:
+            subgraph = graph_from_bonds(remaining_bonds)
 
-    
-    distance_matrix_sort = np.sort(distance_matrix,axis=1)
-    reference_sort = np.sort(reference_matrix,axis=1)
-    idx = []
-    
-    for rm,rn in zip(reference_sort,reference_names):
-        for i,(row,nn) in enumerate(zip(distance_matrix_sort,atom_names)):
-            if np.array_equal(rm, row) and i not in idx and nn in rn:
-                idx.append(i)
+            idx = get_next_index(main_path,remaining_bonds)
+
+            subpath = get_longest_path(subgraph, source=idx)
+            subpath_bond_list = bond_list_from_simple_path(subpath)
+            match = np.intersect1d(main_path, subpath)
+
+            if len(match)==2 and len(subpath)==2:
+                #print("ring")
+                subpath = get_shortest_nontrivial_path(graph,match[0], match[1])
+                i = np.squeeze( np.where(main_path == match[0]) )
+                j = np.squeeze( np.where(main_path == match[1]) )
+                iinsert = np.max( (i,j) )+1
+
+                main_path  = np.insert( main_path, iinsert, [-1] )
+                fun_ranges = np.insert( fun_ranges, iinsert, [len(subpath)] )
+                funs       = np.insert( funs, iinsert, [-1] )        
+
+            elif len(match)==1:
+                #print("branch")
+                i = np.squeeze(match)
+                if subpath[0] != i:
+                    subpath = subpath[::-1]
+                subpath = subpath[1:]
+
+                subfuns       = np.concatenate( [ [1], np.zeros(subpath.shape) ])
+                subfun_ranges = np.concatenate( [ [len(subpath)], np.zeros(subpath.shape)  ])      
+                subpath       = np.concatenate( [ [-1], subpath ])  
+
+                iinsert = np.squeeze( np.where(main_path == i) )+1
+
+                main_path  = np.insert( main_path, iinsert, subpath )
+                fun_ranges = np.insert( fun_ranges, iinsert, subfun_ranges )
+                funs       = np.insert( funs, iinsert, subfuns )
+
+            else:
+                #print("ERROR")
+                return None, None
+
+            main_path_bond_list = np.concatenate( [main_path_bond_list, subpath_bond_list] )    
+            remaining_bonds     = get_diff_in_bond_lists(bond_list, main_path_bond_list)
+            if len(remaining_bonds) == 0:
                 break
-            
-    if not bool(idx):
-        raise KeyError("Molecules could not be matched!\n")
     
-    idx = np.array(idx)
+    return funs*fun_ranges, main_path
 
-    #print("""\n\nWARNING:
-    #Assign_coos_via_distance_mat is not mature yet.
-    #Double-check your results!!! \n \n""")
+
+
+#### Own utils
+
+def filter_bonds_by_elements(bond_list, atom_names, elements):
+    """Filter bonds where the bonded atoms include specific elements."""
+    cleaned_bond_list = []
+    cleaned_atomtypes = []
     
-    return coos_list[idx], idx 
-
-def get_molecule_coordinates( molecule_name_list: List[str], molecule_graph_list: List[str], 
-                              molecule_smiles_list: List[str], verbose: bool=False ) -> Tuple[List[np.ndarray],List[np.ndarray],List[np.ndarray],List[np.ndarray]]:
-
-    # Get molecule objects via PupChem and visualize them
-    try:    
-        mol_list  = [ pcp.get_compounds(smiles, "smiles", record_type='3d')[0] for smiles in molecule_smiles_list ]
-        flag_2d   = False
-    except:
-        flag_2d   = True
+    for (b0, b1) in bond_list:
+        a0, a1 = atom_names[[b0, b1]]
+        if set([a0, a1]).issubset(elements):
+            # Check if exactly one of the atoms is 'H'
+            if (a0 == 'H') + (a1 == 'H') == 1:
+                continue
+        cleaned_bond_list.append((b0, b1))
+        cleaned_atomtypes.append((a0, a1))
     
-    if not flag_2d:
-        # Extract the coordinates, atom names and bond lists of each molecule
-        atoms          = [ np.array([[a.x,a.y,a.z] for a in molecule.atoms]) for molecule in mol_list ]
-        atom_names     = [ np.array([a.element for a in molecule.atoms]) for molecule in mol_list ]
-        bond_list      = [ np.array([[b.aid1-1,b.aid2-1] for b in molecule.bonds]) for molecule in mol_list ]
-        bond_atomtypes = [ np.array([[mol.atoms[bb[0]].element, mol.atoms[bb[1]].element] for bb in b]) for mol,b in zip(mol_list,bond_list)]
+    return np.array(cleaned_bond_list), np.array(cleaned_atomtypes)
 
-        if verbose:
-            print("\nPubChem representation\n")
-            for i,(n,bl,bat) in enumerate( zip(molecule_name_list,bond_list,bond_atomtypes) ):
-                tmp = [ "%s%d"%(a.element,a.aid-1) for a in mol_list[i].atoms ]
-                print("Molecule: %s"%n)
-                print("Coordinates:\n" + "\n".join( ["  %s: %.3f %.3f %.3f"%(an, ax, ay, az) for an, (ax, ay, az) in zip( tmp, atoms[i] ) ] ) + "\n")
-                vis_mol(bl,bat)
-
-        # Filter out hydrogens bonded to C atoms for an united atom approach or just take every atom for all-atom molecules.
-        cleaned_bond_list = []
-        cleaned_atomtypes = []
-        
-        # Check which molecule has a UA representation and which AA.
-        # Get moleculegraph representation of the molecules
-        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
-
-        # This is done by checking the number of atoms in the graph vs the real number of atoms
-        UA_list = [ not raw_mol.atom_number == len(mol.atoms) for raw_mol, mol in zip(raw_mol_list,mol_list) ]
-
-        if verbose:
-            print("\nMoleculegraph representation\n")
-            for i,(name,raw_mol) in enumerate(zip( molecule_name_list, raw_mol_list)):
-                print(f"Molecule ({'united' if UA_list[i] else 'all'}-atom): {name}")
-                raw_mol.visualize()
-
-        for i,(atom,bonds) in enumerate(zip( bond_atomtypes, bond_list )):
-            dummy1 = []
-            dummy2 = []
-            for (b0,b1),(a0,a1) in zip( bonds, atom ):
-                if UA_list[i]:
-                    if all([x in (a0,a1) for x in ["H","C"]]):
-                        hydrogen = np.array([b0, b1])[ np.array([a0,a1]) == "H" ]
-                        if verbose: print("C + H detected")                                   
-                        if bonds[ bonds == hydrogen ].size == 1:          
-                            if verbose: print("continue")                                     
-                            continue
-                    if verbose: print( "keep",b0,b1,"->",a0,"--",a1 )   
-                dummy1.append((b0,b1))
-                dummy2.append((a0,a1))
-            cleaned_bond_list.append(np.array(dummy1))
-            cleaned_atomtypes.append(np.array(dummy2))
-            if UA_list[i] and verbose: print("\n")
-        
-        if verbose:
-            for i,(n,bl,bat) in enumerate(zip(molecule_name_list,cleaned_bond_list,cleaned_atomtypes)):
-                if UA_list[i]:
-                    print("\nUnited atom representation\n")
-                    print("Molecule: %s"%n)
-                    vis_mol(bl,bat)
-
-        # Correct the atom indices in the bond list, after hydrogen atoms are removed for an united atom approach
-        new_cleaned_bond_list = []
-        new_idx = []
-
-        for cbl in cleaned_bond_list:
-            ncbl,p = adjust_bond_list_indexes(cbl)
-            new_cleaned_bond_list.append(ncbl)
-            new_idx.append(p)
-        
-        cleaned_coordinates = [ atom[idx] for atom,idx in zip(atoms, new_idx) ]
-        cleaned_atomtyps    = [ atom_name[idx] for atom_name,idx in zip(atom_names, new_idx) ]
-
-        # Get the correct name used for Playmol (force field type + running number of atom in the system)
-        add_atom          = [1] + [ sum(mol.atom_number for mol in raw_mol_list[:(i+1)]) + 1 for i in range( len(raw_mol_list[1:]) ) ]
-        raw_atom_numbers  = [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(raw_mol_list) ]
-        raw_atom_types    = [ mol.atom_names for mol in raw_mol_list ]  
-        final_atomtyps    = [ ["%s%d"%(a,i) for a,i in zip( atn, idx ) ] for atn,idx in zip( raw_atom_types, raw_atom_numbers ) ]
-        
-        # Get the atomic symbol of each atomtyp
-        final_atomsymbol  = cleaned_atomtyps
-
-        # Get the correct coordinates from the PubChem coordinates
-        final_coordinates = []
-
-        # Create distance matrix of the PubChem molecule. This is a method to match the PubChem molecule description to the moleculegraph description of the same molecule
-        distance_matrix = [ moleculegraph.molecule_utils.get_distance_matrix(ncbl,np.unique(ncbl).size)[0] for ncbl in new_cleaned_bond_list ]
-
-        # Match the PubChem distance matrix and atom names to the moleculegraph distance matrix and atom names to exctract the corret atom coordinates
-        for mol,ca,cc,dm in zip( raw_mol_list, cleaned_atomtyps, cleaned_coordinates, distance_matrix ):
-
-            # extract moleculegraph names of atoms
-            reference_names = [n.split("_")[0] for n in mol.atom_names]
-
-            # This function matches the distance matrix and thus reorder the cleaned coordinates to match the moleculegraph description
-            fc,_ = assign_coos_via_distance_mat_local(  cc, dm, ca, mol.distance_matrix, reference_names )
-
-            final_coordinates.append( fc )
+def adjust_bond_list_indexes(bond_list):
+    """Adjust bond list indexes to a continuous range starting from zero."""
+    old_indexes = np.unique(bond_list.flatten())
+    new_indexes = np.arange(old_indexes.size)
+    new_list = np.full(bond_list.shape, -1)
     
+    for i, j in zip(old_indexes, new_indexes):
+        new_list[bond_list == i] = j
+    
+    return new_list, old_indexes, new_indexes
+
+def get_mollist_from_smiles( smiles: str ):
+    
+    #Get pubmol via Pupchem
+    pubmol = pcp.get_compounds(smiles, "smiles", record_type='3d')
+
+    if len(pubmol) == 0:
+        pubmol = pcp.get_compounds(smiles, "smiles", record_type='2d')[0]
     else:
-        # Get moleculegraph representation of the molecules
-        raw_mol_list  = [ moleculegraph.molecule(molecule_graph) for molecule_graph in molecule_graph_list ]
-
-        # Get the correct name used for Playmol (force field type + running number of atom in the system)
-        add_atom          = [1] + [ sum(mol.atom_number for mol in raw_mol_list[:(i+1)]) + 1 for i in range( len(raw_mol_list[1:]) ) ]
-        raw_atom_numbers  = [ mol.atom_numbers + add_atom[i] for i,mol in enumerate(raw_mol_list) ]
-        raw_atom_types    = [ mol.atom_names for mol in raw_mol_list ]  
-        final_atomtyps    = [ ["%s%d"%(a,i) for a,i in zip( atn, idx ) ] for atn,idx in zip( raw_atom_types, raw_atom_numbers ) ]
-
-        # Just give every single atom molecule the origin as coordinates
-        final_coordinates = [ np.array([0.0, 0.0, 0.0]) for _ in molecule_graph_list ]
+        pubmol = pubmol[0]
     
-    return raw_atom_numbers, final_atomtyps, final_atomsymbol, final_coordinates
+    atoms_xyz = []
+    atom_names = []
+    for a in pubmol.atoms:
+        atoms_xyz.append( [a.x,a.y, a.z if not a.z == None else 0.0 ])
+        atom_names.append(a.element)
+
+    bond_list = []
+    for bond in pubmol.bonds:
+        bond_list.append( [bond.aid1-1,bond.aid2-1] )
+        
+    atom_names = np.array(atom_names)
+    atoms_xyz  = np.array(atoms_xyz)
+    bond_list  = np.array(bond_list)
+
+    return atom_names, atoms_xyz, bond_list
+
+def clean_mollist( atom_names, atoms_xyz, bond_list, filter: Set[str]={"H","C"} ):
+
+    cleaned_bond_list, _ = filter_bonds_by_elements(bond_list, atom_names, filter)
+    cleaned_bond_list, old_indexes, _ = adjust_bond_list_indexes(cleaned_bond_list)
+
+    # Assuming atoms_xyz and atom_names are defined elsewhere:
+    cleaned_coordinates = atoms_xyz[old_indexes]
+    cleaned_atomtypes = atom_names[old_indexes]
+
+    return cleaned_atomtypes, cleaned_coordinates, cleaned_bond_list
+
+def get_mol_from_bond_list( atom_types, bond_list  ):
+
+    graph = graph_from_bonds( bond_list )
+
+    main_path = get_longest_path( graph, source = 0 )
+
+    a, b = get_fun_arrays_set_main( graph, bond_list, atom_types, main_path )
+    b = b.astype(int)
+
+    aatom_names = atom_types[ b[ b>=0 ] ]
+
+    ms = moleculegraph_syntax().build_string( aatom_names, a )
+
+    mol = moleculegraph.molecule( ms )
+
+    return mol
+
+def get_molecule_from_smiles( smiles: str, forcefieldtypes: List[str] ):
+    
+    atom_names, atoms_xyz, bond_list = get_mollist_from_smiles( smiles )
+
+    if len(atom_names) > forcefieldtypes:
+        UA_filter = { "C", "H" }
+    else:
+        UA_filter = { }
+
+    cleaned_atomtypes, cleaned_coordinates, cleaned_bond_list = clean_mollist( atom_names, atoms_xyz, bond_list, UA_filter )
+
+    # Map atomtypes to forcefield types
+    mapped_atomtypes = cleaned_atomtypes
+
+    # Get moleculegraph object
+    mol = get_mol_from_bond_list( mapped_atomtypes, cleaned_bond_list )
+
+    # Save coordinates in molecule
+    mol.coordinates = cleaned_coordinates
+
+    # Save atomtyps 
+    mol.atomtypes = cleaned_atomtypes
+    
+    return mol
+

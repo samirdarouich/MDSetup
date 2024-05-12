@@ -2,10 +2,17 @@
 
 # Pair style
 
-pair_style  {{pair_style}}
-pair_modify  mix {{mixing}}  tail {{tail}}
-{%- if charged %}
+pair_style  {{style.pair_style}}
+pair_modify  mix {{mixing_rule}}  tail {{tail}}
+{%- if atoms.coulomb|length > 0 %}
 kspace_style  {{kspace_style}}{%- endif %}
+
+# Define labelmap
+labelmap atom {% for i, key in labelmap.atoms.items() %} key  i {% endfor %}
+{% if labelmap.bonds %}labelmap bond {% for i, key in labelmap.bonds.items() %} key  i {% endfor %}{%- endif %}
+{% if labelmap.angles %}labelmap angle {% for i, key in labelmap.angles.items() %} key  i {% endfor %}{%- endif %}
+{% if labelmap.dihedrals %}labelmap dihedral {% for i, key in labelmap.dihedrals.items() %} key  i {% endfor %}{%- endif %}
+
 
 # Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
 
@@ -19,44 +26,44 @@ fix rigid all shake 0.001 100 0 {%- for s in shake_dict %}{%- if shake_dict[s]|l
 {%- endif %}
 
 # Van der Waals interactions
-{% for p in vdw_interactions %}
-pair_coeff  {{p|join(' ')}}
+{% for vdw in atoms.vdw %}
+pair_coeff  {{vdw|join(' ')}}
 {%- endfor %}
 
-{%- if charged %}
+{%- if atoms.coulomb|length > 0 %}
 
 # Coulomb interactions
-{% for p in coulomb_interactions %}
+{% for coul in atoms.coulomb %}
 pair_coeff  {{p|join(' ')}}
 {%- endfor %}
 {%- endif %}
 
-{%- if bond_paras|length > 0%}
+{%- if bonds|length > 0%}
 
 # Bonded interactions
 
-bond_style  {{bond_styles|join(' ')}}
-{% for p in bond_paras %}
-bond_coeff  {{p|join(' ')}}
+bond_style  {{style.bonds_style|join(' ')}}
+{% for bond in bonds %}
+bond_coeff  {{bond|join(' ')}}
 {%- endfor %}
 {%- endif %}
 
-{%- if angle_paras|length > 0%}
+{%- if angles|length > 0%}
 
 # Angle interactions
 
-angle_style  {{angle_styles|join(' ')}}
-{% for p in angle_paras %}
-angle_coeff  {{p|join(' ')}}
+angle_style  {{style.angles_style|join(' ')}}
+{% for angle in angles %}
+angle_coeff  {{angle|join(' ')}}
 {%- endfor %}
 {%- endif %}
 
-{%- if torsion_paras|length > 0%}
+{%- if dihedrals|length > 0%}
 
 # Dihedral interactions
 
-dihedral_style  {{torsion_styles|join(' ')}}
-{% for p in torsion_paras %}
-dihedral_coeff  {{p|join(' ')}}
+dihedral_style  {{style.dihedral_style|join(' ')}}
+{% for dihedral in dihedrals %}
+dihedral_coeff  {{dihedral|join(' ')}}
 {%- endfor %}
 {%- endif %}

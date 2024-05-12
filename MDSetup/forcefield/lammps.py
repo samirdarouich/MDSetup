@@ -388,6 +388,7 @@ def get_mixed_parameter( sigma_i: float, sigma_j: float, epsilon_i: float, epsil
         >>> get_mixed_parameter(3.5, 2.5, 0.5, 0.8, mixing_rule="arithmetic", precision=3)
         (3.0, 0.632)
     """
+    
     if mixing_rule == "arithmetic": 
         sigma_ij   = ( sigma_i + sigma_j ) / 2
         epsilon_ij = np.sqrt( epsilon_i * epsilon_j )

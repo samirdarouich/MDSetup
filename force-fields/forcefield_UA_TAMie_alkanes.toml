@@ -47,17 +47,17 @@ list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane",]
 p = [ 62.1001, 114.0 ]
 style = "harmonic"
 
-[torsions."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+[dihedrals."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
 
-[torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
 
-[torsions."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
 p = [ 1.411, -0.271, 3.145, 0.0]
 style = "opls"
