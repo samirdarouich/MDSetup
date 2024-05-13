@@ -1,0 +1,54 @@
+# General definitions of the system
+
+# Define software to use (no capitals)
+software: lammps
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: /Users/samir/Documents/Coding_libaries/MDSetup/example/lammps/mechanical_properties
+
+# System name
+name: anhydrite
+
+# Box type (dimension is computed by the type and the density)
+box: 
+  type: cubic
+  z_x_relation: 1.0
+  z_y_relation: 1.0
+
+# Define the components
+molecules:
+  - name: anhydrite
+    smiles: ""
+    number: 0
+
+# Define paths 
+paths:
+
+  # Path to the lammps force field (topology) file
+  topology_file: "/Users/samir/Documents/Coding_libaries/MDSetup/example/lammps/mechanical_properties/input/anhydrite.params"
+
+  # Path to the molecule (coordinate) files
+  coordinates_files:
+    - ""
+
+  # Force field toml files (for moleculegraph)
+  force_field_files: 
+    - ""
+
+  # Template files
+  molecule_template: /Users/samir/Documents/Coding_libaries/MDSetup/templates/lammps/template_lammps.mol
+  topology_template: /Users/samir/Documents/Coding_libaries/MDSetup/templates/lammps/template_lammps.params
+  build_template: /Users/samir/Documents/Coding_libaries/MDSetup/templates/lammps/template_lammps.build
+  input_template: /Users/samir/Documents/Coding_libaries/MDSetup/example/lammps/mechanical_properties/input/template_lammps_mechanical.in
+  job_template: /Users/samir/Documents/Coding_libaries/MDSetup/templates/bash/template_job_lmp_pbs.sh
+
+# Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied.
+# Density is not important if initial system is provided.
+temperature:
+  - 298.15
+
+pressure:
+  - 1.01325
+
+density: 
+  - 1000.0

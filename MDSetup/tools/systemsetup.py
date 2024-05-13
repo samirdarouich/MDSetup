@@ -316,7 +316,7 @@ def generate_input_files( destination_folder: str, input_template: str, software
         os.makedirs( os.path.dirname( input_out ), exist_ok = True )
 
         # Render template
-        rendered = template.render( ** kwargs ) 
+        rendered = template.render( **renderdict ) 
         
         with open( input_out, "w" ) as f:
             f.write( rendered )

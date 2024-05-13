@@ -1,0 +1,141 @@
+# LAMMPS input file. Automaticly created by pyLAMMPS
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Read system
+
+read_data   ../../../../../input/anhydrite.data
+
+# Include force field paramters
+
+include   ../../../anhydrite.params
+
+# Define the neighbor list settings
+
+neighbor 2.0 bin
+neigh_modify every 1 delay 0 check yes
+
+# ============= INITIAL SYSTEM SETUP =============
+
+# ------------- general ---------------
+
+variable  project             index       em
+variable  timestep            equal       1
+variable  run_time            equal       0
+
+timestep  ${timestep}
+
+# ------------- set integration settings ---------------
+
+
+variable temperature  equal 298.15
+
+variable seed  equal 17159       
+
+# ------------- generate velocities ---------------
+
+velocity        all create ${temperature} ${seed} rot yes dist gaussian
+
+# ------------- time integration ---------------
+
+thermo   10
+min_style   cg
+minimize   1e-10 1e-10 10000 10000
+
+
+# ============= VARIABLES ===============
+
+# ------------- output ---------------
+
+variable  sample_frequency    equal       10
+variable  sample_number       equal       100
+variable  to_file_every       equal       $(v_sample_frequency*v_sample_number)
+variable  to_screen_every     equal       $(v_to_file_every*10)
+      
+# ------------- values ---------------
+
+variable step equal step
+
+# ============= SAMPLING CONDITIONS ============= 
+
+thermo          ${to_screen_every}
+thermo_style    custom step temp press pe ke etotal enthalpy vol density 
+
+
+
+# Sample: energy
+
+# Define sample variables
+
+variable potential_energy  equal pe
+variable kinetic_energy  equal ke
+variable enthalpy  equal enthalpy
+
+fix energy all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ c_thermo_temp v_potential_energy v_kinetic_energy v_enthalpy &
+ title2 '# step (fs), temperature (K), potential energy (kcal/mol), kinetic energy (kcal/mol), enthalpy (kcal/mol)' &
+ file ${project}.energy
+
+
+
+
+# Sample: density
+
+# Define sample variables
+
+variable density  equal density
+
+fix density all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ c_thermo_temp v_density   &
+ title2 '# step (fs), temperature (K), density (g/cm^3)' &
+ file ${project}.density
+
+
+
+
+# Sample: pressure
+
+fix pressure all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ c_thermo_press[1] c_thermo_press[2] c_thermo_press[3] &
+ c_thermo_press[4] c_thermo_press[5] c_thermo_press[6] &
+ title2 '# step (fs), pxx (atm), pyy (atm), pzz (atm), pxy (atm), pxz (atm), pyz (atm)' &
+ file ${project}.pressure
+
+
+
+
+# Sample: lattice_properties
+
+# Define sample variables
+
+variable a  equal cella
+variable b  equal cellb
+variable c  equal cellc
+variable alpha  equal cellalpha
+variable beta  equal cellbeta
+variable gamma  equal cellgamma
+
+fix lattice_properties all ave/time ${sample_frequency} ${sample_number} ${to_file_every} &
+ v_a v_b v_c v_alpha v_beta v_gamma  &
+ title2 '# step (fs), a (AA), b (AA), c (AA), alpha (deg), beta (deg), gamma (deg)' &
+ file ${project}.lattice
+
+
+
+
+# ============= RUN CONDITIONS =============
+
+run             ${run_time}
+
+# Write restart after successful simulation
+
+write_restart ${project}.restart
+
+# Additionally write data file
+
+write_data ${project}.data nocoeff nofix

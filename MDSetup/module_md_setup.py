@@ -4,8 +4,9 @@ import subprocess
 
 from rdkit import Chem
 from typing import List, Dict, Any
-from .tools.general import FOLDER_PRECISION, JOB_PRECISION, DEFAULTS
+from rdkit.Chem.Descriptors import MolWt
 from .forcefield import forcefield
+from .tools.general import FOLDER_PRECISION, JOB_PRECISION, DEFAULTS
 from .tools.systemsetup import ( get_system_volume, generate_initial_configuration, 
                                  generate_input_files, generate_job_file )
 
@@ -13,7 +14,7 @@ from .tools.systemsetup import ( get_system_volume, generate_initial_configurati
 # check forcefield topology (use row of distrance matrix to map?)
 # check for all necessary keys in setup
 
-class MDsetup():
+class MDSetup():
     """
     This class sets up structured and FAIR molecular dynamic simulations. It also has the capability to build a system based on a list of molecules.
     """
@@ -64,7 +65,7 @@ class MDsetup():
         self.residues = [ mol["name"] for mol in self.system_molecules ]
 
         # Get molecular mass and number for each molecule
-        self.molar_masses = [ Chem.Descriptors.MolWt( Chem.MolFromSmiles( mol["smiles"] ) ) for mol in self.system_molecules ]
+        self.molar_masses = [ MolWt( Chem.MolFromSmiles( mol["smiles"] ) ) for mol in self.system_molecules ]
         self.molecule_numbers = [ mol["number"] for mol in self.system_molecules ]
 
         # Get conversion from AA to nm/AA
@@ -237,13 +238,14 @@ class MDsetup():
                                                     dt = self.simulation_default["system"]["dt"], 
                                                     temperature = temperature, 
                                                     pressure = pressure,
-                                                    off_set = off_set
+                                                    off_set = off_set,
                                                     **kwargs
                                                     )
 
                 # Create job file
                 job_files.append( generate_job_file( destination_folder = copy_folder, 
-                                                     job_template = self.system_setup["paths"]["job_template"], 
+                                                     job_template = self.system_setup["paths"]["job_template"],
+                                                     software = self.system_setup["software"],
                                                      input_files = input_files, 
                                                      ensembles = ensembles,
                                                      job_name = f'{self.system_setup["name"]}_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}',
