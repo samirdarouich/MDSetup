@@ -159,7 +159,7 @@ def write_gro_file( molecule, gro_template: str, destination: str, residue: str,
         template = Template(file.read())
     
     # Make path absolute
-    destination = os.path.abspath(coord_destination)
+    destination = os.path.abspath(destination)
 
     os.makedirs( destination, exist_ok = True )
 
