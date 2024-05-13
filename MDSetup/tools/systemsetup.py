@@ -10,9 +10,15 @@ from scipy.constants import Avogadro
 from .submission import submit_and_wait
 
 
-def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], density: float, 
-                       unit_conversion: float, box_type: str="cubic", z_x_relation: float=1.0, 
-                       z_y_relation: float=1.0 ):
+def get_system_volume(
+    molar_masses: List[float],
+    molecule_numbers: List[int],
+    density: float,
+    unit_conversion: float,
+    box_type: str = "cubic",
+    z_x_relation: float = 1.0,
+    z_y_relation: float = 1.0,
+):
     """
     Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
 
@@ -32,16 +38,16 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     - KeyError: If the `box_type` is not 'cubic' or 'orthorhombic', since other box types are not implemented yet.
     """
     # Account for mixture density
-    molar_masses = np.array( molar_masses )
+    molar_masses = np.array(molar_masses)
 
     # mole fraction of mixture (== numberfraction)
-    x = np.array( molecule_numbers ) / np.sum( molecule_numbers )
+    x = np.array(molecule_numbers) / np.sum(molecule_numbers)
 
     # Average molar weight of mixture [g/mol]
-    M_avg = np.dot( x, molar_masses )
+    M_avg = np.dot(x, molar_masses)
 
     # Total mole n = N/NA [mol]
-    n = np.sum( molecule_numbers ) / Avogadro
+    n = np.sum(molecule_numbers) / Avogadro
 
     # Total mass m = n*M, convert from g in kg. [kg]
     mass = n * M_avg / 1000
@@ -52,37 +58,49 @@ def get_system_volume( molar_masses: List[float], molecule_numbers: List[int], d
     # Compute box lenghts (in Angstrom) using the volume V=m/rho
     if box_type == "cubic":
         # Cubix box: L/2 = V^(1/3) / 2
-        boxlen = volume**(1/3) / 2 * unit_conversion
+        boxlen = volume ** (1 / 3) / 2 * unit_conversion
 
-        box = { "box_x": [ -boxlen, boxlen ],
-                "box_y": [ -boxlen, boxlen ],
-                "box_z": [ -boxlen, boxlen ]
-                }
-    
+        box = {
+            "box_x": [-boxlen, boxlen],
+            "box_y": [-boxlen, boxlen],
+            "box_z": [-boxlen, boxlen],
+        }
+
     elif box_type == "orthorhombic":
         # Orthorhombic: V = x * y * z, with x = z / z_x_relation and y = z / z_y_relation
         # V = z^3 * 1 / z_x_relation * 1 / z_y_relation
         # z = (V*z_x_relation*z_y_relation)^(1/3)
-        z = (volume * z_x_relation * z_y_relation)**(1/3) * unit_conversion
+        z = (volume * z_x_relation * z_y_relation) ** (1 / 3) * unit_conversion
         x = z / z_x_relation
         y = z / z_y_relation
 
-        box = { "box_x": [ -x/2, x/2 ],
-                "box_y": [ -y/2, y/2 ],
-                "box_z": [ -z/2, z/2 ]
-                }
+        box = {
+            "box_x": [-x / 2, x / 2],
+            "box_y": [-y / 2, y / 2],
+            "box_z": [-z / 2, z / 2],
+        }
 
     else:
-        raise KeyError(f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'.")
+        raise KeyError(
+            f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'."
+        )
 
     return box
 
-def generate_initial_configuration( destination_folder: str, build_template: str, software: str,
-                                    coordinate_paths: List[str], 
-                                    molecules_list: List[Dict[str, str|int]], box: Dict[str,float], 
-                                    on_cluster: bool=False, initial_system: str="",
-                                    n_try: int=10000, submission_command: str="qsub",
-                                    **kwargs ):
+
+def generate_initial_configuration(
+    destination_folder: str,
+    build_template: str,
+    software: str,
+    coordinate_paths: List[str],
+    molecules_list: List[Dict[str, str | int]],
+    box: Dict[str, float],
+    on_cluster: bool = False,
+    initial_system: str = "",
+    n_try: int = 10000,
+    submission_command: str = "qsub",
+    **kwargs,
+):
     """
     Generate initial configuration for molecular dynamics simulation with GROMACS.
 
@@ -100,7 +118,7 @@ def generate_initial_configuration( destination_folder: str, build_template: str
      - **kwargs (Any): Arbitrary keyword arguments.
 
     Keyword Args:
-     - 
+     -
 
     Returns:
      - intial_coord (str): Path of inital configuration
@@ -108,62 +126,78 @@ def generate_initial_configuration( destination_folder: str, build_template: str
     """
 
     # Create and the output folder of the box
-    os.makedirs( destination_folder, exist_ok = True )
+    os.makedirs(destination_folder, exist_ok=True)
 
     # Check if job template file exists
-    if not os.path.isfile( build_template ):
+    if not os.path.isfile(build_template):
         raise FileNotFoundError(f"Build template file { build_template } not found.")
     else:
-        with open( build_template ) as f:
-            template = Template( f.read() )
-    
-    # Define output coordinate 
+        with open(build_template) as f:
+            template = Template(f.read())
+
+    # Define output coordinate
     suffix = "gro" if software == "gromacs" else "data" if software == "lammps" else ""
     intial_coord = f"{destination_folder}/init_conf.{suffix}"
 
     # Sort out molecules that are zero
-    non_zero_coord_mol_no = [ (coord, value["name"], value["number"]) for coord,value in zip(coordinate_paths,molecules_list) if value["number"] > 0 ]
+    non_zero_coord_mol_no = [
+        (coord, value["name"], value["number"])
+        for coord, value in zip(coordinate_paths, molecules_list)
+        if value["number"] > 0
+    ]
 
     # Define template settings
-    template_settings = { "coord_mol_no": non_zero_coord_mol_no, 
-                          "box": box,
-                          "initial_system": initial_system,
-                          "n_try": n_try,
-                          "folder": destination_folder,
-                          "output_coord": intial_coord,
-                          **kwargs
-                        }
+    template_settings = {
+        "coord_mol_no": non_zero_coord_mol_no,
+        "box": box,
+        "initial_system": initial_system,
+        "n_try": n_try,
+        "folder": destination_folder,
+        "output_coord": intial_coord,
+        **kwargs,
+    }
 
     # Define output file
     bash_file = f"{destination_folder}/build_box.sh"
 
     # Write bash file
-    with open( bash_file, "w" ) as f:
-        f.write( template.render( template_settings ) )
+    with open(bash_file, "w") as f:
+        f.write(template.render(template_settings))
 
     if on_cluster:
         print("\nSubmit build to cluster and wait untils it is finished.\n")
-        submit_and_wait( job_files = [ bash_file ], submission_command = submission_command )
+        submit_and_wait(job_files=[bash_file], submission_command=submission_command)
     else:
         print("\nBuild system locally! Wait until it is finished.\n")
         # Call the bash to build the box. Write output to file.
         with open(f"{destination_folder}/build_output.txt", "w") as f:
-            subprocess.run(["bash", f"{destination_folder}/build_box.sh"], stdout=f, stderr=f)
+            subprocess.run(
+                ["bash", f"{destination_folder}/build_box.sh"], stdout=f, stderr=f
+            )
 
-    # Check if the system is build 
-    if not os.path.isfile( intial_coord ):
-        raise FileNotFoundError(f"Something went wrong during the box building! { intial_coord } not found.")
+    # Check if the system is build
+    if not os.path.isfile(intial_coord):
+        raise FileNotFoundError(
+            f"Something went wrong during the box building! { intial_coord } not found."
+        )
     print("Build successful\n")
 
     return intial_coord
 
 
-def generate_input_files( destination_folder: str, input_template: str, software: str,
-                          ensembles: List[str], simulation_times: List[float],
-                          ensemble_definition: Dict[str, Any|Dict[str, str|float]], 
-                          dt: float, temperature: float, pressure: float,
-                          off_set: int=0, **kwargs ):
-    
+def generate_input_files(
+    destination_folder: str,
+    input_template: str,
+    software: str,
+    ensembles: List[str],
+    simulation_times: List[float],
+    ensemble_definition: Dict[str, Any | Dict[str, str | float]],
+    dt: float,
+    temperature: float,
+    pressure: float,
+    off_set: int = 0,
+    **kwargs,
+):
     """
     Generate input files for simulation pipeline.
 
@@ -179,7 +213,7 @@ def generate_input_files( destination_folder: str, input_template: str, software
      - pressure (float): The pressure for the simulation.
      - off_set (int, optional): First ensemble starts with 0{off_set}_ensemble. Defaulst to 0.
      - **kwargs (Any): Arbitrary keyword arguments.
-    
+
     Keyword Args:
      - initial_coord (str): Absolute path of LAMMPS data file for LAMMPS.
      - initial_topology (str): Absolute path of LAMMPS force field file for LAMMPS.
@@ -196,17 +230,16 @@ def generate_input_files( destination_folder: str, input_template: str, software
     """
 
     # Check if input template file exists
-    if not os.path.isfile( input_template ):
+    if not os.path.isfile(input_template):
         raise FileNotFoundError(f"Input template file { input_template } not found.")
-    
+
     # Open template
-    with open( input_template ) as f:
-        template = Template( f.read() )
+    with open(input_template) as f:
+        template = Template(f.read())
 
     if software == "gromacs":
-        
         # Check necessary input kwargs
-        KwargsError( ["compressibility","init_step"], kwargs.keys() )
+        KwargsError(["compressibility", "init_step"], kwargs.keys())
 
         # nano in pico second
         time_conversion = 1e3
@@ -215,9 +248,8 @@ def generate_input_files( destination_folder: str, input_template: str, software
         suffix = "mdp"
 
     elif software == "lammps":
-
         # Check necessary input kwargs
-        KwargsError( ["initial_coord","initial_topology"], kwargs.keys() )
+        KwargsError(["initial_coord", "initial_topology"], kwargs.keys())
 
         # nano in femto second
         time_conversion = 1e6
@@ -226,30 +258,35 @@ def generate_input_files( destination_folder: str, input_template: str, software
         suffix = "input"
 
         # Check if datafile exists
-        if not os.path.isfile( kwargs['initial_coord'] ):
+        if not os.path.isfile(kwargs["initial_coord"]):
             raise FileNotFoundError(f"Data file { kwargs['initial_coord'] } not found.")
-    
-        # Check if force field file exists
-        if not os.path.isfile( kwargs['initial_topology'] ):
-            raise FileNotFoundError(f"Force field file { kwargs['initial_topology'] } not found.")
 
+        # Check if force field file exists
+        if not os.path.isfile(kwargs["initial_topology"]):
+            raise FileNotFoundError(
+                f"Force field file { kwargs['initial_topology'] } not found."
+            )
 
     # Save ensemble names
-    ensemble_names = [ f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}" for j,step in enumerate(ensembles) ]
+    ensemble_names = [
+        f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}"
+        for j, step in enumerate(ensembles)
+    ]
 
     # Define template dictionary
-    renderdict = { **kwargs }
+    renderdict = {**kwargs}
 
     # Produce input files for simulation pipeline
     input_files = []
 
-    for j,(ensemble,time) in enumerate( zip( ensembles, simulation_times ) ):
-        
+    for j, (ensemble, time) in enumerate(zip(ensembles, simulation_times)):
         try:
             ensemble_settings = ensemble_definition[ensemble]
         except:
-            raise KeyError(f"Wrong ensemple specified: {ensemble}. Valid options are: {', '.join(ensemble_definition.keys())} ")
-        
+            raise KeyError(
+                f"Wrong ensemple specified: {ensemble}. Valid options are: {', '.join(ensemble_definition.keys())} "
+            )
+
         # Ensemble name
         renderdict["ensemble_name"] = ensemble
 
@@ -257,75 +294,97 @@ def generate_input_files( destination_folder: str, input_template: str, software
         input_out = f"{destination_folder}/{'0' if (j+off_set) < 10 else ''}{j+off_set}_{ensemble}/{ensemble}.{suffix}"
 
         if software == "gromacs":
-
             # Add temperature of sim to ensemble settings
             if "t" in ensemble_settings.keys():
                 ensemble_settings["t"]["ref_t"] = temperature
-            
+
             # Add pressure and compressibility to ensemble settings
             if "p" in ensemble_settings.keys():
-                ensemble_settings["p"].update( { "ref_p": pressure, "compressibility": kwargs["compressibility"] } )
+                ensemble_settings["p"].update(
+                    {"ref_p": pressure, "compressibility": kwargs["compressibility"]}
+                )
 
             # Overwrite the ensemble settings
             renderdict["ensemble"] = ensemble_settings
 
             # Define if restart
-            renderdict["restart_flag"] = "no" if ensemble == "em" or ensembles[j-1] == "em" else "yes"
+            renderdict["restart_flag"] = (
+                "no" if ensemble == "em" or ensembles[j - 1] == "em" else "yes"
+            )
 
             # Add extension to first system (if wanted)
             if j == 0 and kwargs["init_step"] > 0:
                 renderdict["system"]["init_step"] = kwargs["init_step"]
 
         elif software == "lammps":
-
             # Add ensemble variables
             values = []
             for v in ensemble_settings["variables"]:
                 if v == "temperature":
-                    values.append( temperature )
+                    values.append(temperature)
                 elif v == "pressure":
-                    values.append( round( pressure / 1.01325, 3 ) )
+                    values.append(round(pressure / 1.01325, 3))
                 else:
-                    raise KeyError(f"Variable is not implemented: '{v}'. Currently implemented are 'temperature' or 'pressure'. ")
+                    raise KeyError(
+                        f"Variable is not implemented: '{v}'. Currently implemented are 'temperature' or 'pressure'. "
+                    )
 
             # Overwrite the ensemble settings
-            renderdict["ensemble"] = { "var_val": zip(ensemble_settings["variables"],values), 
-                                       "command": ensemble_settings["command"] 
-                                     }
+            renderdict["ensemble"] = {
+                "var_val": zip(ensemble_settings["variables"], values),
+                "command": ensemble_settings["command"],
+            }
 
-            renderdict["force_field_file"] = os.path.relpath( kwargs['initial_topology'], os.path.dirname(input_out) )
+            renderdict["force_field_file"] = os.path.relpath(
+                kwargs["initial_topology"], os.path.dirname(input_out)
+            )
 
             # If its the first ensemble use provided data path, otherwise use the previous restart file. Hence set restart flag
             if j == 0:
-                renderdict["initial_coord"] = os.path.relpath( kwargs['initial_coord'], os.path.dirname(input_out) )
+                renderdict["initial_coord"] = os.path.relpath(
+                    kwargs["initial_coord"], os.path.dirname(input_out)
+                )
                 renderdict["restart_flag"] = False
             else:
-                renderdict["initial_coord"] = f"../{ensemble_names[j-1]}/{ensembles[j-1]}.restart"
+                renderdict[
+                    "initial_coord"
+                ] = f"../{ensemble_names[j-1]}/{ensembles[j-1]}.restart"
                 renderdict["restart_flag"] = True
 
         # Simulation time is provided in nano seconds and dt in pico/fico seconds, hence multiply with factor 1e3/1e6
-        renderdict["system"]["nsteps"] = int( time_conversion * time / dt ) if not ensemble == "em" else int(time)
+        renderdict["system"]["nsteps"] = (
+            int(time_conversion * time / dt) if not ensemble == "em" else int(time)
+        )
         renderdict["system"]["dt"] = dt
 
         # Provide a seed for tempearture generating:
-        renderdict["seed"] = np.random.randint(0,1e5)
-        
+        renderdict["seed"] = np.random.randint(0, 1e5)
+
         # Create the destination folder
-        os.makedirs( os.path.dirname( input_out ), exist_ok = True )
+        os.makedirs(os.path.dirname(input_out), exist_ok=True)
 
         # Render template
-        rendered = template.render( **renderdict ) 
-        
-        with open( input_out, "w" ) as f:
-            f.write( rendered )
-            
-        input_files.append( input_out )
+        rendered = template.render(**renderdict)
+
+        with open(input_out, "w") as f:
+            f.write(rendered)
+
+        input_files.append(input_out)
 
     return input_files
 
-def generate_job_file( destination_folder: str, job_template: str, software: str,
-                       input_files: List[str], ensembles: List[str], job_name: str, 
-                       job_out: str="job.sh", off_set: int=0, **kwargs ):
+
+def generate_job_file(
+    destination_folder: str,
+    job_template: str,
+    software: str,
+    input_files: List[str],
+    ensembles: List[str],
+    job_name: str,
+    job_out: str = "job.sh",
+    off_set: int = 0,
+    **kwargs,
+):
     """
     Generate initial job file for a set of simulation ensembles.
 
@@ -358,94 +417,136 @@ def generate_job_file( destination_folder: str, job_template: str, software: str
     """
 
     # Check if job template file exists
-    if not os.path.isfile( job_template ):
+    if not os.path.isfile(job_template):
         raise FileNotFoundError(f"Job template file { job_template } not found.")
 
     # Check for input files
     for file in input_files:
-        if not os.path.isfile( file ):
+        if not os.path.isfile(file):
             raise FileNotFoundError(f"Input file { file  } not found.")
-    
+
     # Read in template
     with open(job_template) as f:
         template = Template(f.read())
 
     # Define folders
-    job_file_settings = { "ensembles": { f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}": {} for j,step in enumerate(ensembles)} }
+    job_file_settings = {
+        "ensembles": {
+            f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}": {}
+            for j, step in enumerate(ensembles)
+        }
+    }
     ensemble_names = list(job_file_settings["ensembles"].keys())
-    
+
     # Create the simulation folder
-    os.makedirs( destination_folder, exist_ok = True )
+    os.makedirs(destination_folder, exist_ok=True)
 
     # Define LOG output
-    log_path   = f"{destination_folder}/LOG"
+    log_path = f"{destination_folder}/LOG"
 
     # Add to job file settings
-    job_file_settings.update( { "job_name": job_name, "log_path": log_path, "working_path": destination_folder } )
+    job_file_settings.update(
+        {"job_name": job_name, "log_path": log_path, "working_path": destination_folder}
+    )
 
     if software == "gromacs":
-        
         # Check necessary input kwargs
-        KwargsError( ["initial_topology","intial_coord","initial_cpt","init_step"], kwargs.keys() )
+        KwargsError(
+            ["initial_topology", "intial_coord", "initial_cpt", "init_step"],
+            kwargs.keys(),
+        )
 
         # Check if topology file exists
-        if not os.path.isfile( ["initial_topology"] ):
-            raise FileNotFoundError(f"Topology file { kwargs['initial_topology'] } not found.")
+        if not os.path.isfile(["initial_topology"]):
+            raise FileNotFoundError(
+                f"Topology file { kwargs['initial_topology'] } not found."
+            )
 
         # Check if coordinate file exists
-        if not os.path.isfile( kwargs["intial_coord"] ):
-            raise FileNotFoundError(f"Coordinate file { kwargs['intial_coord'] } not found.")
-        
+        if not os.path.isfile(kwargs["intial_coord"]):
+            raise FileNotFoundError(
+                f"Coordinate file { kwargs['intial_coord'] } not found."
+            )
+
         # Check if checkpoint file exists
-        if kwargs["initial_cpt"] and not os.path.isfile( kwargs["initial_cpt"] ):
-            raise FileNotFoundError(f"Checkpoint file { kwargs['initial_cpt'] } not found.")
+        if kwargs["initial_cpt"] and not os.path.isfile(kwargs["initial_cpt"]):
+            raise FileNotFoundError(
+                f"Checkpoint file { kwargs['initial_cpt'] } not found."
+            )
 
         # Relative paths for each mdp file for each simulation phase
-        mdp_relative  = [ os.path.relpath( input_files[j], f"{destination_folder}/{step}" ) for j,step in enumerate(ensemble_names) ]
+        mdp_relative = [
+            os.path.relpath(input_files[j], f"{destination_folder}/{step}")
+            for j, step in enumerate(ensemble_names)
+        ]
 
         # Relative paths for each coordinate file (for energy minimization use initial coodinates, otherwise use the preceeding output)
-        cord_relative = [ f"../{ensemble_names[j-1]}/{ensembles[j-1]}.gro" if j > 0 else os.path.relpath( kwargs["intial_coord"], f"{destination_folder}/{step}" ) for j,step in enumerate(job_file_settings["ensembles"].keys()) ]
+        cord_relative = [
+            f"../{ensemble_names[j-1]}/{ensembles[j-1]}.gro"
+            if j > 0
+            else os.path.relpath(kwargs["intial_coord"], f"{destination_folder}/{step}")
+            for j, step in enumerate(job_file_settings["ensembles"].keys())
+        ]
 
-        # Relative paths for each checkpoint file 
-        cpt_relative  = [ f"../{ensemble_names[j-1]}/{ensembles[j-1]}.cpt" if j > 0 else os.path.relpath( kwargs["initial_cpt"], f"{destination_folder}/{step}" ) if kwargs["initial_cpt"] and not ensembles[j] == "em" else "" for j,step in enumerate(ensemble_names) ]
+        # Relative paths for each checkpoint file
+        cpt_relative = [
+            f"../{ensemble_names[j-1]}/{ensembles[j-1]}.cpt"
+            if j > 0
+            else os.path.relpath(kwargs["initial_cpt"], f"{destination_folder}/{step}")
+            if kwargs["initial_cpt"] and not ensembles[j] == "em"
+            else ""
+            for j, step in enumerate(ensemble_names)
+        ]
 
         # Relative paths for topology
-        topo_relative = [ os.path.relpath( kwargs["initial_topology"], f"{destination_folder}/{step}" ) for j,step in enumerate(ensemble_names) ]
+        topo_relative = [
+            os.path.relpath(kwargs["initial_topology"], f"{destination_folder}/{step}")
+            for j, step in enumerate(ensemble_names)
+        ]
 
-        # output file 
-        out_relative  = [ f"{step}.tpr -maxwarn 10" for step in ensembles]
+        # output file
+        out_relative = [f"{step}.tpr -maxwarn 10" for step in ensembles]
 
-        for j,step in enumerate(ensemble_names):
-
+        for j, step in enumerate(ensemble_names):
             # If first or preceeding step is energy minimization, or if there is no cpt file to read in
-            if ensembles[j-1]  == "em" or ensembles[j] == "em" or not cpt_relative[j]:
-                job_file_settings["ensembles"][step]["grompp"] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -o {out_relative[j]}"
+            if ensembles[j - 1] == "em" or ensembles[j] == "em" or not cpt_relative[j]:
+                job_file_settings["ensembles"][step][
+                    "grompp"
+                ] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -o {out_relative[j]}"
             else:
-                job_file_settings["ensembles"][step]["grompp"] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -t {cpt_relative[j]} -o {out_relative[j]}"
-            
+                job_file_settings["ensembles"][step][
+                    "grompp"
+                ] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -t {cpt_relative[j]} -o {out_relative[j]}"
+
             # Define mdrun command
             if j == 0 and kwargs["initial_cpt"] and kwargs["init_step"] > 0:
                 # In case extension of the first simulation in the pipeline is wanted
-                job_file_settings["ensembles"][step]["grompp"] = f"grompp -f {mdp_relative[j]} -c {ensembles[j]}.gro -p {topo_relative[j]} -t {ensembles[j]}.cpt -o {out_relative[j]}"
-                job_file_settings["ensembles"][step]["mdrun"] = f"mdrun -deffnm {ensembles[j]} -cpi {ensembles[j]}.cpt" 
-            else: 
-                job_file_settings["ensembles"][step]["mdrun"] = f"mdrun -deffnm {ensembles[j]}" 
-        
+                job_file_settings["ensembles"][step][
+                    "grompp"
+                ] = f"grompp -f {mdp_relative[j]} -c {ensembles[j]}.gro -p {topo_relative[j]} -t {ensembles[j]}.cpt -o {out_relative[j]}"
+                job_file_settings["ensembles"][step][
+                    "mdrun"
+                ] = f"mdrun -deffnm {ensembles[j]} -cpi {ensembles[j]}.cpt"
+            else:
+                job_file_settings["ensembles"][step][
+                    "mdrun"
+                ] = f"mdrun -deffnm {ensembles[j]}"
+
     elif software == "lammps":
-
         # Relative paths for each input file for each simulation ensemble
-        for j,step in enumerate(ensemble_names):
-            job_file_settings["ensembles"][step]["mdrun"] = os.path.relpath( input_files[j], f"{destination_folder}/{step}" )
+        for j, step in enumerate(ensemble_names):
+            job_file_settings["ensembles"][step]["mdrun"] = os.path.relpath(
+                input_files[j], f"{destination_folder}/{step}"
+            )
 
-    
     # Write template
     job_file = f"{destination_folder}/{job_out}"
-    os.makedirs( os.path.dirname( job_file ), exist_ok = True )
+    os.makedirs(os.path.dirname(job_file), exist_ok=True)
 
     # Write new file
-    rendered = template.render( **job_file_settings )
+    rendered = template.render(**job_file_settings)
 
-    with open( job_file, "w") as f:
-        f.write( rendered )
+    with open(job_file, "w") as f:
+        f.write(rendered)
 
     return job_file

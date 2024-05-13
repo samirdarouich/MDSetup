@@ -9,16 +9,15 @@ from typing import List, Tuple, Dict, Any, Callable
 ############## General settings ##############
 
 # Define supported software
-SOFTWARE_LIST = [ "lammps", "gromacs" ]
+SOFTWARE_LIST = ["lammps", "gromacs"]
 
 # Define default settings based on software
-DEFAULTS = { "gromacs": { "init_step": 0, "initial_cpt": "" },
-             "lammps": {} 
-            }
+DEFAULTS = {"gromacs": {"init_step": 0, "initial_cpt": ""}, "lammps": {}}
 
 # Define precision of folder and job description (e.g.: f"temp_{temperature:.{FOLDER_PRECISION}f}" )
 FOLDER_PRECISION = 1
 JOB_PRECISION = 0
+
 
 # Define some error classes
 class SoftwareError(Exception):
@@ -28,28 +27,33 @@ class SoftwareError(Exception):
         message = f"Wrong software specified '{software}'. Available are: '{', '.join(SOFTWARE_LIST)}'."
         super().__init__(message)
         raise self
-    
+
 
 class KwargsError(Exception):
     """Kwargs missing error class"""
+
     def __init__(self, keys: List[str], kwargs_keys):
-        if not all( key in kwargs_keys for key in keys ):
+        if not all(key in kwargs_keys for key in keys):
             message = f"Missing key in provided keyword arguments. Expected '{', '.join(keys)}'. Available are: '{', '.join(kwargs_keys)}'."
             super().__init__(message)
             raise self
-        
 
 
 ############## Helpfull functions ##############
 
-def find_key_by_value(my_dict: Dict[str,Any], target_value: str|float|int):
+
+def find_key_by_value(my_dict: Dict[str, Any], target_value: str | float | int):
     for key, values in my_dict.items():
         if target_value in values:
             return key
-    raise KeyError(f"Target value '{target_value}' is not pressented in any value of the dictionary.")
+    raise KeyError(
+        f"Target value '{target_value}' is not pressented in any value of the dictionary."
+    )
 
 
-def unique_by_key(iterables: List[Dict[str, Any]|List[Any]], key: str|int) -> List[Dict[str, Any]]:
+def unique_by_key(
+    iterables: List[Dict[str, Any] | List[Any]], key: str | int
+) -> List[Dict[str, Any]]:
     """
     Filters a list of dictionaries or other iterables, returning a list containing only the first occurrence of each unique value associated with a specified key.
 
@@ -70,7 +74,7 @@ def unique_by_key(iterables: List[Dict[str, Any]|List[Any]], key: str|int) -> Li
     return unique_iterables
 
 
-def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
+def deep_get(obj: Dict[str, Any] | List[Any] | Any, keys: str, default: Any = {}):
     """
     Function that searches an (nested) python object and extract the item at the end of the key chain.
     Keys are provided as one string and seperated by ".".
@@ -86,39 +90,52 @@ def deep_get(obj: Dict[str,Any]|List[Any]|Any, keys: str, default: Any={} ):
     d = obj
     for key in keys.split("."):
         if isinstance(d, dict):
-            d = d.get(key, default)          
-        elif isinstance(d,(list,np.ndarray,tuple)):
+            d = d.get(key, default)
+        elif isinstance(d, (list, np.ndarray, tuple)):
             d = d[int(key)]
         elif isinstance(d, object):
-            d = getattr(d,key,default)
+            d = getattr(d, key, default)
         else:
             raise KeyError(f"Subtype is not implemented for extraction: '{type(d)}'")
-        
-        if not isinstance(d,np.ndarray) and d == default:
+
+        if not isinstance(d, np.ndarray) and d == default:
             print(f"\nKey: '{key}' not found! Return default!\n")
 
     return d
 
-def flatten_list(lst: List[List|np.ndarray|float|int|str], filter_function: Callable[...,bool]=lambda p: True ):
+
+def flatten_list(
+    lst: List[List | np.ndarray | float | int | str],
+    filter_function: Callable[..., bool] = lambda p: True,
+):
     """
     Function that flattens a list with sublists, of items. Possibility to filter out certain types is possible via filter function.
 
     Parameters:
      - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can contain sublists or numpy arrays.
      - filter_function (Callable[...,bool]): Callable to filter out certain values if wanted. Defaults to 'lambda p: True', so no filter aplied.
-    
+
     Returns:
      - filtered_list (List[float|int|str]): Flattended and (filtered) list.
-    
-    E.g: 
-    test = [1,2,3,[4,5,6]] 
+
+    E.g:
+    test = [1,2,3,[4,5,6]]
     flatten_list(a)
     >> [1,2,3,4,5,6]
     """
 
-    flattened_list = [ item for sublist in lst for item in (sublist if isinstance(sublist, list) or isinstance(sublist, np.ndarray) else [sublist]) ]
-    filtered_list = [ item for item in flattened_list if filter_function(item) ]
+    flattened_list = [
+        item
+        for sublist in lst
+        for item in (
+            sublist
+            if isinstance(sublist, list) or isinstance(sublist, np.ndarray)
+            else [sublist]
+        )
+    ]
+    filtered_list = [item for item in flattened_list if filter_function(item)]
     return filtered_list
+
 
 def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     """
@@ -134,10 +151,14 @@ def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     function_input = {}
     for arg, item in argument_map.items():
         if isinstance(item, dict):
-            function_input[arg] = {subarg: deep_get(all_attributes, subitem) for subarg, subitem in item.items()}
+            function_input[arg] = {
+                subarg: deep_get(all_attributes, subitem)
+                for subarg, subitem in item.items()
+            }
         else:
             function_input[arg] = deep_get(all_attributes, item)
     return function_input
+
 
 def merge_nested_dicts(existing_dict: Dict[str, Any], new_dict: Dict[str, Any]):
     """
@@ -148,7 +169,11 @@ def merge_nested_dicts(existing_dict: Dict[str, Any], new_dict: Dict[str, Any]):
         new_dict (Dict): New dictionary
     """
     for key, value in new_dict.items():
-        if key in existing_dict and isinstance(existing_dict[key], dict) and isinstance(value, dict):
+        if (
+            key in existing_dict
+            and isinstance(existing_dict[key], dict)
+            and isinstance(value, dict)
+        ):
             # If both the existing and new values are dictionaries, merge them recursively
             merge_nested_dicts(existing_dict[key], value)
         else:
@@ -156,9 +181,11 @@ def merge_nested_dicts(existing_dict: Dict[str, Any], new_dict: Dict[str, Any]):
             existing_dict[key] = value
 
 
-def serialize_json(data: Dict | List | np.ndarray | Any, target_class: Tuple=(), precision: int=3 ):
+def serialize_json(
+    data: Dict | List | np.ndarray | Any, target_class: Tuple = (), precision: int = 3
+):
     """
-    Function that recoursevly inspect data for classes and remove them from the data. Also convert 
+    Function that recoursevly inspect data for classes and remove them from the data. Also convert
     numpy arrys to lists and round floats to a given precision.
 
     Args:
@@ -170,17 +197,22 @@ def serialize_json(data: Dict | List | np.ndarray | Any, target_class: Tuple=(),
         Dict | List | np.ndarray | Any: Input data, just without the target classes and lists instead arrays.
     """
     if isinstance(data, dict):
-        return {key: serialize_json(value, target_class) for key, value in data.items() if not isinstance(value, target_class)}
+        return {
+            key: serialize_json(value, target_class)
+            for key, value in data.items()
+            if not isinstance(value, target_class)
+        }
     elif isinstance(data, list):
         return [serialize_json(item, target_class) for item in data]
     elif isinstance(data, np.ndarray):
-        return np.round( data, precision ).tolist()
+        return np.round(data, precision).tolist()
     elif isinstance(data, float):
-        return round( data, precision )
+        return round(data, precision)
     else:
         return data
 
-def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
+
+def work_json(file_path: str, data: Dict = {}, to_do: str = "read", indent: int = 2):
     """
     Function to work with json files
 
@@ -192,23 +224,20 @@ def work_json(file_path: str, data: Dict={}, to_do: str="read", indent: int=2):
     Returns:
         data (dict): If read is choosen, returns dictionary
     """
-    
-    if to_do=="read":
-        return json.load( open(file_path) )
-    
-    elif to_do=="write":
-        json.dump(data, open(file_path,"w"), indent=indent)
 
-    elif to_do=="append":
+    if to_do == "read":
+        return json.load(open(file_path))
+
+    elif to_do == "write":
+        json.dump(data, open(file_path, "w"), indent=indent)
+
+    elif to_do == "append":
         if not os.path.exists(file_path):
-            json.dump(data, open(file_path,"w"), indent=indent)
+            json.dump(data, open(file_path, "w"), indent=indent)
         else:
-            current_data = json.load( open(file_path) )
-            merge_nested_dicts(current_data,data)
-            json.dump(current_data, open(file_path,"w"), indent=indent)
-        
+            current_data = json.load(open(file_path))
+            merge_nested_dicts(current_data, data)
+            json.dump(current_data, open(file_path, "w"), indent=indent)
+
     else:
-        raise KeyError("Wrong task defined: %s"%to_do)
-
-
-
+        raise KeyError("Wrong task defined: %s" % to_do)

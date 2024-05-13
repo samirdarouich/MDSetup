@@ -8,7 +8,8 @@ from ..tools.general import SOFTWARE_LIST, SoftwareError, KwargsError
 
 ################ Functions for "molecule" files ################
 
-def atoms_molecule( molecule_ff: List[Dict[str,float|str]], software: str, **kwargs ):
+
+def atoms_molecule(molecule_ff: List[Dict[str, float | str]], software: str, **kwargs):
     """
     Generates a dictionary of atom properties formatted for specified molecular simulation software.
 
@@ -16,11 +17,11 @@ def atoms_molecule( molecule_ff: List[Dict[str,float|str]], software: str, **kwa
      - molecule_ff (List[Dict[str, Union[float, str]]]): List of dictionaries, each representing an atom.
      - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
      - **kwargs: Additional keyword arguments required by specific software formats.
-    
+
     Keyword Args:
     - residue (str): Specifies the residue name in GROMACS.
     - coordinates (List[List[float]]): A list of coordinates corresponding to each atom.
-       
+
     Returns:
      - dict: A dictionary containing atom data formatted according to the specified software's requirements.
 
@@ -29,30 +30,44 @@ def atoms_molecule( molecule_ff: List[Dict[str,float|str]], software: str, **kwa
         KwargsError: If required keyword arguments are missing for the specified software.
     """
     if software == "gromacs":
-        atoms_dict = { "atoms": [] }
+        atoms_dict = {"atoms": []}
 
         # Check necessary kwargs
-        KwargsError( ["residue"], kwargs.keys() )
+        KwargsError(["residue"], kwargs.keys())
 
         for iatom, ffatom in enumerate(molecule_ff):
-            atoms_dict["atoms"].append( [ iatom+1, ffatom["name"], 1, kwargs["residue"], ffatom["name"], iatom+1, ffatom["charge"], ffatom["mass"] ])
+            atoms_dict["atoms"].append(
+                [
+                    iatom + 1,
+                    ffatom["name"],
+                    1,
+                    kwargs["residue"],
+                    ffatom["name"],
+                    iatom + 1,
+                    ffatom["charge"],
+                    ffatom["mass"],
+                ]
+            )
 
     elif software == "lammps":
-        atoms_dict = { "coords": [], "types": [], "charges":[] }
-        
+        atoms_dict = {"coords": [], "types": [], "charges": []}
+
         # Check necessary kwargs
-        KwargsError( ["coordinates"], kwargs.keys() )
+        KwargsError(["coordinates"], kwargs.keys())
 
         for iatom, ffatom in enumerate(molecule_ff):
-            atoms_dict["types"].append( [ iatom+1, ffatom["name"] ] )
-            atoms_dict["charges"].append( [ iatom+1, ffatom["charge"] ] )
-            atoms_dict["coords"].append( [ iatom+1, kwargs["coordinates"][iatom] ] )
+            atoms_dict["types"].append([iatom + 1, ffatom["name"]])
+            atoms_dict["charges"].append([iatom + 1, ffatom["charge"]])
+            atoms_dict["coords"].append([iatom + 1, kwargs["coordinates"][iatom]])
     else:
         raise SoftwareError(software)
 
     return atoms_dict
 
-def bonds_molecule( bond_list: List[List[int]], bond_names: List[List[str]], software: str, **kwargs ):
+
+def bonds_molecule(
+    bond_list: List[List[int]], bond_names: List[List[str]], software: str, **kwargs
+):
     """
     Generates a dictionary of bonds formatted based on the specified software.
 
@@ -69,23 +84,24 @@ def bonds_molecule( bond_list: List[List[int]], bond_names: List[List[str]], sof
         SoftwareError: If the specified software is not supported.
     """
 
-    bonds_dict = { "bonds": [] }
-    
-    if software == "gromacs":
+    bonds_dict = {"bonds": []}
 
-        for ibond,(bl,bn) in enumerate( zip( bond_list, bond_names ) ):
-            bonds_dict["bonds"].append( [ *bl, "#", " ".join(bn) ] ) 
+    if software == "gromacs":
+        for ibond, (bl, bn) in enumerate(zip(bond_list, bond_names)):
+            bonds_dict["bonds"].append([*bl, "#", " ".join(bn)])
 
     elif software == "lammps":
-
-        for ibond,(bl,bn) in enumerate( zip( bond_list, bond_names ) ):
-            bonds_dict["bonds"].append( [ ibond+1, "_".join(bn), *bl ] )
+        for ibond, (bl, bn) in enumerate(zip(bond_list, bond_names)):
+            bonds_dict["bonds"].append([ibond + 1, "_".join(bn), *bl])
     else:
         raise SoftwareError(software)
-    
+
     return bonds_dict
 
-def angles_molecule( angle_list: List[List[int]], angle_names: List[List[str]], software: str, **kwargs ):
+
+def angles_molecule(
+    angle_list: List[List[int]], angle_names: List[List[str]], software: str, **kwargs
+):
     """
     Generates a dictionary of angles formatted based on the specified software.
 
@@ -101,23 +117,28 @@ def angles_molecule( angle_list: List[List[int]], angle_names: List[List[str]], 
     Raises:
         SoftwareError: If the specified software is not supported.
     """
-    angles_dict = { "angles": [] }
-    
+    angles_dict = {"angles": []}
+
     if software == "gromacs":
-        for iangle,(al,an) in enumerate( zip( angle_list, angle_names ) ):
-            angles_dict["angles"].append( [ *al, "#", " ".join(an) ] )
-    
+        for iangle, (al, an) in enumerate(zip(angle_list, angle_names)):
+            angles_dict["angles"].append([*al, "#", " ".join(an)])
+
     elif software == "lammps":
-    
-        for iangle,(al,an) in enumerate( zip( angle_list, angle_names ) ):
-            angles_dict["angles"].append( [ iangle+1, "_".join(an), *al ] )
-    
+        for iangle, (al, an) in enumerate(zip(angle_list, angle_names)):
+            angles_dict["angles"].append([iangle + 1, "_".join(an), *al])
+
     else:
         raise SoftwareError(software)
-    
+
     return angles_dict
 
-def dihedrals_molecule( dihedral_list: List[List[int]], dihedral_names: List[List[str]], software: str, **kwargs ):
+
+def dihedrals_molecule(
+    dihedral_list: List[List[int]],
+    dihedral_names: List[List[str]],
+    software: str,
+    **kwargs,
+):
     """
     Generates a dictionary of dihedrals formatted based on the specified software.
 
@@ -133,16 +154,14 @@ def dihedrals_molecule( dihedral_list: List[List[int]], dihedral_names: List[Lis
     Raises:
         SoftwareError: If the specified software is not supported.
     """
-    dihedrals_dict = { "dihedrals": [] }
+    dihedrals_dict = {"dihedrals": []}
     if software == "gromacs":
-
-        for idihedral,(dl,dn) in enumerate( zip( dihedral_list, dihedral_names ) ):
-            dihedrals_dict["dihedrals"].append( [ *dl, "#", " ".join(dn) ] )
+        for idihedral, (dl, dn) in enumerate(zip(dihedral_list, dihedral_names)):
+            dihedrals_dict["dihedrals"].append([*dl, "#", " ".join(dn)])
 
     elif software == "lammps":
-        
-        for idihedral,(dl,dn) in enumerate( zip( dihedral_list, dihedral_names ) ):
-            dihedrals_dict["dihedrals"].append( [ idihedral+1, "_".join(dn), *dl ] )
+        for idihedral, (dl, dn) in enumerate(zip(dihedral_list, dihedral_names)):
+            dihedrals_dict["dihedrals"].append([idihedral + 1, "_".join(dn), *dl])
 
     else:
         raise SoftwareError(software)
@@ -150,46 +169,68 @@ def dihedrals_molecule( dihedral_list: List[List[int]], dihedral_names: List[Lis
     return dihedrals_dict
 
 
-def write_gro_file( molecule, gro_template: str, destination: str, residue: str, **kwargs ):
-
+def write_gro_file(
+    molecule, gro_template: str, destination: str, residue: str, **kwargs
+):
     if not os.path.exists(gro_template):
         raise FileExistsError(f"Gro file template does not exists:\n   {gro_template}")
-    
+
     with open(gro_template) as file:
         template = Template(file.read())
-    
+
     # Make path absolute
     destination = os.path.abspath(destination)
 
-    os.makedirs( destination, exist_ok = True )
+    os.makedirs(destination, exist_ok=True)
 
     coord_destination = f"{destination}/{residue}.gro"
-        
-    gromacs = { "name": residue, 
-                "no_atoms": f"{molecule.atom_number:5d}", 
-                "atoms": [],
-                "box_dimension": "%10.5f%10.5f%10.5f"%(0.0, 0.0, 0.0)
-                }
-    
+
+    gromacs = {
+        "name": residue,
+        "no_atoms": f"{molecule.atom_number:5d}",
+        "atoms": [],
+        "box_dimension": "%10.5f%10.5f%10.5f" % (0.0, 0.0, 0.0),
+    }
+
     # Gromacs guesses the atomic radii for the insert based on the name in the gro file, hence it makes sense to name the atoms with their element
 
     # Xyz coordinates are given in Angstrom, convert in nm
     # Provide GROMACS with  RESno, RESNAME. attyp, running number, x, y ,z (optional velocities)
-    gromacs["atoms"] = [ "%5d%-5s%5s%5d%8.3f%8.3f%8.3f # %s"%( 1, residue[:5], atsym[:5], j+1, float(x) / 10, float(y) / 10, float(z) / 10, attyp ) 
-                         for j,(attyp, atsym, (x,y,z)) in enumerate(zip(molecule.atom_names, molecule.atomtypes, molecule.coordinate)) ]
+    gromacs["atoms"] = [
+        "%5d%-5s%5s%5d%8.3f%8.3f%8.3f # %s"
+        % (
+            1,
+            residue[:5],
+            atsym[:5],
+            j + 1,
+            float(x) / 10,
+            float(y) / 10,
+            float(z) / 10,
+            attyp,
+        )
+        for j, (attyp, atsym, (x, y, z)) in enumerate(
+            zip(molecule.atom_names, molecule.atomtypes, molecule.coordinate)
+        )
+    ]
 
-    rendered = template.render( gromacs )
+    rendered = template.render(gromacs)
 
     with open(coord_destination, "w") as fh:
-        fh.write( rendered )
+        fh.write(rendered)
 
     return coord_destination
 
+
 ################ Functions for "topology" file ################
 
-def style_topology( system_ff: List[Dict[str,float|str]], bonds_ff: List[Dict[str,float|str]], 
-                    angles_ff: List[Dict[str,float|str]], dihedrals_ff: List[Dict[str,float|str]], 
-                    **kwargs ):
+
+def style_topology(
+    system_ff: List[Dict[str, float | str]],
+    bonds_ff: List[Dict[str, float | str]],
+    angles_ff: List[Dict[str, float | str]],
+    dihedrals_ff: List[Dict[str, float | str]],
+    **kwargs,
+):
     """
     This function takes in several parameters and returns two dictionaries representing the pair styles and hybrid flags for a molecular simulation.
 
@@ -199,7 +240,7 @@ def style_topology( system_ff: List[Dict[str,float|str]], bonds_ff: List[Dict[st
     - angles_ff (List[Dict[str,float|str]]): A list of dictionaries representing the force field parameters for the angles.
     - dihedrals_ff (List[Dict[str,float|str]]): A list of dictionaries representing the force field parameters for the dihedrals.
     - **kwargs: Additional keyword arguments.
-        
+
     Keyword Args:
     - rcut (float): Cutoff radius.
     - potential_kwargs (Dict[str,List[str]]): Additional keyword arguments specific to potential types and styles.
@@ -209,10 +250,10 @@ def style_topology( system_ff: List[Dict[str,float|str]], bonds_ff: List[Dict[st
     - style_dict (Dict[str,Any]): A dictionary containing the pair styles and other force field styles.
     - hybrid_dict (Dict[str,bool]): A dictionary containing the hybrid flags for the pair styles and other force field styles.
 
-   """
+    """
 
     # Check necessary kwargs
-    KwargsError( ["potential_kwargs", "rcut"], kwargs.keys() )
+    KwargsError(["potential_kwargs", "rcut"], kwargs.keys())
 
     style_dict = {}
     hybrid_dict = {}
@@ -224,28 +265,49 @@ def style_topology( system_ff: List[Dict[str,float|str]], bonds_ff: List[Dict[st
     local_variables = locals()
 
     # Get pair style defined in force field
-    vdw_pair_styles = list( { p["vdw_style"] for p in system_ff if p["vdw_style"] } )
-    coul_pair_styles = list( { p["coulomb_style"] for p in system_ff if p["coulomb_style"] } )
-    
-    pair_style = get_pair_style( local_variables, vdw_pair_styles,
-                                 coul_pair_styles, kwargs["potential_kwargs"]["pair_style"] )
+    vdw_pair_styles = list({p["vdw_style"] for p in system_ff if p["vdw_style"]})
+    coul_pair_styles = list(
+        {p["coulomb_style"] for p in system_ff if p["coulomb_style"]}
+    )
+
+    pair_style = get_pair_style(
+        local_variables,
+        vdw_pair_styles,
+        coul_pair_styles,
+        kwargs["potential_kwargs"]["pair_style"],
+    )
     pair_hybrid_flag = "hybrid" in pair_style
 
     # Fix n_eval
     n_eval = 1000
 
     # Bond styles
-    bonds_styles = list( { a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in bonds_ff } )
+    bonds_styles = list(
+        {
+            a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"]
+            for a in bonds_ff
+        }
+    )
     bonds_hybrid_flag = len(bonds_styles) > 1
 
     # Angle styles
-    angles_styles = list( { a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in angles_ff } )
+    angles_styles = list(
+        {
+            a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"]
+            for a in angles_ff
+        }
+    )
     angles_hybrid_flag = len(angles_styles) > 1
 
     # Dihedral styles
-    dihedrals_styles = list( { a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"] for a in dihedrals_ff } )
+    dihedrals_styles = list(
+        {
+            a["style"] + f" spline {n_eval}" if a["style"] == "table" else a["style"]
+            for a in dihedrals_ff
+        }
+    )
     dihedrals_hybrid_flag = len(dihedrals_styles) > 1
-    
+
     style_dict["pair_style"] = pair_style
     style_dict["bonds_style"] = bonds_styles
     style_dict["angles_style"] = angles_styles
@@ -258,7 +320,8 @@ def style_topology( system_ff: List[Dict[str,float|str]], bonds_ff: List[Dict[st
 
     return style_dict, hybrid_dict
 
-def atoms_topology( system_ff: List[Dict[str,float|str]], software: str, **kwargs ):
+
+def atoms_topology(system_ff: List[Dict[str, float | str]], software: str, **kwargs):
     """
     Generates a dictionary representing the topology of atoms in a system for different simulation software.
 
@@ -281,55 +344,77 @@ def atoms_topology( system_ff: List[Dict[str,float|str]], software: str, **kwarg
 
     """
 
-    
     if software == "gromacs":
-        atoms_dict = { "atoms": [] }
+        atoms_dict = {"atoms": []}
     elif software == "lammps":
         # Check necessary kwargs
-        KwargsError( ["do_mixing","mixing_rule","pair_hybrid_flag","potential_kwargs"], kwargs.keys() )
+        KwargsError(
+            ["do_mixing", "mixing_rule", "pair_hybrid_flag", "potential_kwargs"],
+            kwargs.keys(),
+        )
 
-        atoms_dict = { "atoms": { "vdw": [], "coulomb": [] } }
+        atoms_dict = {"atoms": {"vdw": [], "coulomb": []}}
 
-        if len( { p["coulomb_style"] for p in system_ff if p["coulomb_style"] } ) == 1:
-            atoms_dict["coulomb"] = [ [ "*", "*", *{ p["coulomb_style"] for p in system_ff if p["coulomb_style"] } ] ]
+        if len({p["coulomb_style"] for p in system_ff if p["coulomb_style"]}) == 1:
+            atoms_dict["coulomb"] = [
+                [
+                    "*",
+                    "*",
+                    *{p["coulomb_style"] for p in system_ff if p["coulomb_style"]},
+                ]
+            ]
 
     else:
         raise SoftwareError(software)
-    
+
     for i, ffiatom in enumerate(system_ff):
         if software == "gromacs":
-            
-            atoms_dict["atoms"].append( [ ffiatom["name"], ffiatom["atom_no"], ffiatom["mass"], ffiatom["charge"], 
-                                          "A", ffiatom["sigma"], ffiatom["epsilon"] ] 
-                                    )
+            atoms_dict["atoms"].append(
+                [
+                    ffiatom["name"],
+                    ffiatom["atom_no"],
+                    ffiatom["mass"],
+                    ffiatom["charge"],
+                    "A",
+                    ffiatom["sigma"],
+                    ffiatom["epsilon"],
+                ]
+            )
         elif software == "lammps":
-            
             for ffjatom in system_ff[i:]:
-                
                 if not kwargs["do_mixing"] and ffiatom["name"] != ffjatom["name"]:
                     continue
                 else:
-                    sigma_ij, epsilon_ij, n_ij, m_ij = get_mixed_parameters( ffiatom = ffiatom, ffjatom = ffjatom,
-                                                                             mixing_rule = kwargs["mixing_rule"], 
-                                                                             precision=4 
-                                                                            )
-                    
-                # Get local variables and map them with potential kwargs 
+                    sigma_ij, epsilon_ij, n_ij, m_ij = get_mixed_parameters(
+                        ffiatom=ffiatom,
+                        ffjatom=ffjatom,
+                        mixing_rule=kwargs["mixing_rule"],
+                        precision=4,
+                    )
+
+                # Get local variables and map them with potential kwargs
                 local_variables = locals()
-                
-                atoms_dict["atoms"]["vdw"].append( [ ffiatom["name"], ffjatom["name"] ] + 
-                                                   ( [ ffiatom["vdw_style"] ] if kwargs["pair_hybrid_flag"] else [] ) + 
-                                                   [ local_variables[arg] for arg in kwargs["potential_kwargs"]["vdw_style"][ffiatom["vdw_style"]] ]
-                                                 ) 
-    
+
+                atoms_dict["atoms"]["vdw"].append(
+                    [ffiatom["name"], ffjatom["name"]]
+                    + ([ffiatom["vdw_style"]] if kwargs["pair_hybrid_flag"] else [])
+                    + [
+                        local_variables[arg]
+                        for arg in kwargs["potential_kwargs"]["vdw_style"][
+                            ffiatom["vdw_style"]
+                        ]
+                    ]
+                )
+
     return atoms_dict
 
-def bonds_topology( bonds_ff: List[Dict[str,float|str]], software: str, **kwargs ):
+
+def bonds_topology(bonds_ff: List[Dict[str, float | str]], software: str, **kwargs):
     """
     Generates a dictionary representing the topology of bonds based on the specified software and additional parameters.
 
     Parameters:
-    - bonds_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a bond force field. 
+    - bonds_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a bond force field.
                                                        Each dictionary must have keys 'list', 'style', and 'p'.
     - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
     - **kwargs: Additional keyword arguments.
@@ -345,41 +430,43 @@ def bonds_topology( bonds_ff: List[Dict[str,float|str]], software: str, **kwargs
         KwargsError: If required keyword arguments are missing when using 'lammps'.
     """
 
-    bonds_dict = { "bonds": [] }
-    
-    if software == "gromacs":
+    bonds_dict = {"bonds": []}
 
+    if software == "gromacs":
         for bond_ff in bonds_ff:
-            bonds_dict["bonds"].append( [ *sort_force_fields( bond_ff["list"] ), bond_ff["style"], *bond_ff["p"] ] ) 
+            bonds_dict["bonds"].append(
+                [*sort_force_fields(bond_ff["list"]), bond_ff["style"], *bond_ff["p"]]
+            )
 
     elif software == "lammps":
-
         # Check necessary kwargs
-        KwargsError( ["bonds_hybrid_flag"], kwargs.keys() )
+        KwargsError(["bonds_hybrid_flag"], kwargs.keys())
 
         for bond_ff in bonds_ff:
-            bonds_dict["bonds"].append( [ "_".join( sort_force_fields( bond_ff["list"] ) ) ] + 
-                                        ( [ bond_ff["style"]] if kwargs["bonds_hybrid_flag"] else [] ) + 
-                                        bond_ff["p"]
-                                      )
+            bonds_dict["bonds"].append(
+                ["_".join(sort_force_fields(bond_ff["list"]))]
+                + ([bond_ff["style"]] if kwargs["bonds_hybrid_flag"] else [])
+                + bond_ff["p"]
+            )
     else:
         raise SoftwareError(software)
-    
+
     return bonds_dict
 
-def angles_topology( angles_ff: List[Dict[str,float|str]], software: str, **kwargs ):
+
+def angles_topology(angles_ff: List[Dict[str, float | str]], software: str, **kwargs):
     """
     Generates a dictionary representing the topology of angles based on the specified software and additional parameters.
 
     Parameters:
-    - angles_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a angle force field. 
+    - angles_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a angle force field.
                                                        Each dictionary must have keys 'list', 'style', and 'p'.
     - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
     - **kwargs: Additional keyword arguments.
 
     Keyword Args:
     - angles_hybrid_flag (bool): If several angle styles are used for LAMMPS.
-    
+
     Returns:
         Dict[str, List]: A dictionary with a single key 'angles' that maps to a list of angle configurations. Each configuration is a list that may vary depending on the software used.
 
@@ -387,41 +474,49 @@ def angles_topology( angles_ff: List[Dict[str,float|str]], software: str, **kwar
         SoftwareError: If the specified software is not supported.
         KwargsError: If required keyword arguments are missing when using 'lammps'.
     """
-    angles_dict = { "angles": [] }
-    
-    if software == "gromacs":
+    angles_dict = {"angles": []}
 
+    if software == "gromacs":
         for angle_ff in angles_ff:
-            angles_dict["angles"].append( [ *sort_force_fields( angle_ff["list"] ), angle_ff["style"], *angle_ff["p"] ] ) 
+            angles_dict["angles"].append(
+                [
+                    *sort_force_fields(angle_ff["list"]),
+                    angle_ff["style"],
+                    *angle_ff["p"],
+                ]
+            )
 
     elif software == "lammps":
-        
         # Check necessary kwargs
-        KwargsError( ["angles_hybrid_flag"], kwargs.keys() )
+        KwargsError(["angles_hybrid_flag"], kwargs.keys())
 
         for angle_ff in angles_ff:
-            angles_dict["angles"].append( [ "_".join( sort_force_fields( angle_ff["list"] ) ) ] + 
-                                          ( [ angle_ff["style"]] if kwargs["angles_hybrid_flag"] else [] ) + 
-                                          angle_ff["p"]
-                                        )
+            angles_dict["angles"].append(
+                ["_".join(sort_force_fields(angle_ff["list"]))]
+                + ([angle_ff["style"]] if kwargs["angles_hybrid_flag"] else [])
+                + angle_ff["p"]
+            )
     else:
         raise SoftwareError(software)
-    
+
     return angles_dict
 
-def dihedrals_topology( dihedrals_ff: List[Dict[str,float|str]], software: str, **kwargs ):
+
+def dihedrals_topology(
+    dihedrals_ff: List[Dict[str, float | str]], software: str, **kwargs
+):
     """
     Generates a dictionary representing the topology of dihedrals based on the specified software and additional parameters.
 
     Parameters:
-    - dihedrals_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a dihedral force field. 
+    - dihedrals_ff (List[Dict[str, Union[float, str]]]): A list of dictionaries where each dictionary contains details of a dihedral force field.
                                                        Each dictionary must have keys 'list', 'style', and 'p'.
     - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
     - **kwargs: Additional keyword arguments.
 
     Keyword Args:
     - dihedrals_hybrid_flag (bool): If several dihedral styles are used for LAMMPS.
-    
+
     Returns:
         Dict[str, List]: A dictionary with a single key 'dihedrals' that maps to a list of dihedral configurations. Each configuration is a list that may vary depending on the software used.
 
@@ -430,27 +525,29 @@ def dihedrals_topology( dihedrals_ff: List[Dict[str,float|str]], software: str, 
         KwargsError: If required keyword arguments are missing when using 'lammps'.
     """
 
-    dihedrals_dict = { "dihedrals": [] }
-    
-    if software == "gromacs":
+    dihedrals_dict = {"dihedrals": []}
 
+    if software == "gromacs":
         for dihedral_ff in dihedrals_ff:
-            dihedrals_dict["dihedrals"].append( [ *sort_force_fields( dihedral_ff["list"] ), dihedral_ff["style"], *dihedral_ff["p"] ] ) 
+            dihedrals_dict["dihedrals"].append(
+                [
+                    *sort_force_fields(dihedral_ff["list"]),
+                    dihedral_ff["style"],
+                    *dihedral_ff["p"],
+                ]
+            )
 
     elif software == "lammps":
-
         # Check necessary kwargs
-        KwargsError( ["dihedrals_hybrid_flag"], kwargs.keys() )
+        KwargsError(["dihedrals_hybrid_flag"], kwargs.keys())
 
         for dihedral_ff in dihedrals_ff:
-            dihedrals_dict["dihedrals"].append( [ "_".join( sort_force_fields( dihedral_ff["list"] ) ) ] + 
-                                                ( [ dihedral_ff["style"]] if kwargs["dihedrals_hybrid_flag"] else [] ) + 
-                                                dihedral_ff["p"]
-                                              )
+            dihedrals_dict["dihedrals"].append(
+                ["_".join(sort_force_fields(dihedral_ff["list"]))]
+                + ([dihedral_ff["style"]] if kwargs["dihedrals_hybrid_flag"] else [])
+                + dihedral_ff["p"]
+            )
     else:
         raise SoftwareError(software)
-    
-    return dihedrals_dict
 
-    
-    
+    return dihedrals_dict

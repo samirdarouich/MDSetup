@@ -15,12 +15,6 @@ git clone https://github.com/samirdarouich/pyLMP.git
 cd pyLMP
 pip install -I .
 ```
-2. PLAYMOL
-```
-git clone https://github.com/atoms-ufrj/playmol
-cd playmol
-make
-```
 
 
 ## 🐍 Example program
@@ -61,9 +55,6 @@ simulation_times = [ 0, 10.0 ]
 # In that case, provide one initial structure for each temperature & pressure state.
 # If the simulation should start from an initial configuration, provide an empty list.
 initial_systems = [ "/home/st/st_st/st_ac137577/workspace/software/pyLMP/example/butane_hexane/md_thermo/temp_343_pres_4/build/system.data" ]
-
-# Define if there is already a force field file
-ff_file = ""
 
 # Provide kwargs that should be passed into the input template directly
 input_kwargs = {  }
