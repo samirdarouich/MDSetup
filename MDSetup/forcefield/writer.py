@@ -3,23 +3,8 @@ from jinja2 import Template
 from typing import List, Dict
 from .utils import get_mixed_parameters, get_pair_style
 from moleculegraph.molecule_utils import sort_force_fields
+from ..tools.general import SOFTWARE_LIST, SoftwareError, KwargsError
 
-class SoftwareError(Exception):
-    """Software error class"""
-
-    def __init__(self, software: str):
-        message = f"Wrong software specified '{software}'. Available are: '{", ".join(SOFTWARE_LIST)}'."
-        super().__init__(message)
-        raise self
-class KwargsError(Exception):
-    """Kwargs missing error class"""
-    def __init__(self, keys: List[str], kwargs_keys):
-        if not all( key in kwargs_keys for key in keys ):
-            message = f"Missing key in provided keyword arguments. Expected '{', '.join(keys)}'. Available are: '{", ".join(kwargs_keys)}'."
-            super().__init__(message)
-            raise self
-        
-SOFTWARE_LIST = [ "lammps", "gromacs" ]
 
 ################ Functions for "molecule" files ################
 
@@ -43,7 +28,7 @@ def atoms_molecule( molecule_ff: List[Dict[str,float|str]], software: str, **kwa
         SoftwareError: If the specified software is not supported.
         KwargsError: If required keyword arguments are missing for the specified software.
     """
-    if software.lower() == "gromacs":
+    if software == "gromacs":
         atoms_dict = { "atoms": [] }
 
         # Check necessary kwargs
@@ -52,7 +37,7 @@ def atoms_molecule( molecule_ff: List[Dict[str,float|str]], software: str, **kwa
         for iatom, ffatom in enumerate(molecule_ff):
             atoms_dict["atoms"].append( [ iatom+1, ffatom["name"], 1, kwargs["residue"], ffatom["name"], iatom+1, ffatom["charge"], ffatom["mass"] ])
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
         atoms_dict = { "coords": [], "types": [], "charges":[] }
         
         # Check necessary kwargs
@@ -86,12 +71,12 @@ def bonds_molecule( bond_list: List[List[int]], bond_names: List[List[str]], sof
 
     bonds_dict = { "bonds": [] }
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
 
         for ibond,(bl,bn) in enumerate( zip( bond_list, bond_names ) ):
             bonds_dict["bonds"].append( [ *bl, "#", " ".join(bn) ] ) 
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
 
         for ibond,(bl,bn) in enumerate( zip( bond_list, bond_names ) ):
             bonds_dict["bonds"].append( [ ibond+1, "_".join(bn), *bl ] )
@@ -118,11 +103,11 @@ def angles_molecule( angle_list: List[List[int]], angle_names: List[List[str]], 
     """
     angles_dict = { "angles": [] }
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
         for iangle,(al,an) in enumerate( zip( angle_list, angle_names ) ):
             angles_dict["angles"].append( [ *al, "#", " ".join(an) ] )
     
-    elif software.lower() == "lammps":
+    elif software == "lammps":
     
         for iangle,(al,an) in enumerate( zip( angle_list, angle_names ) ):
             angles_dict["angles"].append( [ iangle+1, "_".join(an), *al ] )
@@ -149,12 +134,12 @@ def dihedrals_molecule( dihedral_list: List[List[int]], dihedral_names: List[Lis
         SoftwareError: If the specified software is not supported.
     """
     dihedrals_dict = { "dihedrals": [] }
-    if software.lower() == "gromacs":
+    if software == "gromacs":
 
         for idihedral,(dl,dn) in enumerate( zip( dihedral_list, dihedral_names ) ):
             dihedrals_dict["dihedrals"].append( [ *dl, "#", " ".join(dn) ] )
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
         
         for idihedral,(dl,dn) in enumerate( zip( dihedral_list, dihedral_names ) ):
             dihedrals_dict["dihedrals"].append( [ idihedral+1, "_".join(dn), *dl ] )
@@ -297,9 +282,9 @@ def atoms_topology( system_ff: List[Dict[str,float|str]], software: str, **kwarg
     """
 
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
         atoms_dict = { "atoms": [] }
-    elif software.lower() == "lammps":
+    elif software == "lammps":
         # Check necessary kwargs
         KwargsError( ["do_mixing","mixing_rule","pair_hybrid_flag","potential_kwargs"], kwargs.keys() )
 
@@ -312,12 +297,12 @@ def atoms_topology( system_ff: List[Dict[str,float|str]], software: str, **kwarg
         raise SoftwareError(software)
     
     for i, ffiatom in enumerate(system_ff):
-        if software.lower() == "gromacs":
+        if software == "gromacs":
             
             atoms_dict["atoms"].append( [ ffiatom["name"], ffiatom["atom_no"], ffiatom["mass"], ffiatom["charge"], 
                                           "A", ffiatom["sigma"], ffiatom["epsilon"] ] 
                                     )
-        elif software.lower() == "lammps":
+        elif software == "lammps":
             
             for ffjatom in system_ff[i:]:
                 
@@ -362,12 +347,12 @@ def bonds_topology( bonds_ff: List[Dict[str,float|str]], software: str, **kwargs
 
     bonds_dict = { "bonds": [] }
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
 
         for bond_ff in bonds_ff:
             bonds_dict["bonds"].append( [ *sort_force_fields( bond_ff["list"] ), bond_ff["style"], *bond_ff["p"] ] ) 
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
 
         # Check necessary kwargs
         KwargsError( ["bonds_hybrid_flag"], kwargs.keys() )
@@ -404,12 +389,12 @@ def angles_topology( angles_ff: List[Dict[str,float|str]], software: str, **kwar
     """
     angles_dict = { "angles": [] }
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
 
         for angle_ff in angles_ff:
             angles_dict["angles"].append( [ *sort_force_fields( angle_ff["list"] ), angle_ff["style"], *angle_ff["p"] ] ) 
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
         
         # Check necessary kwargs
         KwargsError( ["angles_hybrid_flag"], kwargs.keys() )
@@ -447,12 +432,12 @@ def dihedrals_topology( dihedrals_ff: List[Dict[str,float|str]], software: str, 
 
     dihedrals_dict = { "dihedrals": [] }
     
-    if software.lower() == "gromacs":
+    if software == "gromacs":
 
         for dihedral_ff in dihedrals_ff:
             dihedrals_dict["dihedrals"].append( [ *sort_force_fields( dihedral_ff["list"] ), dihedral_ff["style"], *dihedral_ff["p"] ] ) 
 
-    elif software.lower() == "lammps":
+    elif software == "lammps":
 
         # Check necessary kwargs
         KwargsError( ["dihedrals_hybrid_flag"], kwargs.keys() )

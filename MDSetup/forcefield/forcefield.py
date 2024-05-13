@@ -5,9 +5,10 @@ from typing import List
 from jinja2 import Template
 from ..tools.molecule import get_molecule_from_smiles
 from moleculegraph.molecule_utils import sort_force_fields
-from ..tools.general import flatten_list, merge_nested_dicts, unique_by_key
-from .writer import ( SOFTWARE_LIST, SoftwareError, KwargsError, 
-                      atoms_molecule, bonds_molecule, angles_molecule, dihedrals_molecule,
+from ..tools.general import ( SOFTWARE_LIST, SoftwareError, KwargsError,
+                              flatten_list, merge_nested_dicts, unique_by_key
+                            )
+from .writer import ( atoms_molecule, bonds_molecule, angles_molecule, dihedrals_molecule,
                       atoms_topology, bonds_topology, angles_topology, dihedrals_topology,
                       style_topology, write_gro_file
                     )
