@@ -106,11 +106,9 @@ def generate_initial_configuration( destination_folder: str, build_template: str
      - intial_coord (str): Path of inital configuration
 
     """
-    # Define box folder
-    build_folder = f"{destination_folder}/build"
 
     # Create and the output folder of the box
-    os.makedirs( build_folder, exist_ok = True )
+    os.makedirs( destination_folder, exist_ok = True )
 
     # Check if job template file exists
     if not os.path.isfile( build_template ):
@@ -120,8 +118,8 @@ def generate_initial_configuration( destination_folder: str, build_template: str
             template = Template( f.read() )
     
     # Define output coordinate 
-    suffix = "gro" if software.lower() == "gromacs" else "data" if software.lower() == "lammps" else ""
-    intial_coord = f"{build_folder}/init_conf.{suffix}"
+    suffix = "gro" if software == "gromacs" else "data" if software == "lammps" else ""
+    intial_coord = f"{destination_folder}/init_conf.{suffix}"
 
     # Sort out molecules that are zero
     non_zero_coord_mol_no = [ (coord, value["name"], value["number"]) for coord,value in zip(coordinate_paths,molecules_list) if value["number"] > 0 ]
@@ -131,13 +129,13 @@ def generate_initial_configuration( destination_folder: str, build_template: str
                           "box": box,
                           "initial_system": initial_system,
                           "n_try": n_try,
-                          "folder": build_folder,
+                          "folder": destination_folder,
                           "output_coord": intial_coord,
                           **kwargs
                         }
 
     # Define output file
-    bash_file = f"{build_folder}/build_box.sh"
+    bash_file = f"{destination_folder}/build_box.sh"
 
     # Write bash file
     with open( bash_file, "w" ) as f:
@@ -149,8 +147,8 @@ def generate_initial_configuration( destination_folder: str, build_template: str
     else:
         print("\nBuild system locally! Wait until it is finished.\n")
         # Call the bash to build the box. Write output to file.
-        with open(f"{build_folder}/build_output.txt", "w") as f:
-            subprocess.run(["bash", f"{build_folder}/build_box.sh"], stdout=f, stderr=f)
+        with open(f"{destination_folder}/build_output.txt", "w") as f:
+            subprocess.run(["bash", f"{destination_folder}/build_box.sh"], stdout=f, stderr=f)
 
     # Check if the system is build 
     if not os.path.isfile( intial_coord ):
@@ -392,15 +390,15 @@ def generate_job_file( destination_folder: str, job_template: str, software: str
 
         # Check if topology file exists
         if not os.path.isfile( ["initial_topology"] ):
-            raise FileNotFoundError(f"Topology file { kwargs["initial_topology"] } not found.")
+            raise FileNotFoundError(f"Topology file { kwargs['initial_topology'] } not found.")
 
         # Check if coordinate file exists
         if not os.path.isfile( kwargs["intial_coord"] ):
-            raise FileNotFoundError(f"Coordinate file { kwargs["intial_coord"] } not found.")
+            raise FileNotFoundError(f"Coordinate file { kwargs['intial_coord'] } not found.")
         
         # Check if checkpoint file exists
         if kwargs["initial_cpt"] and not os.path.isfile( kwargs["initial_cpt"] ):
-            raise FileNotFoundError(f"Checkpoint file { kwargs["initial_cpt"] } not found.")
+            raise FileNotFoundError(f"Checkpoint file { kwargs['initial_cpt'] } not found.")
 
         # Relative paths for each mdp file for each simulation phase
         mdp_relative  = [ os.path.relpath( input_files[j], f"{destination_folder}/{step}" ) for j,step in enumerate(ensemble_names) ]

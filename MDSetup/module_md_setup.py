@@ -179,7 +179,10 @@ class MDSetup():
             # Define folder for specific temp and pressure state
             state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
 
+
             # Build system with MD software if none is provided
+            build_folder = f"{state_folder}/build"
+            
             if not initial_systems:
 
                 print("\nBuilding system based on provided molecule numbers and coordinate files!\n" )
@@ -194,7 +197,7 @@ class MDSetup():
 
                 # Coordinates from molecule that are not present in the system are sorted out within the function.
                 # Hence, parse the non filtered list of molecules and coordinates here.
-                kwargs["initial_coord"] = generate_initial_configuration( destination_folder = state_folder,
+                kwargs["initial_coord"] = generate_initial_configuration( destination_folder = build_folder,
                                                                           build_template = self.system_setup["paths"]["build_template"],
                                                                           software = self.system_setup["software"],
                                                                           coordinate_paths = self.system_setup["paths"]["coordinates"], 
@@ -208,16 +211,21 @@ class MDSetup():
                 kwargs["restart_flag"] = False
 
             else:
-                kwargs["initial_coord"] = initial_systems[i]
+                
+                os.makedirs( build_folder, exist_ok = True )
+                suffix = "gro" if self.system_setup["software"] == "gromacs" else "data" if self.system_setup["software"] == "lammps" else ""
+                kwargs["initial_coord"] = shutil.copy( initial_systems[i], f"{build_folder}/init_conf.{suffix}" )
+                
                 print(f"\nIntial system provided for at: {initial_systems[i]}\n")
                 
-                kwargs["restart_flag"] = ".restart" in initial_systems[i] or os.path.exists( initial_systems[i].rsplit(".", 1)[0] + ".cpt" )
+                kwargs["restart_flag"] = ".restart" in kwargs['initial_coord'] or os.path.exists( initial_systems[i].rsplit(".", 1)[0] + ".cpt" )
                 
                 if kwargs["restart_flag"]: 
                     print("Restart file is provided. Continue simulation from there!\n")
 
-                    # In case of GROMACS, add cpt as input
-                    kwargs["initial_cpt"] = initial_systems[i].rsplit(".", 1)[0] + ".cpt"
+                    if self.system_setup["software"] == "gromacs":
+                        # In case of GROMACS, add cpt as input
+                        kwargs["initial_cpt"] = shutil.copy( initial_systems[i].rsplit(".", 1)[0] + ".cpt", build_folder )
 
 
             # Add compressibility to GROMACS input

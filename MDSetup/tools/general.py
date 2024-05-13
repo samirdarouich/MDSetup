@@ -25,7 +25,7 @@ class SoftwareError(Exception):
     """Software error class"""
 
     def __init__(self, software: str):
-        message = f"Wrong software specified '{software}'. Available are: '{", ".join(SOFTWARE_LIST)}'."
+        message = f"Wrong software specified '{software}'. Available are: '{', '.join(SOFTWARE_LIST)}'."
         super().__init__(message)
         raise self
     
@@ -34,7 +34,7 @@ class KwargsError(Exception):
     """Kwargs missing error class"""
     def __init__(self, keys: List[str], kwargs_keys):
         if not all( key in kwargs_keys for key in keys ):
-            message = f"Missing key in provided keyword arguments. Expected '{', '.join(keys)}'. Available are: '{", ".join(kwargs_keys)}'."
+            message = f"Missing key in provided keyword arguments. Expected '{', '.join(keys)}'. Available are: '{', '.join(kwargs_keys)}'."
             super().__init__(message)
             raise self
         
