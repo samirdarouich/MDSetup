@@ -1,5 +1,6 @@
 #### General utilities ####
 
+import re
 import os
 import json
 import numpy as np
@@ -241,3 +242,45 @@ def work_json(file_path: str, data: Dict = {}, to_do: str = "read", indent: int 
 
     else:
         raise KeyError("Wrong task defined: %s" % to_do)
+
+
+def add_nan_if_no_brackets(lst: List[Any]):
+    """
+    Function that checks if round brackets are in every key of a list, if not add (NaN) to the entry
+    """
+    updated_list = []
+    for item in lst:
+        if "(" in item and ")" in item:
+            updated_list.append(item)
+        else:
+            updated_list.append(f"{item} (NaN)")
+    return updated_list
+
+
+def generate_series(desired_mean, desired_std, size):
+    """
+    Generate a series of random numbers with a specified mean and standard deviation.
+
+    This function creates a series of random numbers that follow a normal distribution
+    with the desired mean and standard deviation. It first generates random numbers
+    from a standard normal distribution, then scales and shifts them to achieve
+    the desired properties.
+
+    Parameters:
+    - desired_mean (float): The mean value desired for the random numbers.
+    - desired_std (float): The standard deviation desired for the random numbers.
+    - size (int): The number of random numbers to generate.
+
+    Returns:
+    - numpy.ndarray: An array of random numbers with the specified mean and standard deviation.
+    """
+    # Generate random numbers from a standard normal distribution
+    random_numbers = np.random.randn(size)
+
+    # Calculate the Z-scores
+    z_scores = (random_numbers - np.mean(random_numbers)) / np.std(random_numbers)
+
+    # Scale by the desired standard deviation and shift by the desired mean
+    series = z_scores * desired_std + desired_mean
+
+    return series

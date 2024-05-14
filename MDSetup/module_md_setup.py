@@ -1,11 +1,16 @@
 import yaml
-import os, shutil
+import glob
 import subprocess
+import numpy as np
+import pandas as pd
+import os, shutil, re
 
 from rdkit import Chem
 from typing import List, Dict, Any
-from rdkit.Chem.Descriptors import MolWt
 from .forcefield import forcefield
+from rdkit.Chem.Descriptors import MolWt
+from .analysis.reader import extract_from_lammps, extract_from_gromacs
+from .tools.general import work_json, merge_nested_dicts, KwargsError
 from .tools.general import FOLDER_PRECISION, JOB_PRECISION, DEFAULTS
 from .tools.systemsetup import (
     get_system_volume,
@@ -13,6 +18,7 @@ from .tools.systemsetup import (
     generate_input_files,
     generate_job_file,
 )
+
 
 # To do:
 # check forcefield topology (use row of distrance matrix to map?)
@@ -66,7 +72,7 @@ class MDSetup:
         # Check for all necessary keys
 
         # Print software
-        print(f"MD input is generated for '{self.system_setup['software']}'!")
+        print(f"MD input will be generated for '{self.system_setup['software']}'!")
 
         # Save molecules in the system (sort out molecules that are not present in system)
         self.system_molecules = [
@@ -347,3 +353,168 @@ class MDSetup:
                 print(f"Submitting job: {job_file}")
                 subprocess.run([self.submission_command, job_file])
                 print("\n")
+
+    def analysis_extract_properties(
+        self,
+        analysis_folder: str,
+        ensemble: str,
+        extracted_properties: List[str],
+        fraction: float = 0.0,
+        **kwargs,
+    ):
+        """
+        Extracts properties from output files for a specific ensemble.
+
+        Parameters:
+         - analysis_folder (str): The name of the folder where the analysis will be performed.
+         - ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
+         - extracted_properties (List[str]): List of properties to extract for LAMMPS.
+         - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+
+        Keyword arguments:
+         - output_suffix (str): File suffix to analyse for LAMMPS.
+         - header (int): The number of header lines from which to extract the keys for the reported values for LAMMPS.
+         - header_delimiter (str): The delimiter used in the header line for LAMMPS.
+         - command (str): GROMACS command to use for extraction for GROMACS.
+         - args (List[str]): Additional arguments for the GROMACS command for GROMACS.
+         - ensemble_name (str): Name of the ensemble file for GROMACS.
+         - output_name (str): Name of the output file for GROMACS.
+         - on_cluster (bool): Flag indicating if extraction should be done on a cluster for GROMACS.
+         - extract (bool): Flag indicating if extraction should be performed for GROMACS.
+         - submission_command (str): Command for submitting extraction to a cluster for GROMACS.
+         - extract_template (str): Path to template for extraction for GROMACS.
+
+        Returns:
+         - None
+
+        The method searches for output files in the specified analysis folder that match the given ensemble.
+        For each group of files with the same temperature and pressure, the properties are extracted using the specified suffix and properties list.
+        The extracted properties are then averaged over all copies and the mean and standard deviation are calculated.
+        The averaged values and the extracted data for each copy are saved as a JSON file in the destination folder.
+        The extracted values are also added to the class's analysis dictionary.
+        """
+
+        # Define folder for analysis
+        sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}'
+
+        # Seperatre the ensemble name to determine output files
+        ensemble_name = "_".join(ensemble.split("_")[1:])
+
+        # sorting patterns
+        copy_pattern = re.compile(r"copy_(\d+)")
+
+        if self.system_setup["software"] == "gromacs":
+            output_suffix = "edr"
+        elif self.system_setup["software"] == "lammps":
+            output_suffix = kwargs["output_suffix"]
+
+        # Search output files and sort them after temperature / pressure and then copy
+        for i, (temperature, pressure) in enumerate(
+            zip(self.system_setup["temperature"], self.system_setup["pressure"])
+        ):
+            # Define folder for specific temp and pressure state
+            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
+
+            # Search for available copies
+            files = glob.glob(
+                f"{state_folder}/copy_*/{ensemble}/{ensemble_name}.{output_suffix}"
+            )
+            files.sort(key=lambda x: int(copy_pattern.search(x).group(1)))
+
+            if len(files) == 0:
+                raise KeyError(
+                    f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}"
+                )
+
+            print(
+                f"Temperature: {temperature}, Pressure: {pressure}\n   "
+                + "\n   ".join(files)
+                + "\n"
+            )
+
+            if self.system_setup["software"] == "gromacs":
+                extracted_df_list = extract_from_gromacs(
+                    files=files,
+                    extracted_properties=extracted_properties,
+                    fraction=fraction,
+                    **kwargs,
+                )
+
+            elif self.system_setup["software"] == "lammps":
+                extracted_df_list = extract_from_lammps(
+                    files=files,
+                    extracted_properties=extracted_properties,
+                    fraction=fraction,
+                    **kwargs,
+                )
+
+            # Get the mean and std of each property over time
+            mean_std_list = []
+            for df in extracted_df_list:
+                df_new = (
+                    df.agg(["mean", "std"])
+                    .T.reset_index()
+                    .rename(columns={"index": "property"})
+                )
+                df_new["unit"] = df_new["property"].str.extract(r"\((.*?)\)")
+                df_new["property"] = [
+                    p.split("(")[0].strip() for p in df_new["property"]
+                ]
+                mean_std_list.append(df_new)
+
+            # Concat the copies and group by properties
+            grouped_total_df = pd.concat(mean_std_list, axis=0).groupby(
+                "property", sort=False
+            )
+
+            # Get the mean over the copies. To get the standard deviation, propagate the std over the copies.
+            mean_over_copies = grouped_total_df["mean"].mean()
+            std_over_copies = grouped_total_df["std"].apply(
+                lambda p: np.sqrt(sum(p**2)) / len(p)
+            )
+
+            # Final df has the mean, std and the unit
+            final_df = pd.DataFrame([mean_over_copies, std_over_copies]).T.reset_index()
+            final_df["unit"] = df_new["unit"]
+
+            print("\nAveraged values over all copies:\n\n", final_df, "\n")
+
+            # Save as json
+            json_data = {
+                f"copy_{i}": {
+                    d["property"]: {
+                        key: value for key, value in d.items() if not key == "property"
+                    }
+                    for d in df.to_dict(orient="records")
+                }
+                for i, df in enumerate(mean_std_list)
+            }
+            json_data["average"] = {
+                d["property"]: {
+                    key: value for key, value in d.items() if not key == "property"
+                }
+                for d in final_df.to_dict(orient="records")
+            }
+
+            # Either append the new data to exising file or create new json
+            json_path = f"{state_folder}/results.json"
+
+            work_json(
+                json_path,
+                {
+                    "temperature": temperature,
+                    "pressure": pressure,
+                    ensemble: {
+                        "data": json_data,
+                        "paths": files,
+                        "fraction_discarded": fraction,
+                    },
+                },
+                "append",
+            )
+
+            # Add the extracted values for the analysis_folder and ensemble to the class
+            merge_nested_dicts(
+                self.analysis_dictionary,
+                {(temperature, pressure): {analysis_folder: {ensemble: final_df}}},
+            )

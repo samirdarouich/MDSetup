@@ -434,7 +434,8 @@ def generate_job_file(
         "ensembles": {
             f"{'0' if (j+off_set) < 10 else ''}{j+off_set}_{step}": {}
             for j, step in enumerate(ensembles)
-        }
+        },
+        **kwargs,
     }
     ensemble_names = list(job_file_settings["ensembles"].keys())
 

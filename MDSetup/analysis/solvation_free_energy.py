@@ -5,8 +5,9 @@ import pandas as pd
 
 from typing import List
 from scipy.constants import R
+from .visualize import plot_data
+from .reader import read_lammps_output
 from alchemlyb.estimators import BAR, MBAR, TI
-from .general_analysis import read_lammps_output, plot_data
 from alchemlyb.preprocessing import decorrelate_u_nk, decorrelate_dhdl
 
 # Prevent alchemlyb correlation info to be printed to screen
@@ -30,11 +31,9 @@ def extract_current_state(file_path: str):
     with open(file_path) as file:
         title = file.readline()
 
-    lambdas = list(
-        map(lambda p: p.split("=")[0].strip(), title.split(":")[1].split(","))
-    )
+    lambdas = list([p.split("=")[0].strip() for p in title.split(":")[1].split(",")])
     statevec = tuple(
-        map(lambda p: float(p.split("=")[1].strip()), title.split(":")[1].split(","))
+        [float(p.split("=")[1].strip()) for p in title.split(":")[1].split(",")]
     )
 
     return lambdas, statevec
