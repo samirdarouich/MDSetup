@@ -9,30 +9,29 @@ Online documentation is available at: https://samirdarouich.github.io/MDSetup
 
 Get started by running the following command to install:
 
-1. pyLMP
+1. MDSetup
 ```
-git clone https://github.com/samirdarouich/pyLMP.git
-cd pyLMP
-pip install -I .
+git clone https://github.com/samirdarouich/MDSetup.git
+cd MDSetup
+pip install .
 ```
 
 
 ## 🐍 Example program
 
-# pyLMP
+# MDSetup
 
-This module enables users to perform molecular dynamics simulations utilizing LAMMPS with any force field provided as toml/json file. 
-There is the possiblity to provide data and LAMMPS compatible parameter files, or to build a system and write all necessary input using pyLMP, PLAYMOL, and moleculegraph.
+This module enables users to setup molecular dynamics simulations utilizing LAMMPS / GROMACS. Either a topology and system file can be presented, or moleculegraph and suplementary Python code combined with a force field provided as toml/json file can be utilized to create these.
 
-1) Read in the YAML files to define the system and simulation/sampling settings.
+1) Read in the YAML files to define the system and simulation/sampling settings. The software for which the input should be generated is defined in the 'setup.yaml'.
 
 ```python
-lammps_setup = LAMMPS_setup( system_setup = "input/setup.yaml", 
-                             simulation_default = "input/defaults.yaml",
-                             simulation_ensemble = "input/ensemble.yaml",
-                             simulation_sampling = "input/sampling.yaml",
-                             submission_command = "qsub"
-                            )
+lammps_setup = MDSetup( system_setup = "input/setup.yaml", 
+                        simulation_default = "input/defaults.yaml",
+                        simulation_ensemble = "input/ensemble.yaml",
+                        simulation_sampling = "input/sampling.yaml",
+                        submission_command = "qsub"
+                      )
 ```
 
 ## Setting up a simulation pipeline
@@ -54,7 +53,7 @@ simulation_times = [ 0, 10.0 ]
 # Define initial systems, in case the simulation should be continued from a prior simulation.
 # In that case, provide one initial structure for each temperature & pressure state.
 # If the simulation should start from an initial configuration, provide an empty list.
-initial_systems = [ "/home/st/st_st/st_ac137577/workspace/software/pyLMP/example/butane_hexane/md_thermo/temp_343_pres_4/build/system.data" ]
+initial_systems = [ "example/lammps/liquid_systems/structures/butane_hexane.data" ]
 
 # Provide kwargs that should be passed into the input template directly
 input_kwargs = {  }
@@ -70,7 +69,8 @@ off_set    = 0
 
 lammps_setup.prepare_simulation( folder_name = simulation_folder, ensembles = ensembles, simulation_times = simulation_times,
                                  initial_systems = initial_systems, input_kwargs = input_kwargs, copies = copies,
-                                 ff_file = ff_file, on_cluster = on_cluster,  off_set = off_set )
+                                 ff_file = ff_file, on_cluster = on_cluster,  off_set = off_set 
+                                )
 ```
 
 2) Submit jobs to cluster
@@ -80,6 +80,9 @@ lammps_setup.prepare_simulation( folder_name = simulation_folder, ensembles = en
 lammps_setup.submit_simulation()
 ```
 ## Extract sampled properties
+
+This section analyses the simulation output in the specified ensemble and the provided properties. Each copy of the system is analysed and an average is generated. This 
+is finaly saved in a resulting json file.
 
 ```python
 # Extract properties from LAMMPS and analyse them
@@ -99,8 +102,10 @@ output_suffix = "energy"
 # Percentage to discard from beginning of the simulation
 fraction = 0.25
 
-lammps_setup.analysis_extract_properties( analysis_folder = analysis_folder, ensemble = ensemble, extracted_properties = properties, 
-                                          output_suffix = output_suffix, fraction =  fraction )
+lammps_setup.analysis_extract_properties( analysis_folder = analysis_folder, ensemble = ensemble, 
+                                          extracted_properties = properties, output_suffix = output_suffix, 
+                                          fraction =  fraction 
+                                        )
 ```
 
 

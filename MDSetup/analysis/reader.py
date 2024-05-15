@@ -149,7 +149,7 @@ def read_lammps_output(
     # Check if for every key a unit is provided, if not add NaN.
     lammps_header = add_nan_if_no_brackets(lammps_header)
 
-    df = pd.read_csv(file_path, comment="#", delimiter=" ", names=lammps_header)
+    df = pd.read_csv(file_path, comment="#", delimiter=r"\s+", names=lammps_header)
 
     if any(key in df.columns[0].lower() for key in ["time", "step"]):
         idx = df.iloc[:, 0] > df.iloc[:, 0].max() * fraction
@@ -289,7 +289,7 @@ def extract_from_lammps(
 
     """
 
-    for file in file:
+    for file in files:
         if not os.path.exists(file):
             raise FileExistsError(f"Output file '{file}' does not exist!")
 

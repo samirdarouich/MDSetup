@@ -3,7 +3,7 @@ import json, yaml, toml
 
 from typing import List
 from jinja2 import Template
-from .molecule import get_molecule_from_smiles
+from .molecule import get_forcefield_molecule_from_smiles
 from moleculegraph.molecule_utils import sort_force_fields
 from ..tools.general import (
     SOFTWARE_LIST,
@@ -32,14 +32,17 @@ class forcefield:
     This class writes a force field input for arbitrary mixtures using moleculegraph. This input can be used for GROMACS and LAMMPS.
     """
 
-    def __init__(self, smiles: List[str], force_field_paths: List[str]):
-        # Save molecluegraph object class wide
-        self.mol_list = [get_molecule_from_smiles(smile) for smile in smiles]
+    def __init__(
+        self, smiles: List[str], force_field_paths: List[str], verbose: bool = False
+    ):
 
-        # Define list for paths to molecule and topology files
-        self.molecule_files = []
-        self.gro_files = []
-        self.topology_file = ""
+        # Check force field format
+        self.software = self.ff["format"]
+
+        if not self.software.lower() in SOFTWARE_LIST:
+            raise SoftwareError(self.software)
+        else:
+            print(f"Force field provided for software '{self.software}'")
 
         # Read in force field files
         self.ff = {}
@@ -57,12 +60,29 @@ class forcefield:
             # Update overall dict
             merge_nested_dicts(self.ff, data.copy())
 
-        self.software = self.ff["format"]
+        # Extract topology smarts for each type
+        substructure_smarts = {
+            atom["name"]: atom["topology"] for atom in self.ff["atoms"]
+        }
 
-        if not self.software.lower() in SOFTWARE_LIST:
-            raise SoftwareError(self.software)
-        else:
-            print(f"Force field provided for software '{self.software}'")
+        # Extract if united atoms are wanted
+        UA_flag = self.ff["UA_flag"]
+
+        # Match from SMILES to force field keys and get moleculegraph representation of the matched molecule
+        self.mol_list = [
+            get_forcefield_molecule_from_smiles(
+                smiles=smile,
+                substructure_smarts=substructure_smarts,
+                UA_flag=UA_flag,
+                verbose=verbose,
+            )
+            for smile in smiles
+        ]
+
+        # Define list for paths to molecule and topology files
+        self.molecule_files = []
+        self.gro_files = []
+        self.topology_file = ""
 
         ## Map force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions) ##
 
@@ -115,11 +135,11 @@ class forcefield:
             txt = (
                 "nonbonded"
                 if not all(self.nonbonded)
-                else "bonds"
-                if not all(self.bonds)
-                else "angles"
-                if not all(self.angles)
-                else "dihedrals"
+                else (
+                    "bonds"
+                    if not all(self.bonds)
+                    else "angles" if not all(self.angles) else "dihedrals"
+                )
             )
             raise ValueError(
                 "Something went wrong during the force field mapping for key: %s" % txt
@@ -174,9 +194,7 @@ class forcefield:
         file_suffix = (
             "itp"
             if self.software.lower() == "gromacs"
-            else "mol"
-            if self.software.lower() == "LAMMPS"
-            else ""
+            else "mol" if self.software.lower() == "LAMMPS" else ""
         )
 
         renderdict = {**kwargs}
@@ -302,9 +320,7 @@ class forcefield:
         file_suffix = (
             "top"
             if self.software.lower() == "gromacs"
-            else "params"
-            if self.software.lower() == "LAMMPS"
-            else ""
+            else "params" if self.software.lower() == "LAMMPS" else ""
         )
         topology_path = f"{topology_path}/{system_name}.{file_suffix}"
 

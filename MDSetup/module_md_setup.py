@@ -209,6 +209,7 @@ class MDSetup:
             **self.simulation_sampling,
             **input_kwargs,
             **DEFAULTS[self.system_setup["software"]],
+            **kwargs
         }
 
         # Copy provided force field file to simulation folder and add it to input kwargs
