@@ -247,6 +247,11 @@ class MDSetup:
                     **self.system_setup["box"],
                 )
 
+                # In case of LAMMPS provide template for build input.
+                if self.system_setup["software"] == "lammps":
+                    kwargs["build_input_template"] = self.system_setup["paths"]["build_input_template"]
+                    kwargs["force_field_file"] = self.system_setup["paths"]["topology_file"]
+
                 # Coordinates from molecule that are not present in the system are sorted out within the function.
                 # Hence, parse the non filtered list of molecules and coordinates here.
                 kwargs["initial_coord"] = generate_initial_configuration(

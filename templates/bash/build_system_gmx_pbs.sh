@@ -13,8 +13,11 @@
 module purge
 module load chem/gromacs/2022.4
 
-# Go to working folder
-cd {{folder}}
+# Define the main working path 
+WORKING_PATH={{folder}}
+cd $WORKING_PATH
+
+echo "This is the working path: $WORKING_PATH"
 
 # Use GROMACS to build the box
 
@@ -22,7 +25,7 @@ cd {{folder}}
 
 # Add molecule: {{ mol }}
 {%- if loop.index0 == 0 and not initial_system %}
-gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -box {{ box_lengths|join(" ") }} -o temp{{ loop.index0 }}.gro
+gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -box {{ box_lengths.x[0]|abs + box_lengths.x[1]|abs box_lengths.y[0]|abs + box_lengths.y[1]|abs box_lengths.z[0]|abs + box_lengths.z[1]|abs }} -o temp{{ loop.index0 }}.gro
 {%- elif loop.index0 == 0 %}
 gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -f {{ initial_system }} -try {{ n_try }} -o temp{{ loop.index0 }}.gro
 {%- else %} 
@@ -32,7 +35,10 @@ gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -f temp{{ loop.index0-1 }}
 {%- endfor %}
 
 # Correctly rename the final configuration
-mv temp{{ coord_mol_no | length - 1 }}.gro init_conf.gro
+mv temp{{ coord_mol_no | length - 1 }}.gro {{output_coord}}
 
 # Delete old .gro files
 rm -f \#*.gro.*#
+
+# End
+echo "Ending. Job completed."

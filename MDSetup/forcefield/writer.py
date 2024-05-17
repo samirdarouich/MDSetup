@@ -209,7 +209,7 @@ def write_gro_file(
             attyp,
         )
         for j, (attyp, atsym, (x, y, z)) in enumerate(
-            zip(molecule.atom_names, molecule.atomtypes, molecule.coordinate)
+            zip(molecule.atom_names, molecule.atomsymbols, molecule.coordinate)
         )
     ]
 
@@ -353,8 +353,12 @@ def atoms_topology(system_ff: List[Dict[str, float | str]], software: str, **kwa
             kwargs.keys(),
         )
 
-        atoms_dict = {"atoms": {"vdw": [], "coulomb": []}}
+        atoms_dict = {"atoms": {"vdw": [], "coulomb": [], "masses": []}}
 
+        # Add masses
+        atoms_dict["masses"] = [ [ ffiatom["name"], ffiatom["mass"] ] for ffiatom in system_ff ]
+        
+        # Add coulomb style if there is any.
         if len({p["coulomb_style"] for p in system_ff if p["coulomb_style"]}) == 1:
             atoms_dict["coulomb"] = [
                 [
@@ -362,6 +366,15 @@ def atoms_topology(system_ff: List[Dict[str, float | str]], software: str, **kwa
                     "*",
                     *{p["coulomb_style"] for p in system_ff if p["coulomb_style"]},
                 ]
+            ]
+        elif len({p["coulomb_style"] for p in system_ff if p["coulomb_style"]}) > 1:
+            atoms_dict["coulomb"] = [
+                [
+                    i,
+                    i,
+                    ffiatom["coulomb_style"],
+                ]
+                for i,ffiatom in enumerate(system_ff) if ffiatom["coulomb_style"]
             ]
 
     else:

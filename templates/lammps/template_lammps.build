@@ -1,0 +1,50 @@
+# LAMMPS build file. Automaticly created by MDSetup
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Define box region
+region box {{box.box_type}} {% for key,item in box.dimensions.items() %}{{item|join(' ')}} {% endfor %}
+
+# Create box (define also the number of atoms, bonds, angles, etc)
+# for the extra/... the default value of 15 should cover most cases. 
+# Increasing it, increases the memory needed. If set too low, LAMMPS will produce a floating error
+create_box {{types_no.atoms}} box &
+            {%- if types_no.bonds > 0 %}
+            bond/types {{types_no.bonds}} & {% endif %}
+            {%- if types_no.angles > 0 %}
+            angle/types {{types_no.angles}} & {% endif %}
+            {%- if types_no.dihedrals > 0 %}
+            dihedral/types {{types_no.dihedrals}} & {% endif %}
+            {%- if types_no.bonds > 0 %}
+            extra/bond/per/atom 15 & {% endif %}
+            {%- if types_no.angles > 0 %}
+            extra/angle/per/atom 15 & {% endif %}
+            {%- if types_no.dihedrals > 0 %}
+            extra/dihedral/per/atom 15 & {% endif %}
+            extra/special/per/atom 15
+
+
+# Include force field paramters
+
+include   {{force_field_file}}
+
+
+# Define seed for random insertion
+variable seed equal random(0,1e5,123)
+
+{%- for coord, mol, nmol in coord_mol_no %}
+
+# Add molecule: {{mol}}
+molecule {{mol}} {{coord}}
+
+# Create molecule
+create_atoms 0 random {{nmol}} ${seed} NULL mol {{mol}} ${seed} overlap 1.33 maxtry {{n_try}}
+{% endfor %}
+
+# Write data file (without force field information)
+write_data {{output_coord}} nocoeff

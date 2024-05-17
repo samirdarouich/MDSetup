@@ -13,8 +13,11 @@
 module purge
 module load chem/gromacs/2023.3
 
-# Go to working folder
-cd {{folder}}
+# Define the main working path 
+WORKING_PATH={{folder}}
+cd $WORKING_PATH
+
+echo "This is the working path: $WORKING_PATH"
 
 # Use GROMACS to build the box
 
@@ -36,3 +39,7 @@ mv temp{{ coord_mol_no | length - 1 }}.gro {{output_coord}}
 
 # Delete old .gro files
 rm -f \#*.gro.*#
+
+
+# End
+echo "Ending. Job completed."

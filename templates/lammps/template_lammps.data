@@ -1,4 +1,4 @@
-# LAMMPS data file automaticly created by pyLAMMPS
+# LAMMPS data file automaticly created by MDSetup
 
 {{atom_type_number}} atom types
 {{bond_type_number}} bond types

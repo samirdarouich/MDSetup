@@ -1,6 +1,24 @@
 # Define force field format
 format = "LAMMPS"
 
+# Define if united atoms should be used (True for yes)
+UA_flag = true
+
+[atoms.CH3_ethane]
+name = "CH3_ethane"
+mass = 15.035
+epsilon = 0.2709
+sigma = 3.6034
+n = 14.0
+m = 6
+cut = 14.0
+charge = 0.0
+atom_no = 6
+vdw_style = "mie/cut"
+coulomb_style = ""
+# Define topology to identify force field type via SMARTS
+topology = "[CH3][CH3]"
+
 [atoms.CH3_alkane]
 name = "CH3_alkane"
 mass = 15.035
@@ -13,6 +31,8 @@ charge = 0.0
 atom_no = 6
 vdw_style = "mie/cut"
 coulomb_style = ""
+# Define topology to identify force field type via SMARTS
+topology = "[CH3]"
 
 [atoms.CH2_alkane]
 name = "CH2_alkane"
@@ -26,6 +46,12 @@ charge = 0.0
 atom_no = 6
 vdw_style = "mie/cut"
 coulomb_style = ""
+topology = "[CH2]"
+
+[bonds."[CH3_ethane][CH3_ethane]"]
+list = [ "CH3_ethane", "CH3_ethane",]
+p = [ 200.0, 1.74 ]
+style = "harmonic"
 
 [bonds."[CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane",]

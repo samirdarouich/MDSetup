@@ -62,7 +62,7 @@ class moleculegraph_syntax:
         dummy = funs.copy().astype(str)
         dummy[funs == 0] = atom_names  # molecule.atom_names
         # dummy[ molecule.f!=0]  = np.vectorize(builder)( molecule.f[ molecule.f!=0] )
-        dummy[funs != 0] = np.vectorize(builder)(funs[funs != 0])
+        dummy[funs != 0] = np.vectorize(builder, otypes=[str])(funs[funs != 0])
         return dummy
 
     # def build_string(self,molecule):
@@ -159,7 +159,9 @@ def get_fun_arrays_set_main(graph, bond_list, names, main_path, bond_types=[]):
 #### Own utils
 
 
-def filter_bonds_by_elements(bond_list: List[List[int]], atom_types: List[str], element: str):
+def filter_bonds_by_elements(
+    bond_list: List[List[int]], atom_types: List[str], element: str
+):
     """Filter bonds where the bonded atoms include specific elements."""
     cleaned_bond_list = []
     cleaned_atomtypes = []
@@ -203,82 +205,117 @@ def get_mol_from_bond_list(atom_types, bond_list):
 
     return mol
 
-def get_forcefield_molecule_from_smiles( smiles: str, substructure_smarts: Dict[str,str], 
-                                         UA_flag: bool=False, verbose: bool=False ):
+
+def get_forcefield_molecule_from_smiles(
+    smiles: str,
+    substructure_smarts: Dict[str, str],
+    UA_flag: bool = False,
+    verbose: bool = False,
+):
 
     # Get molecule via rdkit
-    molecule = Chem.MolFromSmiles( smiles )
+    molecule = Chem.MolFromSmiles(smiles)
 
     # Add H's to the atom
     molecule = Chem.AddHs(molecule)
 
     # Add H-C to smarts to detect hydrogens that are bonded to carbon. This is needed as filter in case united atoms are wanted
-    carbon_h_key = [ key for key,value in substructure_smarts.items() if value == "[H][C]" ]
+    carbon_h_key = [
+        key for key, value in substructure_smarts.items() if value == "[H][C]"
+    ]
 
     if len(carbon_h_key) == 0:
         carbon_h_key = "carbon_h"
         substructure_smarts[carbon_h_key] = "[H][C]"
     else:
         carbon_h_key = carbon_h_key[0]
-    
+
     # Make dictionary with matches
-    substructure_matches = { ff_key: molecule.GetSubstructMatches( Chem.MolFromSmarts(substructure_smart ) ) for ff_key,substructure_smart in substructure_smarts.items() }
+    substructure_matches = {
+        ff_key: molecule.GetSubstructMatches(Chem.MolFromSmarts(substructure_smart))
+        for ff_key, substructure_smart in substructure_smarts.items()
+    }
 
-    # Get 3D molecule 
-    AllChem.EmbedMolecule(molecule) 
+    # Get 3D molecule
+    AllChem.EmbedMolecule(molecule)
 
-    atom_symbol = []
+    atom_symbols = []
     atom_types = []
+    atom_nos = []
     atom_xyz = []
 
-    for i, atom in enumerate(molecule.GetAtoms()):
-        positions = molecule.GetConformer().GetAtomPosition(i)
-        atom_xyz.append( [positions.x, positions.y, positions.z] )
-        atom_symbol.append( atom.GetSymbol() )
+    if verbose:
+        print(f"\nMatching atoms to force field for SMILES: {smiles}\n")
 
+    for i, atom in enumerate(molecule.GetAtoms()):
+        # Add atom symbol
+        atom_symbols.append(atom.GetSymbol())
+
+        # Add atom force field type
         atom_index = atom.GetIdx()
 
         flag_match = False
         for ff_key, matches in substructure_matches.items():
-            if any( atom_index == match[0] for match in matches ):
+            if any(atom_index == match[0] for match in matches):
                 if verbose:
-                    print(f"Matched atom {atom.GetSymbol()} n° {atom_index} with force field key: {ff_key}")
+                    print(
+                        f"Matched atom {atom.GetSymbol()} n° {atom_index} with force field key: {ff_key}"
+                    )
                 flag_match = True
                 break
 
         if not flag_match:
-            raise KeyError(f"Atom {atom.GetSymbol()} n° {atom_index} could not matched with any of the provided force field topologies: {', '.join([str(ss) for ss in substructure_smarts.values()])}")
-        
-        atom_types.append( ff_key )
+            raise KeyError(
+                f"Atom {atom.GetSymbol()} n° {atom_index} could not matched with any of the provided force field topologies: {', '.join([str(ss) for ss in substructure_smarts.values()])}"
+            )
+
+        atom_types.append(ff_key)
+
+        # Add atomic number
+        atom_nos.append( atom.GetAtomicNum() )
+
+        # Add cordinates
+        positions = molecule.GetConformer().GetAtomPosition(i)
+        atom_xyz.append([positions.x, positions.y, positions.z])
 
     bond_list = []
     for bond in molecule.GetBonds():
         bond_list.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
 
     # Make all to numpy arrays
-    atom_symbol = np.array(atom_symbol)
+    atom_symbols = np.array(atom_symbols)
     atom_types = np.array(atom_types)
+    atom_nos = np.array(atom_nos)
     atom_xyz = np.array(atom_xyz)
     bond_list = np.array(bond_list)
 
     # In case UA is wanted, clean all 'carbon_h' from the list
     UA_filter = carbon_h_key if UA_flag else ""
 
-    cleaned_bond_list,_ = filter_bonds_by_elements( bond_list, atom_types, UA_filter )
-    cleaned_bond_list, old_indexes, _ = adjust_bond_list_indexes( cleaned_bond_list )
+    cleaned_bond_list, _ = filter_bonds_by_elements(bond_list, atom_types, UA_filter)
+    cleaned_bond_list, old_indexes, _ = adjust_bond_list_indexes(cleaned_bond_list)
 
     # Assuming atom_xyz and atom_names are defined elsewhere:
-    cleaned_atom_symbol = atom_symbol[old_indexes]
+    cleaned_atom_symbols = atom_symbols[old_indexes]
     cleaned_atom_types = atom_types[old_indexes]
+    cleaned_atom_nos = atom_nos[old_indexes]
     cleaned_atom_xyz = atom_xyz[old_indexes]
 
+    if verbose:
+        print("\nFinal molecule\n")
+        for i, (cas, cat) in enumerate(zip(cleaned_atom_symbols, cleaned_atom_types)):
+            print(f"{cas} n°{i}: {cat}")
+    
     # Get moleculegraph representation of the molecule
-    mol = get_mol_from_bond_list( cleaned_atom_types, cleaned_bond_list )
+    mol = get_mol_from_bond_list(cleaned_atom_types, cleaned_bond_list)
 
     # Save coordinates in molecule
     mol.coordinates = cleaned_atom_xyz
 
-    # Save atom symbol
-    mol.atomymbols = cleaned_atom_symbol
+    # Save atom symbol in molecule
+    mol.atomsymbols = cleaned_atom_symbols
+
+    # Save atom nos in molecule
+    mol.atomnos = cleaned_atom_nos
 
     return mol

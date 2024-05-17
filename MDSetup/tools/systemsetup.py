@@ -8,7 +8,7 @@ from .general import KwargsError
 from typing import List, Dict, Any
 from scipy.constants import Avogadro
 from .submission import submit_and_wait
-
+from ..forcefield.reader import extract_number_dict_from_mol_files
 
 def get_system_volume(
     molar_masses: List[float],
@@ -60,11 +60,12 @@ def get_system_volume(
         # Cubix box: L/2 = V^(1/3) / 2
         boxlen = volume ** (1 / 3) / 2 * unit_conversion
 
-        box = {
+        dimensions = {
             "box_x": [-boxlen, boxlen],
             "box_y": [-boxlen, boxlen],
             "box_z": [-boxlen, boxlen],
         }
+        box_type = "block"
 
     elif box_type == "orthorhombic":
         # Orthorhombic: V = x * y * z, with x = z / z_x_relation and y = z / z_y_relation
@@ -74,17 +75,19 @@ def get_system_volume(
         x = z / z_x_relation
         y = z / z_y_relation
 
-        box = {
+        dimensions = {
             "box_x": [-x / 2, x / 2],
             "box_y": [-y / 2, y / 2],
             "box_z": [-z / 2, z / 2],
         }
+        box_type = "block"
 
     else:
         raise KeyError(
             f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'."
         )
 
+    box = { "type": box_type, "dimensions": dimensions }
     return box
 
 
@@ -94,7 +97,7 @@ def generate_initial_configuration(
     software: str,
     coordinate_paths: List[str],
     molecules_list: List[Dict[str, str | int]],
-    box: Dict[str, float],
+    box: Dict[str, str|float],
     on_cluster: bool = False,
     initial_system: str = "",
     n_try: int = 10000,
@@ -102,23 +105,24 @@ def generate_initial_configuration(
     **kwargs,
 ):
     """
-    Generate initial configuration for molecular dynamics simulation with GROMACS.
+    Generate initial configuration for molecular dynamics simulation with LAMMPS/GROMACS.
 
     Parameters:
      - destination_folder (str): The destination folder where the initial configurations will be saved.
      - build_template (str): Template for system building.
      - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
-     - coordinate_paths (List[str]): List of paths to coordinate files (GRO format) for each ensemble.
+     - coordinate_paths (List[str]): List of paths to coordinate files for each molecule.
      - molecules_list (List[Dict[str, str|int]]): List with dictionaries with numbers and names of the molecules.
-     - box (Dict[str,float]): List of box lengths for each ensemble. Provide [] if build_intial_box is false.
-     - on_cluster (bool, optional): If the GROMACS build should be submited to the cluster. Defaults to "False".
+     - box (Dict[str,str|float]): Dictionary with "box_type" and "dimensions" as keys. 
+     - on_cluster (bool, optional): If the build should be submited to the cluster. Defaults to "False".
      - initial_system (str, optional): Path to initial system, if initial system should be used to add molecules rather than new box. Defaults to "".
      - n_try (int, optional): Number of attempts to insert molecules. Defaults to 10000.
      - submission_command (str, optional): Command to submit jobs for cluster,
      - **kwargs (Any): Arbitrary keyword arguments.
 
     Keyword Args:
-     -
+     - build_input_template (str): Template for lammps input file that can build the system for LAMMPS.
+     - force_field_file (str): File with force field parameters for LAMMPS.
 
     Returns:
      - intial_coord (str): Path of inital configuration
@@ -135,10 +139,6 @@ def generate_initial_configuration(
         with open(build_template) as f:
             template = Template(f.read())
 
-    # Define output coordinate
-    suffix = "gro" if software == "gromacs" else "data" if software == "lammps" else ""
-    intial_coord = f"{destination_folder}/init_conf.{suffix}"
-
     # Sort out molecules that are zero
     non_zero_coord_mol_no = [
         (coord, value["name"], value["number"])
@@ -146,19 +146,59 @@ def generate_initial_configuration(
         if value["number"] > 0
     ]
 
+    # Define output bash file
+    bash_file = f"{destination_folder}/build_box.sh"
+
+
+    if software == "gromacs":
+        suffix = "gro"
+    
+    elif software == "lammps":
+
+        # Check necessary input kwargs
+        KwargsError(["build_input_template","force_field_file"], kwargs.keys())
+
+        if not os.path.isfile(kwargs["build_input_template"]):
+            raise FileNotFoundError(f"LAMMPS build template file { kwargs['build_input_template'] } not found.")
+
+        if not os.path.isfile(kwargs["force_field_file"]):
+            raise FileNotFoundError(f"LAMMPS force field file { kwargs['force_field_file'] } not found.")
+        
+        suffix = "data"
+
+        lmp_build_file = f"{destination_folder}/build_box.in"
+
+        kwargs["build_input_file"] = os.path.basename( lmp_build_file )
+        kwargs["force_field_file"] = os.path.relpath(
+                kwargs["force_field_file"], os.path.dirname(lmp_build_file)
+        )
+
+        # Get number of types for atoms, bonds, angles and dihedrals
+        mol_files = [ p[0] for p in non_zero_coord_mol_no ]
+        kwargs["types_no"] = extract_number_dict_from_mol_files( mol_files, **kwargs )
+
+    # Define output coordinate
+    intial_coord = f"{destination_folder}/init_conf.{suffix}"
+
     # Define template settings
     template_settings = {
         "coord_mol_no": non_zero_coord_mol_no,
         "box": box,
         "initial_system": initial_system,
         "n_try": n_try,
-        "folder": destination_folder,
-        "output_coord": intial_coord,
+        "folder": os.path.dirname(intial_coord),
+        "output_coord": os.path.basename(intial_coord),
         **kwargs,
     }
 
-    # Define output file
-    bash_file = f"{destination_folder}/build_box.sh"
+    # Write LAMMPS input file
+    if software == "lammps":
+
+        with open( kwargs["build_input_template"] ) as f:
+            template_lmp = Template(f.read())
+
+        with open(lmp_build_file, "w") as f:
+            f.write(template_lmp.render(template_settings))
 
     # Write bash file
     with open(bash_file, "w") as f:

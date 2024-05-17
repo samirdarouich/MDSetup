@@ -36,14 +36,6 @@ class forcefield:
         self, smiles: List[str], force_field_paths: List[str], verbose: bool = False
     ):
 
-        # Check force field format
-        self.software = self.ff["format"]
-
-        if not self.software.lower() in SOFTWARE_LIST:
-            raise SoftwareError(self.software)
-        else:
-            print(f"Force field provided for software '{self.software}'")
-
         # Read in force field files
         self.ff = {}
         for force_field_path in force_field_paths:
@@ -60,9 +52,17 @@ class forcefield:
             # Update overall dict
             merge_nested_dicts(self.ff, data.copy())
 
+        # Check force field format
+        self.software = self.ff["format"]
+
+        if not self.software.lower() in SOFTWARE_LIST:
+            raise SoftwareError(self.software)
+        else:
+            print(f"Force field provided for software '{self.software}'")
+
         # Extract topology smarts for each type
         substructure_smarts = {
-            atom["name"]: atom["topology"] for atom in self.ff["atoms"]
+            atom["name"]: atom["topology"] for _, atom in self.ff["atoms"].items()
         }
 
         # Extract if united atoms are wanted

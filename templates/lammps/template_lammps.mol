@@ -1,4 +1,4 @@
-# {{residue}} molecule. automaticly created by MDSetup
+# {{residue}} molecule. Automaticly created by MDSetup
 
 {{atom_no}} atoms
 {% if bonds %}{{bond_no}} bonds{% endif %}
