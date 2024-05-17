@@ -8,10 +8,11 @@ pair_modify  mix {{mixing_rule}}  tail {{tail}}
 kspace_style  {{kspace_style}}{%- endif %}
 
 # Define labelmap
-labelmap atom {% for i, key in labelmap.atoms.items() %} key  i {% endfor %}
-{% if labelmap.bonds %}labelmap bond {% for i, key in labelmap.bonds.items() %} key  i {% endfor %}{%- endif %}
-{% if labelmap.angles %}labelmap angle {% for i, key in labelmap.angles.items() %} key  i {% endfor %}{%- endif %}
-{% if labelmap.dihedrals %}labelmap dihedral {% for i, key in labelmap.dihedrals.items() %} key  i {% endfor %}{%- endif %}
+
+labelmap atom {% for i, key in labelmap.atoms.items() %} {{key}}  {{i}} {% endfor %}
+{% if labelmap.bonds %}labelmap bond {% for i, key in labelmap.bonds.items() %} {{key}}  {{i}} {% endfor %}{%- endif %}
+{% if labelmap.angles %}labelmap angle {% for i, key in labelmap.angles.items() %} {{key}}  {{i}} {% endfor %}{%- endif %}
+{% if labelmap.dihedrals %}labelmap dihedral {% for i, key in labelmap.dihedrals.items() %} {{key}}  {{i}} {% endfor %}{%- endif %}
 
 
 # Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions

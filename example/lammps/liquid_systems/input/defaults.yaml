@@ -35,7 +35,7 @@ nonbonded:
 
   # If mixing should be done by the setup code
 
-  do_mixing: false
+  do_mixing: true
 
   # Special bonds
   special_bonds: 

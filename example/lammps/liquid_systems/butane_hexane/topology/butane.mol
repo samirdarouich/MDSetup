@@ -1,0 +1,47 @@
+#  molecule. Automaticly created by MDSetup
+
+4 atoms
+3 bonds
+2 angles
+1 dihedrals
+
+Coords
+
+1   1.8594002235007705   -0.44435127435295035   -0.15727460701738238
+2   0.4734238805921344   -0.004559209957759321   -0.54272555211355
+3   -0.4826852238283557   -0.04741880705860128   0.6292533875654901
+4   -1.8344875321453862   0.41777712000064726   0.10401314207143554
+
+Types
+
+1   CH3_alkane
+2   CH2_alkane
+3   CH2_alkane
+4   CH3_alkane
+
+Charges
+
+1   0.0
+2   0.0
+3   0.0
+4   0.0
+
+
+Bonds
+
+1   CH2_alkane_CH3_alkane   1   2
+2   CH2_alkane_CH2_alkane   2   3
+3   CH2_alkane_CH3_alkane   3   4
+
+
+
+Angles
+
+1   CH2_alkane_CH2_alkane_CH3_alkane   1   2   3
+2   CH2_alkane_CH2_alkane_CH3_alkane   2   3   4
+
+
+
+Dihedrals
+
+1   CH3_alkane_CH2_alkane_CH2_alkane_CH3_alkane   1   2   3   4

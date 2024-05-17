@@ -1,0 +1,52 @@
+## LAMMPS force field file. Automaticly created by MDSetup
+
+# Pair style
+
+pair_style  mie/cut 14
+pair_modify  mix arithmetic  tail yes
+
+# Define labelmap
+
+labelmap atom  CH3_alkane  1  CH2_alkane  2 
+labelmap bond  CH2_alkane_CH3_alkane  1  CH2_alkane_CH2_alkane  2 
+labelmap angle  CH2_alkane_CH2_alkane_CH3_alkane  1  CH2_alkane_CH2_alkane_CH2_alkane  2 
+labelmap dihedral  CH3_alkane_CH2_alkane_CH2_alkane_CH3_alkane  1  CH2_alkane_CH2_alkane_CH2_alkane_CH3_alkane  2  CH2_alkane_CH2_alkane_CH2_alkane_CH2_alkane  3 
+
+
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj 0 0 0  coul 0 0 0
+
+# Define masses
+
+mass  CH3_alkane 15.035
+mass  CH2_alkane 14.027
+
+
+# Van der Waals interactions
+
+pair_coeff  CH3_alkane CH3_alkane 0.2709 3.6034 14.0 6.0
+pair_coeff  CH3_alkane CH2_alkane 0.1687 3.8217 14.0 6.0
+pair_coeff  CH2_alkane CH2_alkane 0.1051 4.04 14.0 6.0
+
+# Bonded interactions
+
+bond_style  harmonic
+
+bond_coeff  CH2_alkane_CH3_alkane 200.0 1.74
+bond_coeff  CH2_alkane_CH2_alkane 200.0 1.54
+
+# Angle interactions
+
+angle_style  harmonic
+
+angle_coeff  CH2_alkane_CH2_alkane_CH3_alkane 62.1001 114.0
+angle_coeff  CH2_alkane_CH2_alkane_CH2_alkane 62.1001 114.0
+
+# Dihedral interactions
+
+dihedral_style  
+
+dihedral_coeff  CH3_alkane_CH2_alkane_CH2_alkane_CH3_alkane 1.411 -0.271 3.145 0.0
+dihedral_coeff  CH2_alkane_CH2_alkane_CH2_alkane_CH3_alkane 1.411 -0.271 3.145 0.0
+dihedral_coeff  CH2_alkane_CH2_alkane_CH2_alkane_CH2_alkane 1.411 -0.271 3.145 0.0

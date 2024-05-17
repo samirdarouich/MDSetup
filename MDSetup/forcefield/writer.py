@@ -33,7 +33,7 @@ def atoms_molecule(molecule_ff: List[Dict[str, float | str]], software: str, **k
         atoms_dict = {"atoms": []}
 
         # Check necessary kwargs
-        KwargsError(["residue"], kwargs.keys())
+        KwargsError(["residue"], kwargs)
 
         for iatom, ffatom in enumerate(molecule_ff):
             atoms_dict["atoms"].append(
@@ -53,12 +53,12 @@ def atoms_molecule(molecule_ff: List[Dict[str, float | str]], software: str, **k
         atoms_dict = {"coords": [], "types": [], "charges": []}
 
         # Check necessary kwargs
-        KwargsError(["coordinates"], kwargs.keys())
+        KwargsError(["coordinates"], kwargs)
 
         for iatom, ffatom in enumerate(molecule_ff):
             atoms_dict["types"].append([iatom + 1, ffatom["name"]])
             atoms_dict["charges"].append([iatom + 1, ffatom["charge"]])
-            atoms_dict["coords"].append([iatom + 1, kwargs["coordinates"][iatom]])
+            atoms_dict["coords"].append([iatom + 1, *kwargs["coordinates"][iatom]])
     else:
         raise SoftwareError(software)
 
@@ -253,7 +253,7 @@ def style_topology(
     """
 
     # Check necessary kwargs
-    KwargsError(["potential_kwargs", "rcut"], kwargs.keys())
+    KwargsError(["potential_kwargs", "rcut"], kwargs)
 
     style_dict = {}
     hybrid_dict = {}
@@ -350,17 +350,19 @@ def atoms_topology(system_ff: List[Dict[str, float | str]], software: str, **kwa
         # Check necessary kwargs
         KwargsError(
             ["do_mixing", "mixing_rule", "pair_hybrid_flag", "potential_kwargs"],
-            kwargs.keys(),
+            kwargs,
         )
 
         atoms_dict = {"atoms": {"vdw": [], "coulomb": [], "masses": []}}
 
         # Add masses
-        atoms_dict["masses"] = [ [ ffiatom["name"], ffiatom["mass"] ] for ffiatom in system_ff ]
-        
+        atoms_dict["atoms"]["masses"] = [
+            [ffiatom["name"], ffiatom["mass"]] for ffiatom in system_ff
+        ]
+
         # Add coulomb style if there is any.
         if len({p["coulomb_style"] for p in system_ff if p["coulomb_style"]}) == 1:
-            atoms_dict["coulomb"] = [
+            atoms_dict["atoms"]["coulomb"] = [
                 [
                     "*",
                     "*",
@@ -368,13 +370,14 @@ def atoms_topology(system_ff: List[Dict[str, float | str]], software: str, **kwa
                 ]
             ]
         elif len({p["coulomb_style"] for p in system_ff if p["coulomb_style"]}) > 1:
-            atoms_dict["coulomb"] = [
+            atoms_dict["atoms"]["coulomb"] = [
                 [
                     i,
                     i,
                     ffiatom["coulomb_style"],
                 ]
-                for i,ffiatom in enumerate(system_ff) if ffiatom["coulomb_style"]
+                for i, ffiatom in enumerate(system_ff)
+                if ffiatom["coulomb_style"]
             ]
 
     else:
@@ -453,7 +456,7 @@ def bonds_topology(bonds_ff: List[Dict[str, float | str]], software: str, **kwar
 
     elif software == "lammps":
         # Check necessary kwargs
-        KwargsError(["bonds_hybrid_flag"], kwargs.keys())
+        KwargsError(["bonds_hybrid_flag"], kwargs)
 
         for bond_ff in bonds_ff:
             bonds_dict["bonds"].append(
@@ -501,7 +504,7 @@ def angles_topology(angles_ff: List[Dict[str, float | str]], software: str, **kw
 
     elif software == "lammps":
         # Check necessary kwargs
-        KwargsError(["angles_hybrid_flag"], kwargs.keys())
+        KwargsError(["angles_hybrid_flag"], kwargs)
 
         for angle_ff in angles_ff:
             angles_dict["angles"].append(
@@ -552,7 +555,7 @@ def dihedrals_topology(
 
     elif software == "lammps":
         # Check necessary kwargs
-        KwargsError(["dihedrals_hybrid_flag"], kwargs.keys())
+        KwargsError(["dihedrals_hybrid_flag"], kwargs)
 
         for dihedral_ff in dihedrals_ff:
             dihedrals_dict["dihedrals"].append(

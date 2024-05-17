@@ -35,7 +35,8 @@ class KwargsError(Exception):
 
     def __init__(self, keys: List[str], kwargs_keys):
         if not all(key in kwargs_keys for key in keys):
-            message = f"Missing key in provided keyword arguments. Expected '{', '.join(keys)}'. Available are: '{', '.join(kwargs_keys)}'."
+            missing_keys = [key for key in keys if not key in kwargs_keys]
+            message = f"Missing key in provided keyword arguments. Expected '{', '.join(missing_keys)}'. Available are: '{', '.join(kwargs_keys)}'."
             super().__init__(message)
             raise self
 

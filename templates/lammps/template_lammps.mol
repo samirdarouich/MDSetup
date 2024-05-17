@@ -6,37 +6,37 @@
 {% if dihedrals %}{{dihedral_no}} dihedrals{% endif %}
 
 Coords
-{% for atom in atoms.coords %}
-{{atom|join('   ')}}
+{% for coord in coords %}
+{{coord|join('   ')}}
 {%- endfor %}
 
 Types
-{% for atom in atoms.types %}
-{{atom|join('   ')}}
+{% for type in types %}
+{{type|join('   ')}}
 {%- endfor %}
 
 Charges
-{% for atom in atoms.charges %}
-{{atom|join('   ')}}
+{% for charge in charges %}
+{{charge|join('   ')}}
 {%- endfor %}
 
 {% if bonds %}
 Bonds
-{% for bond in bonds.bonds %}
+{% for bond in bonds %}
 {{bond|join('   ')}}
 {%- endfor %}
 {% endif %}
 
 {% if angles %}
 Angles
-{% for angle in angles.angles %}
+{% for angle in angles %}
 {{angle|join('   ')}}
 {%- endfor %}
 {% endif %}
 
 {% if dihedrals %}
 Dihedrals
-{% for dihedral in dihedrals.dihedrals %}
+{% for dihedral in dihedrals %}
 {{dihedral|join('   ')}}
 {%- endfor %}
 {% endif %}

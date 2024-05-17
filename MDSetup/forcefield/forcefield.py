@@ -55,7 +55,7 @@ class forcefield:
         # Check force field format
         self.software = self.ff["format"]
 
-        if not self.software.lower() in SOFTWARE_LIST:
+        if not self.software in SOFTWARE_LIST:
             raise SoftwareError(self.software)
         else:
             print(f"Force field provided for software '{self.software}'")
@@ -146,19 +146,19 @@ class forcefield:
             )
 
         # Define labelmap for numeric numbers and the force field
-        labelmap = {}
-        labelmap["atoms"] = {
+        self.labelmap = {}
+        self.labelmap["atoms"] = {
             i + 1: atom_ff["name"] for i, atom_ff in enumerate(self.nonbonded)
         }
-        labelmap["bonds"] = {
+        self.labelmap["bonds"] = {
             i + 1: "_".join(sort_force_fields(bond_ff["list"]))
             for i, bond_ff in enumerate(self.bonds)
         }
-        labelmap["angles"] = {
+        self.labelmap["angles"] = {
             i + 1: "_".join(sort_force_fields(angle_ff["list"]))
             for i, angle_ff in enumerate(self.angles)
         }
-        labelmap["dihedrals"] = {
+        self.labelmap["dihedrals"] = {
             i + 1: "_".join(sort_force_fields(dihedral_ff["list"]))
             for i, dihedral_ff in enumerate(self.dihedrals)
         }
@@ -193,8 +193,8 @@ class forcefield:
 
         file_suffix = (
             "itp"
-            if self.software.lower() == "gromacs"
-            else "mol" if self.software.lower() == "LAMMPS" else ""
+            if self.software == "gromacs"
+            else "mol" if self.software == "lammps" else ""
         )
 
         renderdict = {**kwargs}
@@ -204,7 +204,7 @@ class forcefield:
             kwargs.update({"residue": residues[m]})
 
             # Write gro files for GROMACS
-            if self.software.lower() == "gromacs":
+            if self.software == "gromacs":
                 KwargsError(["gro_template", "nrexcl"], kwargs.keys())
 
                 # Add exclusion of nonbonded interactions for each molecule
@@ -319,21 +319,21 @@ class forcefield:
         # Define file name on software and system name
         file_suffix = (
             "top"
-            if self.software.lower() == "gromacs"
-            else "params" if self.software.lower() == "LAMMPS" else ""
+            if self.software == "gromacs"
+            else "params" if self.software == "lammps" else ""
         )
         topology_path = f"{topology_path}/{system_name}.{file_suffix}"
 
         renderdict = {**kwargs, "system_name": system_name}
 
-        if self.software.lower() == "lammps":
+        if self.software == "lammps":
             # Check necessary kwargs
             KwargsError(
                 ["potential_kwargs", "rcut", "do_mixing", "mixing_rule"], kwargs.keys()
             )
 
             # Provide label map
-            kwargs["labelmap"] = self.labelmap
+            renderdict["labelmap"] = self.labelmap
 
             # Get styles
             style_dict, hybrid_dict = style_topology(
@@ -343,10 +343,14 @@ class forcefield:
                 dihedrals_ff=self.dihedrals,
                 **kwargs,
             )
+
+            # Add style dict to template
             renderdict["style"] = style_dict
+
+            # Add hybrid flags to kwargs, to use it in later functions
             kwargs.update(hybrid_dict)
 
-        elif self.software.lower() == "gromacs":
+        elif self.software == "gromacs":
             # Check necessary kwargs
             KwargsError(
                 ["mixing_rule", "fudgeLJ", "fudgeQQ", "residue_dict"], kwargs.keys()

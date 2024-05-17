@@ -21,8 +21,10 @@ from .tools.systemsetup import (
 
 
 # To do:
-# check forcefield topology (use row of distrance matrix to map?)
 # check for all necessary keys in setup
+
+## Check force field mapping for ethane.
+## check force field reading: check if nones are provided before making it a unique list
 
 
 class MDSetup:
@@ -92,9 +94,7 @@ class MDSetup:
         self.distance_conversion = (
             1 / 10
             if self.system_setup["software"] == "gromacs"
-            else 1
-            if self.system_setup["software"] == "lammps"
-            else 1
+            else 1 if self.system_setup["software"] == "lammps" else 1
         )
 
         # Submission command for the cluster
@@ -103,7 +103,18 @@ class MDSetup:
         # Create an analysis dictionary containing all files
         self.analysis_dictionary = {}
 
-    def write_topology(self):
+    def write_topology(self, verbose: bool = False):
+        """
+        This functions writes a topology file using the moleculegraph representation of each molecule in the system
+        as well as the force field files
+
+        Args:
+            verbose (bool, optional): Flag to print detailed information. Defaults to False.
+
+        Raises:
+            KeyError: _description_
+        """
+
         print(
             "\nUtilize moleculegraph to generate molecule and topology files of every molecule in the system!\n"
         )
@@ -114,7 +125,7 @@ class MDSetup:
 
         os.makedirs(topology_folder, exist_ok=True)
 
-        if not any(self.system_setup["paths"]["force_field_paths"]):
+        if not any(self.system_setup["paths"]["force_field_files"]):
             raise KeyError(
                 "No force field paths provided in the system setup yaml file!"
             )
@@ -123,18 +134,18 @@ class MDSetup:
         # Add all paths to templates and all nonbonded settings to template
         kwargs = {**self.system_setup["paths"], **self.simulation_default["nonbonded"]}
 
-        if any(filter(lambda d: "nrexcl" in d, self.system_molecules)):
+        if self.system_setup["software"] == "gromacs":
             kwargs["nrexcl"] = [mol["nrexcl"] for mol in self.system_molecules]
 
         # Call the force field class
         ff_molecules = forcefield(
             smiles=[mol["smiles"] for mol in self.system_molecules],
             force_field_paths=self.system_setup["paths"]["force_field_files"],
+            verbose=verbose,
         )
 
         # Write molecule files (including gro files in case of GROMACS)
         ff_molecules.write_molecule_files(
-            molecule_template=self.system_setup["paths"]["molecule_template"],
             molecule_path=topology_folder,
             residues=self.residues,
             **kwargs,
@@ -150,13 +161,13 @@ class MDSetup:
 
         # Write topology file
         ff_molecules.write_topology_file(
-            topology_template=self.system_setup["paths"]["topology_template"],
             topology_path=topology_folder,
-            system_name=self.system_setup["name"] ** kwargs,
+            system_name=self.system_setup["name"],
+            **kwargs,
         )
 
         print(
-            "Done! Topology paths and molecule coordinates are added within the class.\n"
+            "\nDone! Topology paths and molecule coordinates are added within the class.\n"
         )
 
         # Add topology and gro files to class dictionary
@@ -209,7 +220,7 @@ class MDSetup:
             **self.simulation_sampling,
             **input_kwargs,
             **DEFAULTS[self.system_setup["software"]],
-            **kwargs
+            **kwargs,
         }
 
         # Copy provided force field file to simulation folder and add it to input kwargs
@@ -249,8 +260,12 @@ class MDSetup:
 
                 # In case of LAMMPS provide template for build input.
                 if self.system_setup["software"] == "lammps":
-                    kwargs["build_input_template"] = self.system_setup["paths"]["build_input_template"]
-                    kwargs["force_field_file"] = self.system_setup["paths"]["topology_file"]
+                    kwargs["build_input_template"] = self.system_setup["paths"][
+                        "build_input_template"
+                    ]
+                    kwargs["force_field_file"] = self.system_setup["paths"][
+                        "topology_file"
+                    ]
 
                 # Coordinates from molecule that are not present in the system are sorted out within the function.
                 # Hence, parse the non filtered list of molecules and coordinates here.
@@ -273,9 +288,7 @@ class MDSetup:
                 suffix = (
                     "gro"
                     if self.system_setup["software"] == "gromacs"
-                    else "data"
-                    if self.system_setup["software"] == "lammps"
-                    else ""
+                    else "data" if self.system_setup["software"] == "lammps" else ""
                 )
                 kwargs["initial_coord"] = shutil.copy(
                     initial_systems[i], f"{build_folder}/init_conf.{suffix}"
