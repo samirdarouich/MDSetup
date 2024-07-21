@@ -1,0 +1,78 @@
+format = "gromacs"
+UA_flag = true
+topology_priority = [ "CH3_alkane", "CH2_alkene", "CH2_alkane",]
+
+[atoms.CH3_alkane]
+name = "CH3_alkane"
+mass = 15.035
+epsilon = 1.1334
+sigma = 0.3603
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH3]"
+
+[atoms.CH2_alkane]
+name = "CH2_alkane"
+mass = 14.027
+epsilon = 0.4397
+sigma = 0.404
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH2]"
+
+[atoms.CH2_alkene]
+name = "CH2_alkene"
+mass = 14.027
+epsilon = 0.8326
+sigma = 0.36
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH2]=[C]"
+
+[bonds."[CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane",]
+p = [ 0.174, 167360.0,]
+style = 1
+
+[bonds."[CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane",]
+p = [ 0.154, 167360.0,]
+style = 1
+
+[bonds."[CH2_alkene][CH2_alkene]"]
+list = [ "CH2_alkene", "CH2_alkene",]
+p = [ 0.133, 167360.0,]
+style = 1
+
+[angles."[CH3_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 114.0, 519.6536,]
+style = 1
+
+[angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 114.0, 519.6536,]
+style = 1
+
+[angles."[CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+p = [ 114.0, 519.6536,]
+style = 1
+
+[dihedrals."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 8.3973, 16.7862, 1.1339, -26.3174, 0.0, 0.0,]
+style = 3
+
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+p = [ 8.3973, 16.7862, 1.1339, -26.3174, 0.0, 0.0,]
+style = 3
+
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 8.3973, 16.7862, 1.1339, -26.3174, 0.0, 0.0,]
+style = 3

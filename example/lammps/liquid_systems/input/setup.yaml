@@ -9,6 +9,16 @@ folder: /home/st/st_st/st_ac137577/workspace/software/MDSetup/example/lammps/liq
 # System name
 name: butane_hexane
 
+# Folder name (define which elements of the statepoint should be writen to the folder name)
+# fraction is computed with respect to first provided molecule.
+# If one statepoint is not wanted comment it out
+folder_attributes: [
+  temperature, 
+  pressure,
+  density,
+  fraction
+]
+
 # Box type (dimension is computed by the type and the density)
 box: 
   type: cubic

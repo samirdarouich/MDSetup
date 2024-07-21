@@ -7,7 +7,8 @@ PRECISION = 4
 
 def source_destination_error(source, destination):
     raise KeyError(
-        f"Specified transformation from '{source}' to '{destination}' is not implemented! Valid are from 'GROMACS' to 'LAMMPS', and from 'LAMMPS' to 'GROMACS'"
+        (f"Specified transformation from '{source}' to '{destination}' is not implemented! "
+         "Valid are from 'gromacs' to 'lammps', and from 'lammps' to 'gromacs'")
     )
 
 
@@ -15,14 +16,14 @@ def convert_harmonic_bond(
     source: str, destination: str, bond: Dict[str, str | float | int]
 ):
     """
-    GROMACS uses b0 and then K, LAMMPS uses K then b0
-    GOMACS uses 1/2*K and LAMMPS K, hence include factor 1/2 in LAMMPS
-    GROMACS uses kJ/nm^2 and LAMMPS kcal/A^2
-    GROMACS uses b0 in nm and LAMMPS in A
+    gromacs uses b0 and then K, lammps uses K then b0
+    GOMACS uses 1/2*K and lammps K, hence include factor 1/2 in lammps
+    gromacs uses kJ/nm^2 and lammps kcal/A^2
+    gromacs uses b0 in nm and lammps in A
     """
     new_bond = bond.copy()
 
-    if source == "GROMACS" and destination == "LAMMPS":
+    if source == "gromacs" and destination == "lammps":
         # [r, K] to [K, r]
         new_bond["p"] = [
             round(bond["p"][1] / 2 / 4.184 / 100, PRECISION),
@@ -30,7 +31,7 @@ def convert_harmonic_bond(
         ]
         new_bond["style"] = "harmonic"
 
-    elif source == "LAMMPS" and destination == "GROMACS":
+    elif source == "lammps" and destination == "gromacs":
         # [K, r] to [r, K]
         new_bond["p"] = [
             round(bond["p"][1] / 10, PRECISION),
@@ -47,13 +48,13 @@ def convert_harmonic_angle(
     source: str, destination: str, angle: Dict[str, str | float | int]
 ):
     """
-    GROMACS uses theta0 and then K, LAMMPS uses K then theta0
-    GOMACS uses 1/2*K and LAMMPS K, hence include factor 1/2 in LAMMPS
-    GROMACS uses kJ/nm^2 and LAMMPS kcal/A^2
+    gromacs uses theta0 and then K, lammps uses K then theta0
+    GOMACS uses 1/2*K and lammps K, hence include factor 1/2 in lammps
+    gromacs uses kJ/nm^2 and lammps kcal/A^2
     """
     new_angle = angle.copy()
 
-    if source == "GROMACS" and destination == "LAMMPS":
+    if source == "gromacs" and destination == "lammps":
         # [theta0, K] to [K, theta0]
         new_angle["p"] = [
             round(angle["p"][1] / 2 / 4.184, PRECISION),
@@ -61,7 +62,7 @@ def convert_harmonic_angle(
         ]
         new_angle["style"] = "harmonic"
 
-    elif source == "LAMMPS" and destination == "GROMACS":
+    elif source == "lammps" and destination == "gromacs":
         # [K, theta0] to [theta0, K]
         new_angle["p"] = [
             round(angle["p"][1], PRECISION),
@@ -78,12 +79,12 @@ def convert_harmonic_dihedral(
     source: str, destination: str, dihedral: Dict[str, str | float | int]
 ):
     """
-    GROMACS phi, k, n, LAMMPS, k, d, n
+    gromacs phi, k, n, lammps, k, d, n
     """
     new_dihedral = dihedral.copy()
 
-    if source == "GROMACS" and destination == "LAMMPS":
-        # GROMACS uses trans = 0.0 while LAMMPS trans = 180, hence d=-1
+    if source == "gromacs" and destination == "lammps":
+        # gromacs uses trans = 0.0 while lammps trans = 180, hence d=-1
         new_dihedral["p"] = [
             round(dihedral["p"][1] * 4.184, PRECISION),
             -1,
@@ -91,8 +92,8 @@ def convert_harmonic_dihedral(
         ]
         new_dihedral["style"] = "harmonic"
 
-    elif source == "LAMMPS" and destination == "GROMACS":
-        # GROMACS uses trans = 0.0 while LAMMPS trans = 180, but introduces a phi0 term.
+    elif source == "lammps" and destination == "gromacs":
+        # gromacs uses trans = 0.0 while lammps trans = 180, but introduces a phi0 term.
         # If d=-1, phi0 = 0.0, if d=1 than phi0=180
         new_dihedral["p"] = [
             0.0 if dihedral["p"][1] == -1 else 180.0,
@@ -112,7 +113,7 @@ def convert_opls_dihedral(
     """ """
     new_dihedral = dihedral.copy()
 
-    if source == "GROMACS" and destination == "LAMMPS":
+    if source == "gromacs" and destination == "lammps":
         # Convert Ryckaert-Bellemans to nharmnoic (angle conversion has to be accounted with (-1)**n)
         new_dihedral["p"] = [
             6,
@@ -123,7 +124,7 @@ def convert_opls_dihedral(
         ]
         new_dihedral["style"] = "nharmonic"
 
-    elif source == "LAMMPS" and destination == "GROMACS":
+    elif source == "lammps" and destination == "gromacs":
         # Convert OPLS dihedral to Ryckaert-Bellemans (https://manual.gromacs.org/current/reference-manual/functions/bonded-interactions.html#equation-eqnoplsrbconversion)
         A = np.matrix(
             [

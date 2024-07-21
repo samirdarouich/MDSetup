@@ -1,0 +1,84 @@
+format = "lammps"
+UA_flag = true
+topology_priority = [ "CH3_alkane", "CH2_alkene", "CH2_alkane",]
+
+[atoms.CH3_alkane]
+name = "CH3_alkane"
+mass = 15.035
+epsilon = 0.2709
+sigma = 3.603
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH3]"
+vdw_style = "lj/cut"
+coulomb_style = ""
+
+[atoms.CH2_alkane]
+name = "CH2_alkane"
+mass = 14.027
+epsilon = 0.1051
+sigma = 4.04
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH2]"
+vdw_style = "lj/cut"
+coulomb_style = ""
+
+[atoms.CH2_alkene]
+name = "CH2_alkene"
+mass = 14.027
+epsilon = 0.199
+sigma = 3.6
+cut = 14.0
+charge = 0.0
+atom_no = 6
+topology = "[CH2]=[C]"
+vdw_style = "lj/cut"
+coulomb_style = ""
+
+[bonds."[CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane",]
+p = [ 200.0, 1.74,]
+style = "harmonic"
+
+[bonds."[CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane",]
+p = [ 200.0, 1.54,]
+style = "harmonic"
+
+[bonds."[CH2_alkene][CH2_alkene]"]
+list = [ "CH2_alkene", "CH2_alkene",]
+p = [ 200.0, 1.33,]
+style = "harmonic"
+
+[angles."[CH3_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 62.1001, 114.0,]
+style = "harmonic"
+
+[angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 62.1001, 114.0,]
+style = "harmonic"
+
+[angles."[CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+p = [ 62.1001, 114.0,]
+style = "harmonic"
+
+[dihedrals."[CH3_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH3_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 6, 2.007, -4.012, 0.271, 6.29, 0.0, -0.0,]
+style = "nharmonic"
+
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH2_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH2_alkane",]
+p = [ 6, 2.007, -4.012, 0.271, 6.29, 0.0, -0.0,]
+style = "nharmonic"
+
+[dihedrals."[CH2_alkane][CH2_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 6, 2.007, -4.012, 0.271, 6.29, 0.0, -0.0,]
+style = "nharmonic"

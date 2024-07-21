@@ -72,7 +72,7 @@ def extract_mol_file( mol_file: str ):
     
     return style_dict
 
-def extract_number_dict_from_mol_files( mol_files: List[str], offset: List[Dict[str,int]]={} ):
+def extract_number_dict_from_mol_files( mol_files: List[str], offset: List[Dict[str,int]]={}, **kwargs ):
     """
     Extracts and aggregates counts of different molecular components from a list of molecular files.
 

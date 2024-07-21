@@ -71,6 +71,21 @@ class MDSetup:
         else:
             self.simulation_sampling = {}
 
+        # Check for input length
+        assert (len(self.system_setup["temperature"]) ==
+                len(self.system_setup["pressure"]) ==
+                len(self.system_setup["densitiy"])
+                ), ("Make sure that the same number of state points are provided "
+                    "for temperature, pressure and density")
+        
+        # Define state folder name
+        self.state_folder = "_".join(
+            [ 
+                f"{folder_attribute[:4]}_%.{FOLDER_PRECISION}f"
+                for folder_attribute in self.system_setup['folder_attributes']
+            ]
+        )
+
         # Check for all necessary keys
 
         # Print software
@@ -238,8 +253,16 @@ class MDSetup:
         ):
             job_files = []
 
-            # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
+            # Compute mole fraction of component 1
+            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+
+            # Get local variables
+            local_vars = locals()
+
+            # Define folder with defined state attributes
+            state_folder = f"{sim_folder}/" + self.state_folder%tuple(
+                local_vars[folder_attribute] for folder_attribute in self.system_setup['folder_attributes']
+            )
 
             # Build system with MD software if none is provided
             build_folder = f"{state_folder}/build"
@@ -359,13 +382,27 @@ class MDSetup:
         Returns:
             None
         """
-        for temperature, pressure, job_files in zip(
+        for temperature, pressure, density, job_files in zip(
             self.system_setup["temperature"],
             self.system_setup["pressure"],
+            self.system_setup["density"],
             self.job_files,
         ):
+            
+            # Compute mole fraction of component 1
+            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+
+            # Get local variables
+            local_vars = locals()
+
+            sub_txt = ', '.join(
+                (f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                 f"{'K' if folder_attribute=='temperature' else 'bar' if folder_attribute=='pressure' else 'kg/m^3' if folder_attribute=='density' else 'mol/mol'}"
+                 ) for folder_attribute in self.system_setup['folder_attributes']
+            )
+
             print(
-                f"\nSubmitting simulations at Temperature = {temperature:.{FOLDER_PRECISION}f} K, Pressure = {pressure:.{FOLDER_PRECISION}f} bar\n"
+                f"\nSubmitting simulations at {sub_txt}.\n"
             )
 
             for job_file in job_files:
@@ -427,12 +464,25 @@ class MDSetup:
         elif self.system_setup["software"] == "lammps":
             output_suffix = kwargs["output_suffix"]
 
-        # Search output files and sort them after temperature / pressure and then copy
-        for i, (temperature, pressure) in enumerate(
-            zip(self.system_setup["temperature"], self.system_setup["pressure"])
+        # Search output files and sort them after the copy
+        for i, (temperature, pressure, density) in enumerate(
+            zip(
+                self.system_setup["temperature"],
+                self.system_setup["pressure"],
+                self.system_setup["density"],
+            )
         ):
-            # Define folder for specific temp and pressure state
-            state_folder = f"{sim_folder}/temp_{temperature:.{FOLDER_PRECISION}f}_pres_{pressure:.{FOLDER_PRECISION}f}"
+            
+            # Compute mole fraction of component 1
+            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+
+            # Get local variables
+            local_vars = locals()
+
+            # Define folder with defined state attributes
+            state_folder = f"{sim_folder}/" + self.state_folder%tuple(
+                local_vars[folder_attribute] for folder_attribute in self.system_setup['folder_attributes']
+            )
 
             # Search for available copies
             files = glob.glob(
@@ -445,8 +495,14 @@ class MDSetup:
                     f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}"
                 )
 
+            sub_txt = ', '.join(
+                (f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                 f"{'K' if folder_attribute=='temperature' else 'bar' if folder_attribute=='pressure' else 'kg/m^3' if folder_attribute=='density' else 'mol/mol'}"
+                 ) for folder_attribute in self.system_setup['folder_attributes']
+            )
+
             print(
-                f"Temperature: {temperature}, Pressure: {pressure}\n   "
+                f"{sub_txt}\n   "
                 + "\n   ".join(files)
                 + "\n"
             )

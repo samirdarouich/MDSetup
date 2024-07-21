@@ -1,0 +1,5 @@
+lammps/build_box.sh: line 10: module: command not found
+lammps/build_box.sh: line 11: module: command not found
+This is the working path: lammps
+lammps/build_box.sh: line 19: mpirun: command not found
+Ending. Job completed.

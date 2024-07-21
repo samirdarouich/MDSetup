@@ -1,5 +1,7 @@
 import os
-import json, yaml, toml
+import json
+import yaml
+import toml
 
 from typing import List
 from jinja2 import Template
@@ -8,6 +10,7 @@ from moleculegraph.molecule_utils import sort_force_fields
 from ..tools.general import (
     SOFTWARE_LIST,
     SoftwareError,
+    FFTypeMatchError,
     KwargsError,
     flatten_list,
     merge_nested_dicts,
@@ -26,7 +29,7 @@ from .writer import (
     write_gro_file,
 )
 
-
+    
 class forcefield:
     """
     This class writes a force field input for arbitrary mixtures using moleculegraph. This input can be used for GROMACS and LAMMPS.
@@ -55,20 +58,31 @@ class forcefield:
         # Check force field format
         self.software = self.ff["format"]
 
-        if not self.software in SOFTWARE_LIST:
+        if self.software not in SOFTWARE_LIST:
             raise SoftwareError(self.software)
         else:
             print(f"Force field provided for software '{self.software}'")
 
+        # Extract topology priority order
+        topology_priority = self.ff["topology_priority"]
+
+        # Check if topology priority order covers all atom types
+        assert len(topology_priority) == len(self.ff["atoms"]), (
+            "Topology priority list do not match the number of "
+            "force field types defined."
+        )
+        
         # Extract topology smarts for each type
         substructure_smarts = {
-            atom["name"]: atom["topology"] for _, atom in self.ff["atoms"].items()
+            self.ff["atoms"][ff_type]["name"]: self.ff["atoms"][ff_type]["topology"]
+            for ff_type in topology_priority
         }
 
         # Extract if united atoms are wanted
         UA_flag = self.ff["UA_flag"]
 
-        # Match from SMILES to force field keys and get moleculegraph representation of the matched molecule
+        # Match from SMILES to force field keys and get moleculegraph 
+        # representation of the matched molecule
         self.mol_list = [
             get_forcefield_molecule_from_smiles(
                 smiles=smile,
@@ -84,13 +98,19 @@ class forcefield:
         self.gro_files = []
         self.topology_file = ""
 
-        ## Map force field parameters for all interactions seperately (nonbonded, bonds, angles and torsions) ##
+        # Map force field parameters for all interactions seperately
+        # (nonbonded, bonds, angles and torsions)
 
         # Get (unique) atom types and parameters
         self.nonbonded = unique_by_key(
             flatten_list(
-                molecule.map_molecule(molecule.unique_atom_keys, self.ff["atoms"])
-                for molecule in self.mol_list
+                (molecule.map_molecule(
+                    molecule.unique_atom_keys, self.ff["atoms"]
+                ) for molecule in self.mol_list),
+                lambda p: (
+                    FFTypeMatchError("nonbonded interaction")
+                    if p is None else True
+                )
             ),
             "name",
         )
@@ -98,8 +118,13 @@ class forcefield:
         # Get (unique) bond types and parameters
         self.bonds = unique_by_key(
             flatten_list(
-                molecule.map_molecule(molecule.unique_bond_keys, self.ff["bonds"])
-                for molecule in self.mol_list
+                (molecule.map_molecule(
+                    molecule.unique_bond_keys, self.ff["bonds"]
+                ) for molecule in self.mol_list),
+                lambda p: ( 
+                    FFTypeMatchError("bond")
+                    if p is None else True
+                )
             ),
             "list",
         )
@@ -107,8 +132,13 @@ class forcefield:
         # Get (unique) angle types and parameters
         self.angles = unique_by_key(
             flatten_list(
-                molecule.map_molecule(molecule.unique_angle_keys, self.ff["angles"])
-                for molecule in self.mol_list
+                (molecule.map_molecule(
+                    molecule.unique_angle_keys, self.ff["angles"]
+                ) for molecule in self.mol_list),
+                lambda p: (
+                    FFTypeMatchError("angle")
+                    if p is None else True
+                )
             ),
             "list",
         )
@@ -116,34 +146,16 @@ class forcefield:
         # Get (unique) dihedrals types and parameters
         self.dihedrals = unique_by_key(
             flatten_list(
-                molecule.map_molecule(
+                (molecule.map_molecule(
                     molecule.unique_torsion_keys, self.ff["dihedrals"]
+                ) for molecule in self.mol_list),
+                lambda p: (
+                    FFTypeMatchError("angle")
+                    if p is None else True
                 )
-                for molecule in self.mol_list
             ),
             "list",
         )
-
-        if not all(
-            [
-                all(self.nonbonded),
-                all(self.bonds),
-                all(self.angles),
-                all(self.dihedrals),
-            ]
-        ):
-            txt = (
-                "nonbonded"
-                if not all(self.nonbonded)
-                else (
-                    "bonds"
-                    if not all(self.bonds)
-                    else "angles" if not all(self.angles) else "dihedrals"
-                )
-            )
-            raise ValueError(
-                "Something went wrong during the force field mapping for key: %s" % txt
-            )
 
         # Define labelmap for numeric numbers and the force field
         self.labelmap = {}
@@ -172,7 +184,8 @@ class forcefield:
         Parameters:
          - molecule_template (str): Path to the jinja2 template for the molecule file.
          - molecule_path (str): Path where the molecule files should be generated.
-
+         - residues (List[str]): Residue names for each molecule.
+        
         Keyword Args:
          - gro_template (str): Template to write gro file for GROMACS
          - nrexcl (List[int]): A list of integers defining the number of bonds to exclude nonbonded interactions for each molecule for GROMACS.
@@ -297,7 +310,7 @@ class forcefield:
          - system_name (str): Name of the system (topology filed gonna be named like it).
 
         Keyword Args:
-         - rcut (float): Cutoff radius.
+         - rcut (float): Cutoff radius for LAMMPS.
          - potential_kwargs (Dict[str,List[str]]): Additional keyword arguments specific to potential types and style for LAMMPS.
          - do_mixing (bool): Flag to determine if mixing rules should be applied for LAMMPS.
          - mixing_rule (str): The mixing rule to be used if do_mixing is True. For LAMMPS and GROMACS.

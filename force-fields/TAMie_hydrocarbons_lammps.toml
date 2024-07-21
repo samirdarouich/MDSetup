@@ -4,6 +4,15 @@ format = "lammps"
 # Define if united atoms should be used (True for yes)
 UA_flag = true
 
+# Define topology matching priority
+# (if two topologies are matched to same atom,
+# take entry higher in the list)
+topology_priority = [
+    "CH3_alkane",
+    "CH2_alkene",
+    "CH2_alkane"
+]
+
 
 [atoms.CH3_alkane]
 name = "CH3_alkane"
@@ -34,6 +43,19 @@ vdw_style = "mie/cut"
 coulomb_style = ""
 topology = "[CH2]"
 
+[atoms.CH2_alkene]
+name = "CH2_alkene"
+mass = 14.027
+epsilon = 0.199
+sigma = 3.6005
+n = 14.0
+m = 6
+cut = 14.0
+charge = 0.0
+atom_no = 6
+vdw_style = "mie/cut"
+coulomb_style = ""
+topology = "[CH2]=[C]"
 
 [bonds."[CH2_alkane][CH3_alkane]"]
 list = [ "CH3_alkane", "CH2_alkane",]
@@ -43,6 +65,16 @@ style = "harmonic"
 [bonds."[CH2_alkane][CH2_alkane]"]
 list = [ "CH2_alkane", "CH2_alkane",]
 p = [ 200.0, 1.54 ]
+style = "harmonic"
+
+[bonds."[CH2_alkene][CH2_alkene]"]
+list = [ "CH2_alkene", "CH2_alkene",]
+p = [ 200.0, 1.33 ]
+style = "harmonic"
+
+[angles."[CH3_alkane][CH2_alkane][CH3_alkane]"]
+list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+p = [ 62.1001, 114.0 ]
 style = "harmonic"
 
 [angles."[CH2_alkane][CH2_alkane][CH3_alkane]"]

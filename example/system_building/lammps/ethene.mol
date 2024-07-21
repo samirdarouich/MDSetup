@@ -1,0 +1,30 @@
+#  molecule. Automaticly created by MDSetup
+
+2 atoms
+1 bonds
+
+
+
+Coords
+
+1   -0.630475875134746   0.12398186474303012   -0.13412840012709196
+2   0.6300980882115432   -0.12293754870266664   0.13587725937839987
+
+Types
+
+1   CH2_alkene
+2   CH2_alkene
+
+Charges
+
+1   0.0
+2   0.0
+
+
+Bonds
+
+1   CH2_alkene_CH2_alkene   1   2
+
+
+
+

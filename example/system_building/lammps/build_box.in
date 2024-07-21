@@ -1,0 +1,47 @@
+# LAMMPS build file. Automaticly created by MDSetup
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Define box region
+region box  -16.432308127297862 16.432308127297862 -16.432308127297862 16.432308127297862 -16.432308127297862 16.432308127297862 
+
+# Create box (define also the number of atoms, bonds, angles, etc)
+# for the extra/... the default value of 15 should cover most cases. 
+# Increasing it, increases the memory needed. If set too low, LAMMPS will produce a floating error
+create_box 3 box &
+            bond/types 2 & 
+            angle/types 1 & 
+            extra/bond/per/atom 15 & 
+            extra/angle/per/atom 15 & 
+            extra/special/per/atom 15
+
+
+# Include force field paramters
+
+include   propane_ethene.params
+
+
+# Define seed for random insertion
+variable seed equal random(0,1e5,123)
+
+# Add molecule: propane
+molecule propane lammps/propane.mol
+
+# Create molecule
+create_atoms 0 random 100 ${seed} NULL mol propane ${seed} overlap 1.33 maxtry 10000
+
+
+# Add molecule: ethene
+molecule ethene lammps/ethene.mol
+
+# Create molecule
+create_atoms 0 random 300 ${seed} NULL mol ethene ${seed} overlap 1.33 maxtry 10000
+
+
+# Write data file (without force field information)
+write_data init_conf.data nocoeff

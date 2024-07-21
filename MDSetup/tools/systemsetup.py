@@ -27,7 +27,8 @@ def get_system_volume(
     - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
     - density (float): The density of the mixture in kg/m^3.
     - unit_conversion (float): Unit conversion from Angstrom to xx.
-    - box_type (str, optional): The type of box to calculate dimensions for. Currently, only 'cubic' is implemented.
+    - box_type (str, optional): The type of box to calculate dimensions for. 
+                                Currently, only 'cubic' and 'orthorhombic' are implemented.
     - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
     - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
 

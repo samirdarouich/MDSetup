@@ -41,6 +41,16 @@ class KwargsError(Exception):
             raise self
 
 
+class FFTypeMatchError(Exception):
+    """Software error class"""
+
+    def __init__(self, interaction_type: str):
+        message = (f"Unmachted {interaction_type}(s) found. "
+                   "Check force field input.")
+        super().__init__(message)
+        raise self
+
+
 ############## Helpfull functions ##############
 
 

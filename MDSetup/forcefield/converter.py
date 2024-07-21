@@ -44,14 +44,14 @@ DIHEDRAL_MAP = {
 def convert_atom(source: str, destination: str, atom: Dict[str, str | float | int]):
     new_atom = atom.copy()
 
-    if source == "GROMACS" and destination == "LAMMPS":
+    if source == "gromacs" and destination == "lammps":
         new_atom["epsilon"] = round(
             atom["epsilon"] / 4.184, PRECISION
         )  # convert from kJ to kcal
         new_atom["sigma"] = round(atom["sigma"] * 10, PRECISION)  # convert from nm to A
         new_atom["vdw_style"] = "lj/cut"
         new_atom["coulomb_style"] = "coul/long" if atom["charge"] != 0 else ""
-    elif source == "LAMMPS" and destination == "GROMACS":
+    elif source == "lammps" and destination == "gromacs":
         new_atom["epsilon"] = round(
             atom["epsilon"] * 4.184, PRECISION
         )  # convert from kcal to kJ
@@ -68,13 +68,13 @@ def convert_atom(source: str, destination: str, atom: Dict[str, str | float | in
 
 
 def convert_bond(source: str, destination: str, bond: Dict[str, str | float | int]):
-    new_bond = BOND_MAP[bond["style"]](source, destination, bond)
+    new_bond = BOND_MAP[str(bond["style"])](source, destination, bond)
 
     return new_bond
 
 
 def convert_angle(source: str, destination: str, angle: Dict[str, str | float | int]):
-    new_angle = ANGLE_MAP[angle["style"]](source, destination, angle)
+    new_angle = ANGLE_MAP[str(angle["style"])](source, destination, angle)
 
     return new_angle
 
@@ -82,12 +82,12 @@ def convert_angle(source: str, destination: str, angle: Dict[str, str | float | 
 def convert_dihedral(
     source: str, destination: str, dihedral: Dict[str, str | float | int]
 ):
-    new_dihedral = DIHEDRAL_MAP[dihedral["style"]](source, destination, dihedral)
+    new_dihedral = DIHEDRAL_MAP[str(dihedral["style"])](source, destination, dihedral)
 
     return new_dihedral
 
 
-# Convert force field from LAMMPS to GROMACS / other way around
+# Convert force field from lammps to gromacs / other way around
 def convert_force_field(force_field_path: str, output_path: str):
     if not os.path.exists(force_field_path):
         raise FileExistsError(
@@ -103,10 +103,10 @@ def convert_force_field(force_field_path: str, output_path: str):
 
     source = data["format"]
 
-    if source == "GROMACS":
-        destination = "LAMMPS"
-    elif source == "LAMMPS":
-        destination = "GROMACS"
+    if source == "gromacs":
+        destination = "lammps"
+    elif source == "lammps":
+        destination = "gromacs"
     else:
         raise KeyError(f"Specified source is unknown: '{source}'")
 
@@ -114,12 +114,17 @@ def convert_force_field(force_field_path: str, output_path: str):
 
     converted_ff = {
         "format": destination,
+        "UA_flag": data["UA_flag"],
+        "topology_priority": data["topology_priority"],
         "atoms": {},
         "bonds": {},
         "angles": {},
-        "torsions": {},
+        "dihedrals": {},
     }
 
+    print(("\n!!! Please note that the conversion from GROMACS LJ to LAMMPS "
+           "Mie and vice versa may require parameter adjustments !!!\n"))
+    
     for key, atom in data["atoms"].items():
         converted_ff["atoms"][key] = convert_atom(
             source=source, destination=destination, atom=atom
@@ -135,8 +140,8 @@ def convert_force_field(force_field_path: str, output_path: str):
             source=source, destination=destination, angle=angle
         )
 
-    for key, dihedral in data["torsions"].items():
-        converted_ff["torsions"][key] = convert_dihedral(
+    for key, dihedral in data["dihedrals"].items():
+        converted_ff["dihedrals"][key] = convert_dihedral(
             source=source, destination=destination, dihedral=dihedral
         )
 
@@ -153,15 +158,15 @@ def convert_force_field(force_field_path: str, output_path: str):
 
 
 def extract_force_field_gromacs(itp_files: List[str], top_file: str, output_path: str):
-    print("Starting to extract GROMACS force field...\n")
+    print("Starting to extract gromacs force field...\n")
 
     # Define force field dictionary
     force_field = {
-        "format": "GROMACS",
+        "format": "gromacs",
         "atoms": {},
         "bonds": {},
         "angles": {},
-        "torsions": {},
+        "dihedrals": {},
     }
 
     # Read in topology
@@ -280,7 +285,7 @@ def extract_force_field_gromacs(itp_files: List[str], top_file: str, output_path
         if "#" in p:
             p = p[: p.index("#")]
 
-        force_field["torsions"][graph_key] = {
+        force_field["dihedrals"][graph_key] = {
             "list": name_list,
             "p": [round(float(pp), PRECISION) for pp in p],
             "style": style,
@@ -299,8 +304,8 @@ def extract_force_field_gromacs(itp_files: List[str], top_file: str, output_path
             "p": [],
             "style": 0,
         }
-    if not force_field["torsions"]:
-        force_field["torsions"]["dummy"] = {
+    if not force_field["dihedrals"]:
+        force_field["dihedrals"]["dummy"] = {
             "list": ["dummy", "dummy", "dummy", "dummy"],
             "p": [],
             "style": 0,
@@ -345,7 +350,7 @@ class LMP2GRO:
     def convert_data_in_itp(self, itp_template: str, destination: str):
         self.itp_files = []
 
-        print("Converting LAMMPS data file to .itp files for every residue\n")
+        print("Converting lammps data file to .itp files for every residue\n")
 
         if not os.path.exists(itp_template):
             raise FileExistsError(
@@ -396,7 +401,7 @@ class LMP2GRO:
             # If no name is provided parse empty string
             name = name[1:] if len(name) >= 2 else [""]
 
-            # Provide GROMACS with  a1 and a2
+            # Provide gromacs with  a1 and a2
             residue_dict[residue]["bonds"].append([a1, a2, "#", *name])
 
         for angle in angle_section:
@@ -405,7 +410,7 @@ class LMP2GRO:
             # If no name is provided parse empty string
             name = name[1:] if len(name) >= 2 else [""]
 
-            # Provide GROMACS with  a1, a2 and a3
+            # Provide gromacs with  a1, a2 and a3
             residue_dict[residue]["angles"].append([a1, a2, a3, "#", *name])
 
         for dihedral in dihedral_section:
@@ -414,7 +419,7 @@ class LMP2GRO:
             # If no name is provided parse empty string
             name = name[1:] if len(name) >= 2 else [""]
 
-            # Provide GROMACS with  a1, a2 and a3
+            # Provide gromacs with  a1, a2 and a3
             residue_dict[residue]["dihedrals"].append([a1, a2, a3, a4, "#", *name])
 
         # Get absolute path
@@ -436,7 +441,7 @@ class LMP2GRO:
         print("Success!\n")
 
     def convert_data_in_gro(self, gro_template: str, destination: str):
-        print("Converting LAMMPS data file to .gro files for every residue\n")
+        print("Converting lammps data file to .gro files for every residue\n")
 
         if not os.path.exists(gro_template):
             raise FileExistsError(
@@ -462,7 +467,7 @@ class LMP2GRO:
             runo, mol, attyp, q, x, y, z, *name = atom
             residue = find_key_by_value(residue_atom_dict, runo)
             gmx_type = self.atom_map[residue][attyp]
-            # Provide GROMACS with  RESno, RESNAME. attyp, running number, x, y ,z (optional velocities: %8.4f%8.4f%8.4f)
+            # Provide gromacs with  RESno, RESNAME. attyp, running number, x, y ,z (optional velocities: %8.4f%8.4f%8.4f)
             residue_dict[residue]["atoms"].append(
                 "%5d%-5s%5s%5d%8.3f%8.3f%8.3f"
                 % (
@@ -496,7 +501,7 @@ class LMP2GRO:
         print("Success!\n")
 
     def convert_ff_in_top(self, top_template: str, destination: str):
-        print("Converting LAMMPS force field file to GROMACS toppology file\n")
+        print("Converting lammps force field file to gromacs toppology file\n")
 
         if not os.path.exists(top_template):
             raise FileExistsError(
@@ -537,7 +542,7 @@ class LMP2GRO:
         }
 
         # Get bond, angle and torsion keys
-        # Map the bonds with their force field type, needed for GROMACS
+        # Map the bonds with their force field type, needed for gromacs
         atom_map = {key: [] for key in type_map}
         for atom in atom_section:
             atom_map[atom[2]].append(atom[0])
@@ -615,7 +620,7 @@ class LMP2GRO:
                 "p": np.array(p).astype(float),
                 "list": bond_map[i],
             }
-            new_bond = convert_bond("LAMMPS", "GROMACS", bond_dict)
+            new_bond = convert_bond("lammps", "gromacs", bond_dict)
             top_dict["bonds"].append(
                 [*new_bond["list"], new_bond["style"], *new_bond["p"]]
             )
@@ -627,7 +632,7 @@ class LMP2GRO:
                 "p": np.array(p).astype(float),
                 "list": angle_map[i],
             }
-            new_angle = convert_angle("LAMMPS", "GROMACS", angle_dict)
+            new_angle = convert_angle("lammps", "gromacs", angle_dict)
             top_dict["angles"].append(
                 [*new_angle["list"], new_angle["style"], *new_angle["p"]]
             )
@@ -639,7 +644,7 @@ class LMP2GRO:
                 "p": np.array(p).astype(float),
                 "list": dihedral_map[i],
             }
-            new_dihedral = convert_dihedral("LAMMPS", "GROMACS", dihedral_dict)
+            new_dihedral = convert_dihedral("lammps", "gromacs", dihedral_dict)
             top_dict["dihedrals"].append(
                 [*new_dihedral["list"], new_dihedral["style"], *new_dihedral["p"]]
             )
