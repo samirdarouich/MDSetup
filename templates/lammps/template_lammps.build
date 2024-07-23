@@ -8,7 +8,7 @@ boundary p p p
 atom_style full
 
 # Define box region
-region box {{box.box_type}} {% for key,item in box.dimensions.items() %}{{item|join(' ')}} {% endfor %}
+region box {{box.type}} {% for key,item in box.dimensions.items() %}{{item|join(' ')}} {% endfor %}
 
 # Create box (define also the number of atoms, bonds, angles, etc)
 # for the extra/... the default value of 15 should cover most cases. 
@@ -35,7 +35,7 @@ include   {{force_field_file}}
 
 
 # Define seed for random insertion
-variable seed equal random(0,1e5,123)
+variable seed equal ceil(random(0,1e5,123))
 
 {%- for coord, mol, nmol in coord_mol_no %}
 

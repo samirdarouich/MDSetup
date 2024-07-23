@@ -1,0 +1,23 @@
+; Molecule file for propane. Automaticly created by MDSetup.
+
+[ moleculetype ]
+; name  nrexcl
+propane   3
+
+[ atoms ]
+; nr     type     resnr    residu     atom      cgnr      charge        mass
+
+   1   CH3_alkane   1   propane   CH3_alkane   1   0.0   15.035
+   2   CH2_alkane   1   propane   CH2_alkane   2   0.0   14.027
+   3   CH3_alkane   1   propane   CH3_alkane   3   0.0   15.035
+
+[ bonds ]
+;  ai    aj
+
+   1   2   #   CH2_alkane CH3_alkane
+   2   3   #   CH2_alkane CH3_alkane
+
+[ angles ]
+;  ai    aj    ak
+
+   1   2   3   #   CH3_alkane CH2_alkane CH3_alkane

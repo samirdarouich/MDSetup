@@ -2,7 +2,7 @@
 
 [ defaults ]
 ; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ
-1               {{comb_rule}}               yes             {{fudgeLJ}}     {{fudgeQQ}}
+1               {{mixing_rule}}               yes             {{fudgeLJ}}     {{fudgeQQ}}
 
 [ atomtypes ]
 ; name      at.num  mass     charge ptype  sigma      epsilon

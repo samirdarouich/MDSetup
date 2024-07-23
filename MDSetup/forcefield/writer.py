@@ -209,7 +209,7 @@ def write_gro_file(
             attyp,
         )
         for j, (attyp, atsym, (x, y, z)) in enumerate(
-            zip(molecule.atom_names, molecule.atomsymbols, molecule.coordinate)
+            zip(molecule.atom_names, molecule.atomsymbols, molecule.coordinates)
         )
     ]
 

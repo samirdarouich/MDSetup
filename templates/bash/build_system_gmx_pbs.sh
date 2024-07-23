@@ -25,7 +25,7 @@ echo "This is the working path: $WORKING_PATH"
 
 # Add molecule: {{ mol }}
 {%- if loop.index0 == 0 and not initial_system %}
-gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -box {{ box_lengths.x[0]|abs + box_lengths.x[1]|abs box_lengths.y[0]|abs + box_lengths.y[1]|abs box_lengths.z[0]|abs + box_lengths.z[1]|abs }} -o temp{{ loop.index0 }}.gro
+gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -box {{ box.dimensions.box_x[0]|abs + box.dimensions.box_x[1]|abs }} {{ box.dimensions.box_y[0]|abs + box.dimensions.box_y[1]|abs }} {{ box.dimensions.box_z[0]|abs + box.dimensions.box_z[1]|abs }} -o temp{{ loop.index0 }}.gro
 {%- elif loop.index0 == 0 %}
 gmx insert-molecules -ci {{ coord }} -nmol {{ nmol }} -f {{ initial_system }} -try {{ n_try }} -o temp{{ loop.index0 }}.gro
 {%- else %} 

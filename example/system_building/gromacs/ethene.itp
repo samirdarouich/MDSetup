@@ -1,0 +1,16 @@
+; Molecule file for ethene. Automaticly created by MDSetup.
+
+[ moleculetype ]
+; name  nrexcl
+ethene   3
+
+[ atoms ]
+; nr     type     resnr    residu     atom      cgnr      charge        mass
+
+   1   CH2_alkene   1   ethene   CH2_alkene   1   0.0   14.027
+   2   CH2_alkene   1   ethene   CH2_alkene   2   0.0   14.027
+
+[ bonds ]
+;  ai    aj
+
+   1   2   #   CH2_alkene CH2_alkene

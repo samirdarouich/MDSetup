@@ -1,3 +1,7 @@
+# Warning this file uses the TAMie force field but gromacs
+# only supports LJ. Hence this is just an example file
+# and should not be used to generate results.
+
 format = "gromacs"
 UA_flag = true
 topology_priority = [ "CH3_alkane", "CH2_alkene", "CH2_alkane",]
@@ -48,7 +52,7 @@ p = [ 0.133, 167360.0,]
 style = 1
 
 [angles."[CH3_alkane][CH2_alkane][CH3_alkane]"]
-list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+list = [ "CH3_alkane", "CH2_alkane", "CH3_alkane",]
 p = [ 114.0, 519.6536,]
 style = 1
 

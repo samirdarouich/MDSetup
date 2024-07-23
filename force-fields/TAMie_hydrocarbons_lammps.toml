@@ -73,7 +73,7 @@ p = [ 200.0, 1.33 ]
 style = "harmonic"
 
 [angles."[CH3_alkane][CH2_alkane][CH3_alkane]"]
-list = [ "CH2_alkane", "CH2_alkane", "CH3_alkane",]
+list = [ "CH3_alkane", "CH2_alkane", "CH3_alkane",]
 p = [ 62.1001, 114.0 ]
 style = "harmonic"
 

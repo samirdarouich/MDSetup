@@ -7,9 +7,9 @@ pair_modify  mix arithmetic  tail yes
 
 # Define labelmap
 
-labelmap atom  CH3_alkane  1  CH2_alkane  2  CH2_alkene  3 
-labelmap bond  CH2_alkane_CH3_alkane  1  CH2_alkene_CH2_alkene  2 
-labelmap angle  CH2_alkane_CH2_alkane_CH3_alkane  1 
+labelmap atom  1  CH3_alkane  2  CH2_alkane  3  CH2_alkene 
+labelmap bond  1  CH2_alkane_CH3_alkane  2  CH2_alkene_CH2_alkene 
+labelmap angle  1  CH3_alkane_CH2_alkane_CH3_alkane 
 
 
 
@@ -44,4 +44,4 @@ bond_coeff  CH2_alkene_CH2_alkene 200.0 1.33
 
 angle_style  harmonic
 
-angle_coeff  CH2_alkane_CH2_alkane_CH3_alkane 62.1001 114.0
+angle_coeff  CH3_alkane_CH2_alkane_CH3_alkane 62.1001 114.0

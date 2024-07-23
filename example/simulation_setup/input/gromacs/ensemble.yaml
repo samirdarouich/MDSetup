@@ -1,0 +1,42 @@
+# Define ensemble settings for each ensemble
+
+# Energy minimization (no further settings needed here)
+em:
+  em:
+    null
+
+# NVT ensemble
+nvt:
+  t:
+    tcoupl: v-rescale
+    tc_grps: System
+    tau_t: 1.0
+
+# NPT
+npt:
+  t:
+    tcoupl: v-rescale
+    tc_grps: System
+    tau_t: 1.0
+  p:
+    pcoupl: berendsen
+    pcoupltype: isotropic
+    tau_p: 2.0
+
+# NEMD
+nemd:
+  t:
+    tcoupl: v-rescale
+    tc_grps: System
+    tau_t: 1.0
+
+# Annealing
+annealing:
+  t:
+    tcoupl: v-rescale
+    tc_grps: System
+    tau_t: 1.0
+  p:
+    pcoupl: berendsen
+    pcoupltype: isotropic
+    tau_p: 2.0

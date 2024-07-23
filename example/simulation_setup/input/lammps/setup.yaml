@@ -1,0 +1,69 @@
+# General definitions of the system
+
+# Define software to use (no capitals)
+software: lammps
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: ../../lammps
+
+# System name
+name: butane_hexane
+
+# Folder name (define which elements of the statepoint should be writen to the folder name)
+# fraction is computed with respect to first provided molecule.
+# If one statepoint is not wanted comment it out
+folder_attributes: [
+  temperature, 
+  pressure,
+  density,
+  fraction
+]
+
+# Box type (dimension is computed by the type and the density)
+box: 
+  box_type: cubic
+  z_x_relation: 1.0
+  z_y_relation: 1.0
+
+# Define the components
+molecules:
+  - name: propane
+    smiles: "CCC"
+    number: 100
+  - name: ethene
+    smiles: "C=C"
+    number: 300
+
+# Define paths 
+paths:
+
+  # Path to the lammps force field (topology) file
+  topology_file: ""
+
+  # Path to molecule files 
+  # (leave empty if topology file will be generated)
+  coordinates_files: [
+    
+  ]
+
+  # Force field toml files (if topology file should be created)
+  force_field_files: 
+    - ../../../../force-fields/TAMie_hydrocarbons_lammps.toml
+
+  # Template files
+  molecule_template: ../../../../templates/lammps/template_lammps.mol
+  topology_template: ../../../../templates/lammps/template_lammps.params
+  build_input_template: ../../../../templates/lammps/template_lammps.build
+  build_template: ../../../../templates/bash/build_system_lmp_pbs.sh
+  input_template: ../../../../templates/lammps/template_lammps.in
+  job_template: ../../../../templates/bash/template_job_lmp_pbs.sh
+
+# Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied
+temperature:
+  - 300.00
+
+pressure:
+  - 1.00
+
+density:
+  - 560

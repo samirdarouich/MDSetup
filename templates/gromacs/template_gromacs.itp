@@ -1,4 +1,4 @@
-; itp file automaticly created by pyGROMACS
+; Molecule file for {{residue}}. Automaticly created by MDSetup.
 
 [ moleculetype ]
 ; name  nrexcl

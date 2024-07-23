@@ -1,0 +1,39 @@
+; topology file automaticly created by pyGROMACS
+
+[ defaults ]
+; nbfunc        comb-rule       gen-pairs       fudgeLJ fudgeQQ
+1               2               yes             0.0     0.0
+
+[ atomtypes ]
+; name      at.num  mass     charge ptype  sigma      epsilon
+
+   CH3_alkane   6   15.035   0.0   A   0.3603   1.1334
+   CH2_alkane   6   14.027   0.0   A   0.404   0.4397
+   CH2_alkene   6   14.027   0.0   A   0.36   0.8326
+
+[ bondtypes ]
+; i    j  func       b0          kb
+
+   CH2_alkane   CH3_alkane   1   0.174   167360.0
+   CH2_alkene   CH2_alkene   1   0.133   167360.0
+
+[ angletypes ]
+; i    j    k func       th0         cth
+
+   CH3_alkane   CH2_alkane   CH3_alkane   1   114.0   519.6536
+
+
+; Include structure itp file 
+
+#include "gromacs/propane.itp"
+#include "gromacs/ethene.itp"
+
+
+[ system ]
+propane_ethene
+
+[ molecules ]
+;molecule name   nr.
+
+propane             100
+ethene             300

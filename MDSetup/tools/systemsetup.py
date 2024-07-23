@@ -18,6 +18,7 @@ def get_system_volume(
     box_type: str = "cubic",
     z_x_relation: float = 1.0,
     z_y_relation: float = 1.0,
+    precision: int = 3
 ):
     """
     Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
@@ -31,6 +32,7 @@ def get_system_volume(
                                 Currently, only 'cubic' and 'orthorhombic' are implemented.
     - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
     - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
+    - precision (int,optional): Precision of box lenghts
 
     Returns:
     - dict: A dictionary with keys 'box_x', 'box_y', and 'box_z', each containing a list with the negative and positive half-lengths of the box in Angstroms.
@@ -62,9 +64,9 @@ def get_system_volume(
         boxlen = volume ** (1 / 3) / 2 * unit_conversion
 
         dimensions = {
-            "box_x": [-boxlen, boxlen],
-            "box_y": [-boxlen, boxlen],
-            "box_z": [-boxlen, boxlen],
+            "box_x": [round(-boxlen, precision), round(boxlen, precision)],
+            "box_y": [round(-boxlen, precision), round(boxlen, precision)],
+            "box_z": [round(-boxlen, precision), round(boxlen, precision)],
         }
         box_type = "block"
 
@@ -77,9 +79,9 @@ def get_system_volume(
         y = z / z_y_relation
 
         dimensions = {
-            "box_x": [-x / 2, x / 2],
-            "box_y": [-y / 2, y / 2],
-            "box_z": [-z / 2, z / 2],
+            "box_x": [round(-x / 2, precision), round(x / 2, precision)],
+            "box_y": [round(-y / 2, precision), round(y / 2, precision)],
+            "box_z": [round(-z / 2, precision), round(z / 2, precision)],
         }
         box_type = "block"
 
@@ -126,7 +128,7 @@ def generate_initial_configuration(
      - force_field_file (str): File with force field parameters for LAMMPS.
 
     Returns:
-     - intial_coord (str): Path of inital configuration
+     - initial_coord (str): Path of inital configuration
 
     """
 
@@ -142,7 +144,7 @@ def generate_initial_configuration(
 
     # Sort out molecules that are zero
     non_zero_coord_mol_no = [
-        (coord, value["name"], value["number"])
+        (os.path.relpath(coord, destination_folder), value["name"], value["number"])
         for coord, value in zip(coordinate_paths, molecules_list)
         if value["number"] > 0
     ]
@@ -156,6 +158,8 @@ def generate_initial_configuration(
     
     elif software == "lammps":
 
+        suffix = "data"
+
         # Check necessary input kwargs
         KwargsError(["build_input_template","force_field_file"], kwargs.keys())
 
@@ -164,22 +168,20 @@ def generate_initial_configuration(
 
         if not os.path.isfile(kwargs["force_field_file"]):
             raise FileNotFoundError(f"LAMMPS force field file { kwargs['force_field_file'] } not found.")
-        
-        suffix = "data"
 
         lmp_build_file = f"{destination_folder}/build_box.in"
 
         kwargs["build_input_file"] = os.path.basename( lmp_build_file )
         kwargs["force_field_file"] = os.path.relpath(
-                kwargs["force_field_file"], os.path.dirname(lmp_build_file)
+                kwargs["force_field_file"], destination_folder
         )
 
         # Get number of types for atoms, bonds, angles and dihedrals
-        mol_files = [ p[0] for p in non_zero_coord_mol_no ]
+        mol_files = [ f"{destination_folder}/{p[0]}" for p in non_zero_coord_mol_no ]
         kwargs["types_no"] = extract_number_dict_from_mol_files( mol_files, **kwargs )
 
     # Define output coordinate
-    intial_coord = f"{destination_folder}/init_conf.{suffix}"
+    initial_coord = f"{destination_folder}/init_conf.{suffix}"
 
     # Define template settings
     template_settings = {
@@ -187,8 +189,8 @@ def generate_initial_configuration(
         "box": box,
         "initial_system": initial_system,
         "n_try": n_try,
-        "folder": os.path.dirname(intial_coord),
-        "output_coord": os.path.basename(intial_coord),
+        "folder": os.path.dirname(initial_coord),
+        "output_coord": os.path.basename(initial_coord),
         **kwargs,
     }
 
@@ -217,13 +219,13 @@ def generate_initial_configuration(
             )
 
     # Check if the system is build
-    if not os.path.isfile(intial_coord):
+    if not os.path.isfile(initial_coord):
         raise FileNotFoundError(
-            f"Something went wrong during the box building! { intial_coord } not found."
+            f"Something went wrong during the box building! { initial_coord } not found."
         )
     print("Build successful\n")
 
-    return intial_coord
+    return initial_coord
 
 
 def generate_input_files(
@@ -442,7 +444,7 @@ def generate_job_file(
 
     Keyword Args:
      - initial_topology (str): Path to the initial topology file for GROMACS.
-     - intial_coord (str): Path to the initial coordinate file for GROMACS.
+     - initial_coord (str): Path to the initial coordinate file for GROMACS.
      - initial_cpt (str): Path to the inital checkpoint file for GROMACS.
      - init_step (int): Initial step to continue simulation for GROMACS.
 
@@ -494,20 +496,20 @@ def generate_job_file(
     if software == "gromacs":
         # Check necessary input kwargs
         KwargsError(
-            ["initial_topology", "intial_coord", "initial_cpt", "init_step"],
+            ["initial_topology", "initial_coord", "initial_cpt", "init_step"],
             kwargs.keys(),
         )
 
         # Check if topology file exists
-        if not os.path.isfile(["initial_topology"]):
+        if not os.path.isfile(kwargs['initial_topology']):
             raise FileNotFoundError(
                 f"Topology file { kwargs['initial_topology'] } not found."
             )
 
         # Check if coordinate file exists
-        if not os.path.isfile(kwargs["intial_coord"]):
+        if not os.path.isfile(kwargs["initial_coord"]):
             raise FileNotFoundError(
-                f"Coordinate file { kwargs['intial_coord'] } not found."
+                f"Coordinate file { kwargs['initial_coord'] } not found."
             )
 
         # Check if checkpoint file exists
@@ -526,7 +528,7 @@ def generate_job_file(
         cord_relative = [
             f"../{ensemble_names[j-1]}/{ensembles[j-1]}.gro"
             if j > 0
-            else os.path.relpath(kwargs["intial_coord"], f"{destination_folder}/{step}")
+            else os.path.relpath(kwargs["initial_coord"], f"{destination_folder}/{step}")
             for j, step in enumerate(job_file_settings["ensembles"].keys())
         ]
 

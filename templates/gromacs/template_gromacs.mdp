@@ -68,12 +68,12 @@ compressibility          = {{ensemble.p.compressibility}}
 ;====================================
 ;  initial velocities
 ;====================================
-{%- if restart == "no" %}
+{%- if restart_flag == "no" %}
 gen_vel                  = yes
 gen_temp                 = {{ensemble.t.ref_t}} 
 gen_seed                 = {{seed}}
 {%- else %}
-continuation             = {{restart}}
+continuation             = {{restart_flag}}
 {%- endif %}
 {%- endif %}
 

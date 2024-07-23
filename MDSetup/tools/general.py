@@ -1,6 +1,5 @@
 #### General utilities ####
 
-import re
 import os
 import json
 import numpy as np
@@ -295,3 +294,17 @@ def generate_series(desired_mean, desired_std, size):
     series = z_scores * desired_std + desired_mean
 
     return series
+
+
+def update_paths(config: str, base_dir: str):
+    """ Recursively update relative paths in the config dictionary to absolute paths """
+    if isinstance(config, dict):
+        for key, value in config.items():
+            if isinstance(value, str):
+                if value:  # If the path is not an empty string
+                    config[key] = os.path.join(base_dir, value)
+            elif isinstance(value, list):
+                config[key] = [os.path.join(base_dir, item) for item in value]
+            elif isinstance(value, dict):
+                update_paths(value, base_dir)
+    return config

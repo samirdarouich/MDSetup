@@ -1,0 +1,137 @@
+LAMMPS (7 Feb 2024 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+# LAMMPS build file. Automaticly created by MDSetup
+
+# Define general settings
+
+units real
+dimension 3
+boundary p p p
+atom_style full
+
+# Define box region
+region box block -16.916 16.916 -16.916 16.916 -16.916 16.916
+
+# Create box (define also the number of atoms, bonds, angles, etc)
+# for the extra/... the default value of 15 should cover most cases.
+# Increasing it, increases the memory needed. If set too low, LAMMPS will produce a floating error
+create_box 3 box             bond/types 2             angle/types 1             extra/bond/per/atom 15             extra/angle/per/atom 15             extra/special/per/atom 15
+Created orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  2 by 2 by 7 MPI processor grid
+
+
+# Include force field paramters
+
+include   propane_ethene.params
+## LAMMPS force field file. Automaticly created by MDSetup
+
+# Pair style
+
+pair_style  mie/cut 14
+pair_modify  mix arithmetic  tail yes
+
+# Define labelmap
+
+labelmap atom  1  CH3_alkane  2  CH2_alkane  3  CH2_alkene
+labelmap bond  1  CH2_alkane_CH3_alkane  2  CH2_alkene_CH2_alkene
+labelmap angle  1  CH3_alkane_CH2_alkane_CH3_alkane
+
+
+
+# Define special bonds to scale 1-2, 1-3, or 1-4 vdW / Coulomb pair interactions
+
+special_bonds lj 0 0 0  coul 0 0 0
+
+# Define masses
+
+mass  CH3_alkane 15.035
+mass  CH2_alkane 14.027
+mass  CH2_alkene 14.027
+
+
+# Van der Waals interactions
+
+pair_coeff  CH3_alkane CH3_alkane 0.2709 3.6034 14.0 6.0
+pair_coeff  CH3_alkane CH2_alkane 0.1687 3.8217 14.0 6.0
+pair_coeff  CH3_alkane CH2_alkene 0.2322 3.602 14.0 6.0
+pair_coeff  CH2_alkane CH2_alkane 0.1051 4.04 14.0 6.0
+pair_coeff  CH2_alkane CH2_alkene 0.1446 3.8202 14.0 6.0
+pair_coeff  CH2_alkene CH2_alkene 0.199 3.6005 14.0 6.0
+
+# Bonded interactions
+
+bond_style  harmonic
+
+bond_coeff  CH2_alkane_CH3_alkane 200.0 1.74
+bond_coeff  CH2_alkene_CH2_alkene 200.0 1.33
+
+# Angle interactions
+
+angle_style  harmonic
+
+angle_coeff  CH3_alkane_CH2_alkane_CH3_alkane 62.1001 114.0
+
+
+# Define seed for random insertion
+variable seed equal ceil(random(0,1e5,123))
+
+# Add molecule: propane
+molecule propane propane.mol
+Read molecule template propane:
+#  molecule. Automaticly created by MDSetup
+  1 molecules
+  0 fragments
+  3 atoms with max type 2
+  2 bonds with max type 1
+  1 angles with max type 1
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+
+# Create molecule
+create_atoms 0 random 100 ${seed} NULL mol propane ${seed} overlap 1.33 maxtry 10000
+create_atoms 0 random 100 13117 NULL mol propane ${seed} overlap 1.33 maxtry 10000
+create_atoms 0 random 100 13117 NULL mol propane 3189 overlap 1.33 maxtry 10000
+Created 300 atoms
+  using lattice units in orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  create_atoms CPU = 0.183 seconds
+
+
+# Add molecule: ethene
+molecule ethene ethene.mol
+Read molecule template ethene:
+#  molecule. Automaticly created by MDSetup
+  1 molecules
+  0 fragments
+  2 atoms with max type 3
+  1 bonds with max type 2
+  0 angles with max type 0
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+
+# Create molecule
+create_atoms 0 random 300 ${seed} NULL mol ethene ${seed} overlap 1.33 maxtry 10000
+create_atoms 0 random 300 58203 NULL mol ethene ${seed} overlap 1.33 maxtry 10000
+create_atoms 0 random 300 58203 NULL mol ethene 39276 overlap 1.33 maxtry 10000
+Created 600 atoms
+  using lattice units in orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  create_atoms CPU = 0.134 seconds
+
+
+# Write data file (without force field information)
+write_data init_conf.data nocoeff
+System init for write_data ...
+Generated 0 of 3 mixed pair_coeff terms from arithmetic mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 16
+  ghost atom cutoff = 16
+  binsize = 8, bins = 5 5 5
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair mie/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Total wall time: 0:00:00

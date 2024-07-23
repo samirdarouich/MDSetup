@@ -1,5 +1,76 @@
-lammps/build_box.sh: line 10: module: command not found
-lammps/build_box.sh: line 11: module: command not found
+Loading module dependency 'compiler/gnu/9.2'.
+Loading module dependency 'devel/cuda/10.1'.
 This is the working path: lammps
-lammps/build_box.sh: line 19: mpirun: command not found
+[login01.binac.uni-tuebingen.de:13812] MCW rank 0 bound to socket 0[core 0[hwt 0]]: [B/././././././././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 1 bound to socket 0[core 1[hwt 0]]: [./B/./././././././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 2 bound to socket 0[core 2[hwt 0]]: [././B/././././././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 3 bound to socket 0[core 3[hwt 0]]: [./././B/./././././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 4 bound to socket 0[core 4[hwt 0]]: [././././B/././././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 5 bound to socket 0[core 5[hwt 0]]: [./././././B/./././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 6 bound to socket 0[core 6[hwt 0]]: [././././././B/././././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 7 bound to socket 0[core 7[hwt 0]]: [./././././././B/./././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 8 bound to socket 0[core 8[hwt 0]]: [././././././././B/././././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 9 bound to socket 0[core 9[hwt 0]]: [./././././././././B/./././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 10 bound to socket 0[core 10[hwt 0]]: [././././././././././B/././.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 11 bound to socket 0[core 11[hwt 0]]: [./././././././././././B/./.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 12 bound to socket 0[core 12[hwt 0]]: [././././././././././././B/.][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 13 bound to socket 0[core 13[hwt 0]]: [./././././././././././././B][./././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 14 bound to socket 1[core 14[hwt 0]]: [./././././././././././././.][B/././././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 15 bound to socket 1[core 15[hwt 0]]: [./././././././././././././.][./B/./././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 16 bound to socket 1[core 16[hwt 0]]: [./././././././././././././.][././B/././././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 17 bound to socket 1[core 17[hwt 0]]: [./././././././././././././.][./././B/./././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 18 bound to socket 1[core 18[hwt 0]]: [./././././././././././././.][././././B/././././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 19 bound to socket 1[core 19[hwt 0]]: [./././././././././././././.][./././././B/./././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 20 bound to socket 1[core 20[hwt 0]]: [./././././././././././././.][././././././B/././././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 21 bound to socket 1[core 21[hwt 0]]: [./././././././././././././.][./././././././B/./././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 22 bound to socket 1[core 22[hwt 0]]: [./././././././././././././.][././././././././B/././././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 23 bound to socket 1[core 23[hwt 0]]: [./././././././././././././.][./././././././././B/./././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 24 bound to socket 1[core 24[hwt 0]]: [./././././././././././././.][././././././././././B/././.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 25 bound to socket 1[core 25[hwt 0]]: [./././././././././././././.][./././././././././././B/./.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 26 bound to socket 1[core 26[hwt 0]]: [./././././././././././././.][././././././././././././B/.]
+[login01.binac.uni-tuebingen.de:13812] MCW rank 27 bound to socket 1[core 27[hwt 0]]: [./././././././././././././.][./././././././././././././B]
+LAMMPS (7 Feb 2024 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+Created orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  2 by 2 by 7 MPI processor grid
+Read molecule template propane:
+#  molecule. Automaticly created by MDSetup
+  1 molecules
+  0 fragments
+  3 atoms with max type 2
+  2 bonds with max type 1
+  1 angles with max type 1
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+Created 300 atoms
+  using lattice units in orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  create_atoms CPU = 0.183 seconds
+Read molecule template ethene:
+#  molecule. Automaticly created by MDSetup
+  1 molecules
+  0 fragments
+  2 atoms with max type 3
+  1 bonds with max type 2
+  0 angles with max type 0
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+Created 600 atoms
+  using lattice units in orthogonal box = (-16.916 -16.916 -16.916) to (16.916 16.916 16.916)
+  create_atoms CPU = 0.134 seconds
+System init for write_data ...
+Generated 0 of 3 mixed pair_coeff terms from arithmetic mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 16
+  ghost atom cutoff = 16
+  binsize = 8, bins = 5 5 5
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair mie/cut, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Total wall time: 0:00:00
 Ending. Job completed.

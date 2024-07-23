@@ -11,7 +11,12 @@ from .forcefield import forcefield
 from rdkit.Chem.Descriptors import MolWt
 from .analysis.reader import extract_from_lammps, extract_from_gromacs
 from .tools.general import work_json, merge_nested_dicts, KwargsError
-from .tools.general import FOLDER_PRECISION, JOB_PRECISION, DEFAULTS
+from .tools.general import (
+    FOLDER_PRECISION,
+    JOB_PRECISION,
+    DEFAULTS,
+    update_paths
+)
 from .tools.systemsetup import (
     get_system_volume,
     generate_initial_configuration,
@@ -22,9 +27,6 @@ from .tools.systemsetup import (
 
 # To do:
 # check for all necessary keys in setup
-
-## Check force field mapping for ethane.
-## check force field reading: check if nones are provided before making it a unique list
 
 
 class MDSetup:
@@ -74,7 +76,7 @@ class MDSetup:
         # Check for input length
         assert (len(self.system_setup["temperature"]) ==
                 len(self.system_setup["pressure"]) ==
-                len(self.system_setup["densitiy"])
+                len(self.system_setup["density"])
                 ), ("Make sure that the same number of state points are provided "
                     "for temperature, pressure and density")
         
@@ -84,6 +86,17 @@ class MDSetup:
                 f"{folder_attribute[:4]}_%.{FOLDER_PRECISION}f"
                 for folder_attribute in self.system_setup['folder_attributes']
             ]
+        )
+
+        # Convert all paths provided in system setup to absolute paths
+        self.system_setup["folder"] = os.path.join(
+            os.path.dirname(os.path.abspath(system_setup)),
+            self.system_setup["folder"]
+        )
+
+        update_paths(
+            self.system_setup["paths"],
+            os.path.dirname(os.path.abspath(system_setup))
         )
 
         # Check for all necessary keys
@@ -166,9 +179,6 @@ class MDSetup:
             **kwargs,
         )
 
-        # Add writen molecule files to kwargs
-        kwargs["molecule_files"] = ff_molecules.molecule_files
-
         # Add resiude and its numbers to kwargs
         kwargs["residue_dict"] = {
             mol["name"]: mol["number"] for mol in self.system_setup["molecules"]
@@ -182,12 +192,15 @@ class MDSetup:
         )
 
         print(
-            "\nDone! Topology paths and molecule coordinates are added within the class.\n"
+            ("\nDone! Added generated paths to class:\n"
+            f"\nTopology file:\n {ff_molecules.topology_file}\n"
+            f"\nMolecule files:\n {ff_molecules.molecule_files}\n"
+            )
         )
 
-        # Add topology and gro files to class dictionary
+        # Add topology and molecules files to class dictionary
         self.system_setup["paths"]["topology_file"] = ff_molecules.topology_file
-        self.system_setup["paths"]["coordinates_files"] = ff_molecules.gro_files
+        self.system_setup["paths"]["coordinates_files"] = ff_molecules.molecule_files
 
     def prepare_simulation(
         self,
@@ -259,10 +272,13 @@ class MDSetup:
             # Get local variables
             local_vars = locals()
 
-            # Define folder with defined state attributes
-            state_folder = f"{sim_folder}/" + self.state_folder%tuple(
+            # Define state conditions
+            state_cond = self.state_folder%tuple(
                 local_vars[folder_attribute] for folder_attribute in self.system_setup['folder_attributes']
             )
+
+            # Define folder with defined state attributes
+            state_folder = f"{sim_folder}/" + state_cond
 
             # Build system with MD software if none is provided
             build_folder = f"{state_folder}/build"
@@ -296,7 +312,7 @@ class MDSetup:
                     destination_folder=build_folder,
                     build_template=self.system_setup["paths"]["build_template"],
                     software=self.system_setup["software"],
-                    coordinate_paths=self.system_setup["paths"]["coordinates"],
+                    coordinate_paths=self.system_setup["paths"]["coordinates_files"],
                     molecules_list=self.system_setup["molecules"],
                     box=box,
                     submission_command=self.submission_command,
@@ -363,8 +379,8 @@ class MDSetup:
                         software=self.system_setup["software"],
                         input_files=input_files,
                         ensembles=ensembles,
-                        job_name=f'{self.system_setup["name"]}_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}',
-                        job_out=f"job_{temperature:.{JOB_PRECISION}f}_{pressure:.{JOB_PRECISION}f}.sh",
+                        job_name=f'{self.system_setup["name"]}_{state_cond}',
+                        job_out=f"job_{state_cond}.sh",
                         off_set=off_set,
                         **kwargs,
                     )
@@ -437,7 +453,6 @@ class MDSetup:
          - output_name (str): Name of the output file for GROMACS.
          - on_cluster (bool): Flag indicating if extraction should be done on a cluster for GROMACS.
          - extract (bool): Flag indicating if extraction should be performed for GROMACS.
-         - submission_command (str): Command for submitting extraction to a cluster for GROMACS.
          - extract_template (str): Path to template for extraction for GROMACS.
 
         Returns:
@@ -450,6 +465,7 @@ class MDSetup:
         The extracted values are also added to the class's analysis dictionary.
         """
 
+
         # Define folder for analysis
         sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}'
 
@@ -461,7 +477,21 @@ class MDSetup:
 
         if self.system_setup["software"] == "gromacs":
             output_suffix = "edr"
+            KwargsError(
+                [
+                    "command",
+                    "args",
+                    "ensemble_name",
+                    "output_name",
+                    "on_cluster",
+                    "extract",
+                    "extract_template"
+                ], 
+                kwargs.keys()
+            )
+
         elif self.system_setup["software"] == "lammps":
+            KwargsError(["output_suffix","header","header_delimiter"], kwargs.keys())
             output_suffix = kwargs["output_suffix"]
 
         # Search output files and sort them after the copy
@@ -512,6 +542,7 @@ class MDSetup:
                     files=files,
                     extracted_properties=extracted_properties,
                     fraction=fraction,
+                    submission_command = self.submission_command,
                     **kwargs,
                 )
 

@@ -8,7 +8,7 @@ boundary p p p
 atom_style full
 
 # Define box region
-region box  -16.432308127297862 16.432308127297862 -16.432308127297862 16.432308127297862 -16.432308127297862 16.432308127297862 
+region box block -16.916 16.916 -16.916 16.916 -16.916 16.916 
 
 # Create box (define also the number of atoms, bonds, angles, etc)
 # for the extra/... the default value of 15 should cover most cases. 
@@ -27,17 +27,17 @@ include   propane_ethene.params
 
 
 # Define seed for random insertion
-variable seed equal random(0,1e5,123)
+variable seed equal ceil(random(0,1e5,123))
 
 # Add molecule: propane
-molecule propane lammps/propane.mol
+molecule propane propane.mol
 
 # Create molecule
 create_atoms 0 random 100 ${seed} NULL mol propane ${seed} overlap 1.33 maxtry 10000
 
 
 # Add molecule: ethene
-molecule ethene lammps/ethene.mol
+molecule ethene ethene.mol
 
 # Create molecule
 create_atoms 0 random 300 ${seed} NULL mol ethene ${seed} overlap 1.33 maxtry 10000

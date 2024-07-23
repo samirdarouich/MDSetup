@@ -36,7 +36,10 @@ class forcefield:
     """
 
     def __init__(
-        self, smiles: List[str], force_field_paths: List[str], verbose: bool = False
+        self, 
+        smiles: List[str],
+        force_field_paths: List[str],
+        verbose: bool = False
     ):
 
         # Read in force field files
@@ -94,8 +97,9 @@ class forcefield:
         ]
 
         # Define list for paths to molecule and topology files
+        # For gromacs defines itp files passed to topology file seperately
         self.molecule_files = []
-        self.gro_files = []
+        self.itp_files = []
         self.topology_file = ""
 
         # Map force field parameters for all interactions seperately
@@ -213,7 +217,8 @@ class forcefield:
         renderdict = {**kwargs}
 
         for m, mol in enumerate(self.mol_list):
-            # Update kwargs with current molecule residue
+            # Update kwargs / renderdict with current molecule residue
+            renderdict.update({"residue": residues[m]})
             kwargs.update({"residue": residues[m]})
 
             # Write gro files for GROMACS
@@ -221,10 +226,14 @@ class forcefield:
                 KwargsError(["gro_template", "nrexcl"], kwargs.keys())
 
                 # Add exclusion of nonbonded interactions for each molecule
-                kwargs.update({"nrexcl": kwargs["nrecxl"][m]})
-                self.gro_files.append(
-                    write_gro_file(mol, destination=molecule_path, **kwargs)
+                renderdict.update({"nrexcl": kwargs["nrexcl"][m]})
+                
+                gro_file = write_gro_file(
+                    mol, 
+                    destination = molecule_path, 
+                    **kwargs
                 )
+                
 
             # Update kwargs with current molecule coordinates
             kwargs.update({"coordinates": mol.coordinates})
@@ -234,7 +243,9 @@ class forcefield:
 
             renderdict.update(
                 atoms_molecule(
-                    molecule_ff=molecule_ff, software=self.software, **kwargs
+                    molecule_ff=molecule_ff, 
+                    software=self.software,
+                    **kwargs
                 )
             )
 
@@ -294,7 +305,11 @@ class forcefield:
             with open(out_file, "w") as fh:
                 fh.write(rendered)
 
-            self.molecule_files.append(out_file)
+            if self.software == "gromacs":
+                self.itp_files.append(out_file)
+                self.molecule_files.append(gro_file)
+            else:
+                self.molecule_files.append(out_file)
 
         return
 
@@ -368,6 +383,9 @@ class forcefield:
             KwargsError(
                 ["mixing_rule", "fudgeLJ", "fudgeQQ", "residue_dict"], kwargs.keys()
             )
+
+            # Pass generated itp files to topology template
+            renderdict["itp_files"] = self.itp_files
 
         renderdict.update(
             atoms_topology(system_ff=self.nonbonded, software=self.software, **kwargs)
