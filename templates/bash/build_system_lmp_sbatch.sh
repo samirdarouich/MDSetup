@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -N 1
-#SBATCH -n 1
+#SBATCH -n 10
 #SBATCH -t 01:00:00
 #SBATCH -p single
 #SBATCH -J build_system
