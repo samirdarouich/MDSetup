@@ -132,7 +132,7 @@ class MDSetup:
         self.analysis_dictionary = {}
 
         # Define project folder
-        self.project_folder = f"{self.system_setup["folder"]}/{self.system_setup["name"]}"
+        self.project_folder = f"{self.system_setup['folder']}/{self.system_setup['name']}"
 
     def write_topology(self, verbose: bool = False):
         """
