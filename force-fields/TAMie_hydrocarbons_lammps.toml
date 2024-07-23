@@ -13,6 +13,14 @@ topology_priority = [
     "CH2_alkane"
 ]
 
+# Define the depth of the neighborhood for 
+# matching atoms to force field topologies
+# e.g.: ff_depth = 2 means that the 2 hop 
+# neighborhood is taken into account to create the substructure
+# so also the neighbors of the neighors.
+# E.g for atom 1 in H3C-CH2-OH:
+# C(-C([H][H][O]))([H])([H])([H])
+ff_depth = 2
 
 [atoms.CH3_alkane]
 name = "CH3_alkane"

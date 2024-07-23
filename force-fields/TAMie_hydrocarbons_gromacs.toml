@@ -2,9 +2,30 @@
 # only supports LJ. Hence this is just an example file
 # and should not be used to generate results.
 
+# Define force field format (no capitals)
 format = "gromacs"
+
+# Define if united atoms should be used (True for yes)
 UA_flag = true
-topology_priority = [ "CH3_alkane", "CH2_alkene", "CH2_alkane",]
+
+# Define topology matching priority
+# (if two topologies are matched to same atom,
+# take entry higher in the list)
+topology_priority = [
+    "CH3_alkane",
+    "CH2_alkene",
+    "CH2_alkane"
+]
+
+# Define the depth of the neighborhood for 
+# matching atoms to force field topologies
+# e.g.: ff_depth = 2 means that the 2 hop 
+# neighborhood is taken into account to create the substructure
+# so also the neighbors of the neighors.
+# E.g for atom 1 in H3C-CH2-OH:
+# C(-C([H][H][O]))([H])([H])([H])
+ff_depth = 2
+
 
 [atoms.CH3_alkane]
 name = "CH3_alkane"

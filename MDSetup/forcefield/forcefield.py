@@ -84,14 +84,18 @@ class forcefield:
         # Extract if united atoms are wanted
         UA_flag = self.ff["UA_flag"]
 
+        # Extract depth of substructure 
+        depth = self.ff["ff_depth"]
+
         # Match from SMILES to force field keys and get moleculegraph 
         # representation of the matched molecule
         self.mol_list = [
             get_forcefield_molecule_from_smiles(
-                smiles=smile,
-                substructure_smarts=substructure_smarts,
-                UA_flag=UA_flag,
-                verbose=verbose,
+                smiles = smile,
+                substructure_smarts = substructure_smarts,
+                depth = depth,
+                UA_flag = UA_flag,
+                verbose = verbose,
             )
             for smile in smiles
         ]

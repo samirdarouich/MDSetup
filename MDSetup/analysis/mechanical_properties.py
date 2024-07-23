@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Dict, List
 
-from .general import plot_data
+from .visualize import plot_data
 
 
 def plot_deformation(
