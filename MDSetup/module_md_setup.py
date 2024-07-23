@@ -6,7 +6,7 @@ import pandas as pd
 import os, shutil, re
 
 from rdkit import Chem
-from typing import List, Dict, Any
+from typing import Callable, List, Dict, Any
 from .forcefield import forcefield
 from rdkit.Chem.Descriptors import MolWt
 from .analysis.reader import extract_from_lammps, extract_from_gromacs
@@ -131,6 +131,9 @@ class MDSetup:
         # Create an analysis dictionary containing all files
         self.analysis_dictionary = {}
 
+        # Define project folder
+        self.project_folder = f"{self.system_setup["folder"]}/{self.system_setup["name"]}"
+
     def write_topology(self, verbose: bool = False):
         """
         This functions writes a topology file using the moleculegraph representation of each molecule in the system
@@ -148,7 +151,7 @@ class MDSetup:
         )
 
         topology_folder = (
-            f'{self.system_setup["folder"]}/{self.system_setup["name"]}/topology'
+            f'{self.project_folder}/topology'
         )
 
         os.makedirs(topology_folder, exist_ok=True)
@@ -239,7 +242,7 @@ class MDSetup:
 
         # Define simulation folder
         sim_folder = (
-            f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{folder_name}'
+            f'{self.project_folder}/{folder_name}'
         )
 
         # Prepare keyword arguments that are parsed to the functions
@@ -432,6 +435,7 @@ class MDSetup:
                 subprocess.run([self.submission_command, job_file])
                 print("\n")
 
+
     def analysis_extract_properties(
         self,
         analysis_folder: str,
@@ -473,7 +477,7 @@ class MDSetup:
 
 
         # Define folder for analysis
-        sim_folder = f'{self.system_setup["folder"]}/{self.system_setup["name"]}/{analysis_folder}'
+        sim_folder = f'{self.project_folder}/{analysis_folder}'
 
         # Seperatre the ensemble name to determine output files
         ensemble_name = "_".join(ensemble.split("_")[1:])
@@ -487,7 +491,6 @@ class MDSetup:
                 [
                     "command",
                     "args",
-                    "ensemble_name",
                     "output_name",
                     "on_cluster",
                     "extract",
@@ -549,6 +552,7 @@ class MDSetup:
                     extracted_properties=extracted_properties,
                     fraction=fraction,
                     submission_command = self.submission_command,
+                    ensemble_name = ensemble_name,
                     **kwargs,
                 )
 
