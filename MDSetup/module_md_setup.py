@@ -277,6 +277,12 @@ class MDSetup:
                 local_vars[folder_attribute] for folder_attribute in self.system_setup['folder_attributes']
             )
 
+            sub_txt = ', '.join(
+                (f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                 f"{'K' if folder_attribute=='temperature' else 'bar' if folder_attribute=='pressure' else 'kg/m^3' if folder_attribute=='density' else 'mol/mol'}"
+                 ) for folder_attribute in self.system_setup['folder_attributes']
+            )
+
             # Define folder with defined state attributes
             state_folder = f"{sim_folder}/" + state_cond
 
@@ -333,7 +339,7 @@ class MDSetup:
                     initial_systems[i], f"{build_folder}/init_conf.{suffix}"
                 )
 
-                print(f"\nIntial system provided for at: {initial_systems[i]}\n")
+                print(f"\nIntial system provided for {sub_txt} at: {initial_systems[i]}\n")
 
                 kwargs["restart_flag"] = ".restart" in kwargs[
                     "initial_coord"
