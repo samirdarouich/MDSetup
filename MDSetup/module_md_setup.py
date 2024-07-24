@@ -270,7 +270,7 @@ class MDSetup:
             job_files = []
 
             # Compute mole fraction of component 1
-            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+            mole_fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
 
             # Get local variables
             local_vars = locals()
@@ -415,7 +415,7 @@ class MDSetup:
         ):
             
             # Compute mole fraction of component 1
-            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+            mole_fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
 
             # Get local variables
             local_vars = locals()
@@ -441,7 +441,7 @@ class MDSetup:
         analysis_folder: str,
         ensemble: str,
         extracted_properties: List[str],
-        fraction: float = 0.0,
+        time_fraction: float = 0.0,
         **kwargs,
     ):
         """
@@ -451,17 +451,17 @@ class MDSetup:
          - analysis_folder (str): The name of the folder where the analysis will be performed.
          - ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
          - extracted_properties (List[str]): List of properties to extract for LAMMPS.
-         - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+         - time_fraction (float, optional): The time fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
 
         Keyword arguments:
          - output_suffix (str): File suffix to analyse for LAMMPS.
-         - header (int): The number of header lines from which to extract the keys for the reported values for LAMMPS.
-         - header_delimiter (str): The delimiter used in the header line for LAMMPS.
+         - header (int, optional): The number of header lines from which to extract the keys for the reported values for LAMMPS.
+         - header_delimiter (str, otpional): The delimiter used in the header line for LAMMPS.
          - command (str): GROMACS command to use for extraction for GROMACS.
          - args (List[str]): Additional arguments for the GROMACS command for GROMACS.
          - ensemble_name (str): Name of the ensemble file for GROMACS.
          - output_name (str): Name of the output file for GROMACS.
-         - on_cluster (bool): Flag indicating if extraction should be done on a cluster for GROMACS.
+         - on_cluster (bool, optional): Flag indicating if extraction should be done on a cluster for GROMACS.
          - extract (bool): Flag indicating if extraction should be performed for GROMACS.
          - extract_template (str): Path to template for extraction for GROMACS.
 
@@ -492,7 +492,6 @@ class MDSetup:
                     "command",
                     "args",
                     "output_name",
-                    "on_cluster",
                     "extract",
                     "extract_template"
                 ], 
@@ -500,7 +499,7 @@ class MDSetup:
             )
 
         elif self.system_setup["software"] == "lammps":
-            KwargsError(["output_suffix","header","header_delimiter"], kwargs.keys())
+            KwargsError(["output_suffix"], kwargs.keys())
             output_suffix = kwargs["output_suffix"]
 
         # Search output files and sort them after the copy
@@ -513,7 +512,7 @@ class MDSetup:
         ):
             
             # Compute mole fraction of component 1
-            fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
+            mole_fraction = self.molecule_numbers[0]/sum(self.molecule_numbers)
 
             # Get local variables
             local_vars = locals()
@@ -550,7 +549,7 @@ class MDSetup:
                 extracted_df_list = extract_from_gromacs(
                     files=files,
                     extracted_properties=extracted_properties,
-                    fraction=fraction,
+                    time_fraction = time_fraction,
                     submission_command = self.submission_command,
                     ensemble_name = ensemble_name,
                     **kwargs,
@@ -560,7 +559,7 @@ class MDSetup:
                 extracted_df_list = extract_from_lammps(
                     files=files,
                     extracted_properties=extracted_properties,
-                    fraction=fraction,
+                    time_fraction = time_fraction,
                     **kwargs,
                 )
 
@@ -623,7 +622,7 @@ class MDSetup:
                     ensemble: {
                         "data": json_data,
                         "paths": files,
-                        "fraction_discarded": fraction,
+                        "fraction_discarded": time_fraction,
                     },
                 },
                 "append",

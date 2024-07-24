@@ -10,22 +10,22 @@ from ..tools.submission import submit_and_wait
 from ..tools.general import add_nan_if_no_brackets, flatten_list, generate_series
 
 
-def read_gromacs_xvg(file_path: str, fraction: float = 0.0):
+def read_gromacs_xvg(file_path: str, time_fraction: float = 0.0):
     """
     Reads data from a Gromacs XVG file and returns a pandas DataFrame.
 
     Parameters:
     - file_path (str): The path to the XVG file.
-    - fraction (float, optional): The fraction of data to select. Defaults to 0.0.
+    - time_fraction (float, optional): The time_fraction of data to select. Defaults to 0.0.
 
     Returns:
     - pandas.DataFrame: A DataFrame containing the selected data.
 
     Description:
-    This function reads data from a Gromacs XVG file specified by 'file_path'. It extracts the data columns and their corresponding properties from the file. The data is then filtered based on the 'fraction' parameter, selecting only the data points that are within the specified fraction of the maximum time value. The selected data is returned as a pandas DataFrame, where each column represents a property and each row represents a data point.
+    This function reads data from a Gromacs XVG file specified by 'file_path'. It extracts the data columns and their corresponding properties from the file. The data is then filtered based on the 'time_fraction' parameter, selecting only the data points that are within the specified time_fraction of the maximum time value. The selected data is returned as a pandas DataFrame, where each column represents a property and each row represents a data point.
 
     Example:
-    read_gromacs_xvg('data.xvg', fraction=0.5)
+    read_gromacs_xvg('data.xvg', time_fraction=0.5)
     """
     data = []
     properties = []
@@ -90,8 +90,8 @@ def read_gromacs_xvg(file_path: str, fraction: float = 0.0):
         ]
         units[-1:] = [units[-1] for _ in special_properties]
 
-    # Only select data that is within (fraction,1)*t_max
-    idx = data[0] > fraction * data[0][-1]
+    # Only select data that is within (time_fraction,1)*t_max
+    idx = data[0] > time_fraction * data[0][-1]
 
     # Save data
     property_dict = {}
@@ -111,14 +111,14 @@ def read_gromacs_xvg(file_path: str, fraction: float = 0.0):
 
 
 def read_lammps_output(
-    file_path: str, fraction: float = 0.0, header: int = 2, header_delimiter: str = ","
+    file_path: str, time_fraction: float = 0.0, header: int = 2, header_delimiter: str = ","
 ):
     """
     Reads a LAMMPS output file and returns a pandas DataFrame containing the data.
 
     Parameters:
         file_path (str): The path to the LAMMPS output file.
-        fraction (float, optional): The fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
+        time_fraction (float, optional): The time_fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
         header (int, optional): The number of header lines from which to extract the keys for the reported values. Defaults to 2.
         header_delimiter (str, optional): The delimiter used in the header line. Defaults to ",".
 
@@ -130,7 +130,7 @@ def read_lammps_output(
 
     Note:
         - The function assumes that the LAMMPS output file has a timestamp in the first line.
-        - If the timestamp is not present, the provided fraction parameter will be ignored.
+        - If the timestamp is not present, the provided time_fraction parameter will be ignored.
         - The function expects the LAMMPS output file to have a specific format, with titles starting with '#'.
 
     """
@@ -152,11 +152,11 @@ def read_lammps_output(
     df = pd.read_csv(file_path, comment="#", delimiter=r"\s+", names=lammps_header)
 
     if any(key in df.columns[0].lower() for key in ["time", "step"]):
-        idx = df.iloc[:, 0] > df.iloc[:, 0].max() * fraction
+        idx = df.iloc[:, 0] > df.iloc[:, 0].max() * time_fraction
         return df.loc[idx, :]
     else:
         print(
-            f"\nNo timestamp provided in first line of LAMMPS output. Hence, can't discard the provided fraction '{fraction}'"
+            f"\nNo timestamp provided in first line of LAMMPS output. Hence, can't discard the provided time_fraction '{time_fraction}'"
         )
         return df
 
@@ -164,7 +164,7 @@ def read_lammps_output(
 def extract_from_gromacs(
     files: List[str],
     extracted_properties: List[str],
-    fraction: float = 0.0,
+    time_fraction: float = 0.0,
     command: str = "energy",
     args: List[str] = [""],
     ensemble_name: str = "",
@@ -181,7 +181,7 @@ def extract_from_gromacs(
     Parameters:
     - files (List[str]): A list of file paths to the GROMACS edr or xvg files.
     - extracted_properties (List[str]): A list of strings representing the properties to extract from the output files.
-    - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+    - time_fraction (float, optional): The time_fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
     - command (str, optional): GROMACS command to use for extraction. Defaults to "energy".
     - args (List[str], optional): Additional arguments for the GROMACS command. Defaults to [""].
     - ensemble_name (str, optional): Name of the ensemble file. Defaults to "".
@@ -254,7 +254,7 @@ def extract_from_gromacs(
     files = [os.path.dirname(file) + f"{output_name}.xvg" for file in files]
 
     extracted_df_list = [
-        read_gromacs_xvg(file_path=file, fraction=fraction) for file in files
+        read_gromacs_xvg(file_path=file, time_fraction=time_fraction) for file in files
     ]
 
     return extracted_df_list
@@ -263,7 +263,7 @@ def extract_from_gromacs(
 def extract_from_lammps(
     files: List[str],
     extracted_properties: List[str],
-    fraction: float = 0.0,
+    time_fraction: float = 0.0,
     header: int = 2,
     header_delimiter: str = ",",
     **kwargs,
@@ -276,7 +276,7 @@ def extract_from_lammps(
     Parameters:
     - files (List[str]): A list of file paths to the LAMMPS output files.
     - extracted_properties (List[str]): A list of strings representing the properties to extract from the output files.
-    - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+    - time_fraction (float, optional): The time_fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
     - header (int, optional): The number of header lines from which to extract the keys for the reported values. Defaults to 2.
     - header_delimiter (str, optional): The delimiter used in the header of the files. Defaults to ",".
     - **kwargs (Any): Arbitrary keyword arguments.
@@ -299,9 +299,9 @@ def extract_from_lammps(
         num_processes -= 1
 
     # Create a pool of processes
-    pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(processes = num_processes)
 
-    inputs = [(file, fraction, header, header_delimiter) for file in files]
+    inputs = [(file, time_fraction, header, header_delimiter) for file in files]
 
     # Execute the tasks in parallel
     data_list = pool.starmap(read_lammps_output, inputs)
