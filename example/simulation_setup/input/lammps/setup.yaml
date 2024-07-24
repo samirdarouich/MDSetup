@@ -47,8 +47,9 @@ paths:
   ]
 
   # Force field toml files (if topology file should be created)
-  force_field_files: 
-    - ../../../../force-fields/TAMie_hydrocarbons_lammps.toml
+  force_field_files: [
+    ../../../../force-fields/TAMie_hydrocarbons_lammps.toml
+  ]
 
   # Template files
   molecule_template: ../../../../templates/lammps/template_lammps.mol

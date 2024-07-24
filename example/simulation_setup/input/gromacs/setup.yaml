@@ -48,12 +48,13 @@ paths:
   # Path to molecule (.gro / .mol) files 
   # (leave empty if topology file will be generated)
   coordinates_files: [
-    
+
   ]
 
   # Force field toml files (if topology file should be created)
-  force_field_files: 
-    - ../../../../force-fields/TAMie_hydrocarbons_gromacs.toml
+  force_field_files: [
+    ../../../../force-fields/TAMie_hydrocarbons_gromacs.toml
+  ]
 
   # Template files
   molecule_template: ../../../../templates/gromacs/template_gromacs.itp
