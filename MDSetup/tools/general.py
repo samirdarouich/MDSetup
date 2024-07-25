@@ -1,10 +1,11 @@
 #### General utilities ####
 
-import os
 import json
-import numpy as np
-from typing import List, Tuple, Dict, Any, Callable
+import os
+from typing import Any, Callable, Dict, List, Tuple
 
+import numpy as np
+import yaml
 
 ############## General settings ##############
 
@@ -14,9 +15,8 @@ SOFTWARE_LIST = ["lammps", "gromacs"]
 # Define default settings based on software
 DEFAULTS = {"gromacs": {"init_step": 0, "initial_cpt": ""}, "lammps": {}}
 
-# Define precision of folder and job description (e.g.: f"temp_{temperature:.{FOLDER_PRECISION}f}" )
+# Define precision of folder (e.g.: f"temp_{temperature:.{FOLDER_PRECISION}f}" )
 FOLDER_PRECISION = 1
-JOB_PRECISION = 0
 
 
 # Define some error classes
@@ -33,9 +33,13 @@ class KwargsError(Exception):
     """Kwargs missing error class"""
 
     def __init__(self, keys: List[str], kwargs_keys):
-        if not all(key in kwargs_keys for key in keys):
-            missing_keys = [key for key in keys if not key in kwargs_keys]
-            message = f"Missing key in provided keyword arguments. Expected '{', '.join(missing_keys)}'. Available are: '{', '.join(kwargs_keys)}'."
+        if any(key not in kwargs_keys for key in keys):
+            missing_keys = [key for key in keys if key not in kwargs_keys]
+            message = (
+                "Missing key in provided keyword arguments. "
+                f"Expected '{', '.join(missing_keys)}'. "
+                f"Available are: '{', '.join(kwargs_keys)}'."
+            )
             super().__init__(message)
             raise self
 
@@ -44,8 +48,7 @@ class FFTypeMatchError(Exception):
     """Software error class"""
 
     def __init__(self, interaction_type: str):
-        message = (f"Unmachted {interaction_type}(s) found. "
-                   "Check force field input.")
+        message = f"Unmachted {interaction_type}(s) found. " "Check force field input."
         super().__init__(message)
         raise self
 
@@ -58,7 +61,8 @@ def find_key_by_value(my_dict: Dict[str, Any], target_value: str | float | int):
         if target_value in values:
             return key
     raise KeyError(
-        f"Target value '{target_value}' is not pressented in any value of the dictionary."
+        f"Target value '{target_value}' is not pressented in any value "
+        "of the dictionary."
     )
 
 
@@ -66,14 +70,17 @@ def unique_by_key(
     iterables: List[Dict[str, Any] | List[Any]], key: str | int
 ) -> List[Dict[str, Any]]:
     """
-    Filters a list of dictionaries or other iterables, returning a list containing only the first occurrence of each unique value associated with a specified key.
+    Filters a list of dictionaries or other iterables, returning a list containing only 
+    the first occurrence of each unique value associated with a specified key.
 
     Args:
-        dicts (List[Dict[str, Any]|List[Any]]): A list of dictionaries or lists from which to filter unique items.
+        dicts (List[Dict[str, Any]|List[Any]]): A list of dictionaries or lists from 
+        which to filter unique items.
         key (str|int): The key in the dictionaries or list used to determine uniqueness.
 
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries that contains only the first dictionary for each unique value found under the specified key.
+        List[Dict[str, Any]]: A list of dictionaries that contains only the first 
+        dictionary for each unique value found under the specified key.
     """
     seen = []
     unique_iterables = []
@@ -85,19 +92,23 @@ def unique_by_key(
     return unique_iterables
 
 
-def deep_get(obj: Dict[str, Any] | List[Any] | Any, keys: str, default: Any = {}):
+def deep_get(obj: Dict[str, Any] | List[Any] | Any, keys: str, default: Any = None):
     """
-    Function that searches an (nested) python object and extract the item at the end of the key chain.
-    Keys are provided as one string and seperated by ".".
+    Function that searches an (nested) python object and extract the item at the end of 
+    the key chain. Keys are provided as one string and seperated by ".".
 
     Args:
-        obj (Dict[str,Any]|List[Any]|Any): Object from which the (nested) keys are extracted
-        keys (str): Keys to extract. Chain of keys should be seperated by ".". Integers to get list items will be converted from string.
+        obj (Dict[str,Any]|List[Any]|Any): Object from which the (nested) keys 
+        are extracted
+        keys (str): Keys to extract. Chain of keys should be seperated by ".". Integers 
+        to get list items will be converted from string.
         default (dict, optional): Default return if key is not found. Defaults to {}.
 
     Returns:
         d (Any): Element that is extracted
     """
+    if default is None:
+        default = {}
     d = obj
     for key in keys.split("."):
         if isinstance(d, dict):
@@ -120,11 +131,14 @@ def flatten_list(
     filter_function: Callable[..., bool] = lambda p: True,
 ):
     """
-    Function that flattens a list with sublists, of items. Possibility to filter out certain types is possible via filter function.
+    Function that flattens a list with sublists, of items. Possibility to filter out 
+    certain types is possible via filter function.
 
     Parameters:
-     - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can contain sublists or numpy arrays.
-     - filter_function (Callable[...,bool]): Callable to filter out certain values if wanted. Defaults to 'lambda p: True', so no filter aplied.
+     - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can 
+     contain sublists or numpy arrays.
+     - filter_function (Callable[...,bool]): Callable to filter out certain values if 
+     wanted. Defaults to 'lambda p: True', so no filter aplied.
 
     Returns:
      - filtered_list (List[float|int|str]): Flattended and (filtered) list.
@@ -138,37 +152,36 @@ def flatten_list(
     flattened_list = [
         item
         for sublist in lst
-        for item in (
-            sublist
-            if isinstance(sublist, list) or isinstance(sublist, np.ndarray)
-            else [sublist]
-        )
+        for item in (sublist if isinstance(sublist, (list, np.ndarray)) else [sublist])
     ]
-    filtered_list = [item for item in flattened_list if filter_function(item)]
-    return filtered_list
+    return [item for item in flattened_list if filter_function(item)]
 
 
 def map_function_input(all_attributes: dict, argument_map: dict) -> dict:
     """
-    Function that maps the elements in the attributes dictionary based on the provided mapping dictionary.
+    Function that maps the elements in the attributes dictionary based on the provided
+    mapping dictionary.
 
     Args:
-        all_attributes (dict): A dictionary containing all the attributes from which the elements will be mapped.
-        argument_map (dict): A dictionary that defines the mapping between the elements in all_attributes and the desired keys in the output dictionary.
+        all_attributes (dict): A dictionary containing all the attributes from which
+        the elements will be mapped.
+        argument_map (dict): A dictionary that defines the mapping between the elements
+        in all_attributes and the desired keys in the output dictionary.
 
     Returns:
         dict: A new dictionary with the mapped elements.
     """
-    function_input = {}
-    for arg, item in argument_map.items():
-        if isinstance(item, dict):
-            function_input[arg] = {
+    return {
+        arg: (
+            {
                 subarg: deep_get(all_attributes, subitem)
                 for subarg, subitem in item.items()
             }
-        else:
-            function_input[arg] = deep_get(all_attributes, item)
-    return function_input
+            if isinstance(item, dict)
+            else deep_get(all_attributes, item)
+        )
+        for arg, item in argument_map.items()
+    }
 
 
 def merge_nested_dicts(existing_dict: Dict[str, Any], new_dict: Dict[str, Any]):
@@ -223,7 +236,7 @@ def serialize_json(
         return data
 
 
-def work_json(file_path: str, data: Dict = {}, to_do: str = "read", indent: int = 2):
+def work_json(file_path: str, data: Dict = None, to_do: str = "read", indent: int = 2):
     """
     Function to work with json files
 
@@ -236,22 +249,40 @@ def work_json(file_path: str, data: Dict = {}, to_do: str = "read", indent: int 
         data (dict): If read is choosen, returns dictionary
     """
 
-    if to_do == "read":
+    if data is None:
+        data = {}
+    if to_do == "append" and os.path.exists(file_path):
+        current_data = json.load(open(file_path))
+        merge_nested_dicts(current_data, data)
+        json.dump(current_data, open(file_path, "w"), indent=indent)
+
+    elif (
+        to_do == "append"
+        and not os.path.exists(file_path)
+        or to_do != "append"
+        and to_do != "read"
+        and to_do == "write"
+    ):
+        json.dump(data, open(file_path, "w"), indent=indent)
+    elif to_do == "read":
         return json.load(open(file_path))
 
-    elif to_do == "write":
-        json.dump(data, open(file_path, "w"), indent=indent)
-
-    elif to_do == "append":
-        if not os.path.exists(file_path):
-            json.dump(data, open(file_path, "w"), indent=indent)
-        else:
-            current_data = json.load(open(file_path))
-            merge_nested_dicts(current_data, data)
-            json.dump(current_data, open(file_path, "w"), indent=indent)
-
     else:
-        raise KeyError("Wrong task defined: %s" % to_do)
+        raise KeyError(f"Wrong task defined: {to_do}")
+
+
+def load_yaml(file_path):
+    """
+    Load and parse a YAML file.
+
+    Args:
+        file_path (str): The path to the YAML file to be loaded.
+
+    Returns:
+        dict: The parsed content of the YAML file.
+    """
+    with open(file_path) as file:
+        return yaml.safe_load(file)
 
 
 def add_nan_if_no_brackets(lst: List[Any]):
@@ -290,14 +321,11 @@ def generate_series(desired_mean, desired_std, size):
     # Calculate the Z-scores
     z_scores = (random_numbers - np.mean(random_numbers)) / np.std(random_numbers)
 
-    # Scale by the desired standard deviation and shift by the desired mean
-    series = z_scores * desired_std + desired_mean
-
-    return series
+    return z_scores * desired_std + desired_mean
 
 
 def update_paths(config: str, base_dir: str):
-    """ Recursively update relative paths in the config dictionary to absolute paths """
+    """Recursively update relative paths in the config dictionary to absolute paths"""
     if isinstance(config, dict):
         for key, value in config.items():
             if isinstance(value, str):
@@ -307,4 +335,8 @@ def update_paths(config: str, base_dir: str):
                 config[key] = [os.path.join(base_dir, item) for item in value]
             elif isinstance(value, dict):
                 update_paths(value, base_dir)
+
+    elif isinstance(config, str):
+        if config:
+            os.path.join(base_dir, config)
     return config
