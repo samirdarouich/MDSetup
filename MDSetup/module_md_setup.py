@@ -14,7 +14,9 @@ from .analysis.reader import extract_from_gromacs, extract_from_lammps
 from .forcefield import forcefield
 from .tools.general import (
     DEFAULTS,
+    DISTANCE,
     FOLDER_PRECISION,
+    UNITS,
     KwargsError,
     load_yaml,
     merge_nested_dicts,
@@ -28,14 +30,11 @@ from .tools.systemsetup import (
     get_system_volume,
 )
 
-# To do:
-# check for all necessary keys in setup
+# Todo: check for all necessary keys in setup
 
 
 class MDSetup:
-    """
-    This class sets up structured and FAIR molecular dynamic simulations. It also has the capability to build a system based on a list of molecules.
-    """
+    """This class sets up structured and FAIR molecular dynamic simulations. It also has the capability to build a system based on a list of molecules."""
 
     def __init__(
         self,
@@ -44,22 +43,27 @@ class MDSetup:
         simulation_ensemble: str,
         submission_command: str,
         simulation_sampling: str = "",
-    ):
-        """
-        Initialize a new instance of the MDsetup class.
+    ) -> None:
+        """Initialize a new instance of the MDsetup class.
 
-        Parameters:
-         - system_setup (str): Path to the system setup YAML file. Containing all system settings.
-         - simulation_default (str): Path to the simulation default YAML file. Containing all default MD settings.
-         - simulation_ensemble (str): Path to the simulation ensemble YAML file. Containing all MD ensemble settings.
-         - submission_command (str): Command to submit jobs to cluster.
-         - simulation_sampling (str,optional): Path to the sampling YAML file. Containing all sampling settings.
-                                               This is only needed for LAMMPS.
+        Args:
+          system_setup (str):
+            Path to the system setup YAML file. Containing all system settings.
+          simulation_default (str):
+            Path to the simulation default YAML file. Containing all default MD
+            settings.
+          simulation_ensemble (str):
+            Path to the simulation ensemble YAML file. Containing all MD ensemble
+            settings.
+          submission_command (str):
+            Command to submit jobs to cluster.
+          simulation_sampling (str,optional):
+            Path to the sampling YAML file. Containing all sampling settings. This is
+            only needed for LAMMPS.
 
         Returns:
             None
         """
-
         # Open the yaml files and extract the necessary information
         self.system_setup = load_yaml(system_setup)
         self.simulation_default = load_yaml(simulation_default)
@@ -91,7 +95,6 @@ class MDSetup:
         self.system_setup["folder"] = update_paths(
             self.system_setup["folder"], main_path
         )
-
         update_paths(self.system_setup["paths"], main_path)
 
         # Check for all necessary keys
@@ -114,13 +117,7 @@ class MDSetup:
         self.molecule_numbers = [mol["number"] for mol in self.system_molecules]
 
         # Get conversion from AA to nm/AA
-        self.distance_conversion = (
-            1 / 10
-            if self.system_setup["software"] == "gromacs"
-            else 1
-            if self.system_setup["software"] == "lammps"
-            else 1
-        )
+        self.distance_conversion = DISTANCE[self.system_setup["software"]]
 
         # Submission command for the cluster
         self.submission_command = submission_command
@@ -133,20 +130,22 @@ class MDSetup:
             f"{self.system_setup['folder']}/{self.system_setup['name']}"
         )
 
-    def write_topology(self, verbose: bool = False):
-        """
-        This functions writes a topology file using the moleculegraph representation of each molecule in the system
-        as well as the force field files
+    def write_topology(self, verbose: bool = False) -> None:
+        """This functions writes a topology file using the moleculegraph representation of each molecule in the system as well as the force field files.
 
         Args:
-            verbose (bool, optional): Flag to print detailed information. Defaults to False.
+          verbose (bool, optional): Flag to print detailed information. Defaults to False.
+
+        Returns:
+          None
 
         Raises:
-            KeyError: _description_
-        """
+          KeyError: _description_
 
+        """
         print(
-            "\nUtilize moleculegraph to generate molecule and topology files of every molecule in the system!\n"
+            "\nUtilize moleculegraph to generate molecule and topology files "
+            "of every molecule in the system!\n"
         )
 
         topology_folder = f"{self.project_folder}/topology"
@@ -192,11 +191,9 @@ class MDSetup:
         )
 
         print(
-            (
-                "\nDone! Added generated paths to class:\n"
-                f"\nTopology file:\n {ff_molecules.topology_file}\n"
-                f"\nMolecule files:\n {ff_molecules.molecule_files}\n"
-            )
+            "\nDone! Added generated paths to class:\n"
+            f"\nTopology file:\n {ff_molecules.topology_file}\n"
+            f"\nMolecule files:\n {ff_molecules.molecule_files}\n"
         )
 
         # Add topology and molecules files to class dictionary
@@ -214,27 +211,35 @@ class MDSetup:
         off_set: int = 0,
         input_kwargs: Dict[str, Any] = None,
         **kwargs,
-    ):
-        """
-        Prepares the simulation by generating job files for each temperature and pressure combination specified in the simulation setup.
-        The method checks if an initial configuration file is provided.
-        If not, it generates the initial configuration based on the provided by the software.
-        It then generates input files for each ensemble in a separate folder and creates a job file for each copy of the simulation.
+    ) -> None:
+        """Prepares the simulation by generating job files for each temperature and pressure combination specified in the simulation setup.
 
-        Parameters:
-         - folder_name (str, optional): Name of the subfolder where to perform the simulations.
-                                        Path structure is as follows: system.folder/system.name/folder_name
-         - ensembles (List[str]): A list of ensembles to generate input files for. Definitions of each ensemble is provided in self.simulation_ensemble.
-         - simulation_times (List[float]): A list of simulation times (ns) for each ensemble.
-         - initial_systems (List[str]): A list of initial system .gro files to be used for each temperature and pressure state.
-         - copies (int, optional): Number of copies for the specified system. Defaults to 0.
-         - input_kwargs (Dict[str, Any], optional): Further kwargs that are parsed to the input template. Defaults to "{}".
-         - on_cluster (bool, optional): If the build should be submited to the cluster. Defaults to "False".
-         - off_set (int, optional): First ensemble starts with 0{off_set}_ensemble. Defaulst to 0.
-         - **kwargs: Arbitrary keyword arguments.
+        Args:
+          folder_name (str):
+            Name of the subfolder where to perform the simulations. Path structure is
+            as follows: system.folder/system.name/folder_name
+          ensembles (List[str]):
+            A list of ensembles to generate input files for. Definitions of each
+            ensemble is provided in self.simulation_ensemble.
+          simulation_times (List[float]):
+            A list of simulation times (ns) for each ensemble.
+          initial_systems (List[str]):
+            A list of initial system .gro / .data files to be used for each defined
+            state (temperature/pressure/density).
+          copies (int, optional):
+            Number of copies for the specified system. Defaults to 0.
+          on_cluster (bool, optional):
+            If the build should be submited to the cluster. Defaults to "False".
+          off_set (int, optional):
+            First ensemble starts with 0{off_set}_ensemble. Defaulst to 0.
+          input_kwargs (Dict[str, Any], optional):
+            Further kwargs that are parsed to the input template. Defaults to "None".
+          **kwargs:
+            Arbitrary keyword arguments.
 
         Returns:
-            None
+          None
+
         """
         if initial_systems is None:
             initial_systems = []
@@ -283,11 +288,9 @@ class MDSetup:
 
             sub_txt = ", ".join(
                 (
-                    f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "  # noqa: E501
-                    f"{'K' if folder_attribute=='temperature' else
-                    'bar' if folder_attribute=='pressure' else
-                    'kg/m^3' if folder_attribute=='density'
-                    else 'mol/mol'}"
+                    f"{folder_attribute}: "
+                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                    f"{UNITS[folder_attribute]}"
                 )
                 for folder_attribute in self.system_setup["folder_attributes"]
             )
@@ -409,15 +412,15 @@ class MDSetup:
 
             self.job_files.append(job_files)
 
-    def submit_simulation(self):
-        """
-        Function that submits predefined jobs to the cluster.
+    def submit_simulation(self) -> None:
+        """Function that submits predefined jobs to the cluster.
 
-        Parameters:
-            None
+        Args:
+          None
 
         Returns:
-            None
+          None
+
         """
         for temperature, pressure, density, job_files in zip(
             self.system_setup["temperature"],
@@ -433,11 +436,9 @@ class MDSetup:
 
             sub_txt = ", ".join(
                 (
-                    f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "  # noqa: E501
-                    f"{'K' if folder_attribute=='temperature' else
-                    'bar' if folder_attribute=='pressure' else
-                    'kg/m^3' if folder_attribute=='density'
-                    else 'mol/mol'}"
+                    f"{folder_attribute}: "
+                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                    f"{UNITS[folder_attribute]}"
                 )
                 for folder_attribute in self.system_setup["folder_attributes"]
             )
@@ -456,38 +457,55 @@ class MDSetup:
         extracted_properties: List[str],
         time_fraction: float = 0.0,
         **kwargs,
-    ):
-        """
-        Extracts properties from output files for a specific ensemble.
+    ) -> None:
+        """Extracts properties from output files for a specific ensemble.
 
-        Parameters:
-         - analysis_folder (str): The name of the folder where the analysis will be performed.
-         - ensemble (str): The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
-         - extracted_properties (List[str]): List of properties to extract for LAMMPS.
-         - time_fraction (float, optional): The time fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+        The method searches for output files in the specified analysis folder that match
+        the given ensemble. For each group of files with the same state conditions, the
+        properties are extracted using the specified suffix and properties list. The
+        extracted properties are then averaged over all copies and the mean and standard
+        deviation are calculated. The averaged values and the extracted data for each
+        copy are saved as a JSON file in the destination folder. The extracted values
+        are also added to the class's analysis dictionary.
 
-        Keyword arguments:
-         - output_suffix (str): File suffix to analyse for LAMMPS.
-         - header (int, optional): The number of header lines from which to extract the keys for the reported values for LAMMPS.
-         - header_delimiter (str, otpional): The delimiter used in the header line for LAMMPS.
-         - command (str): GROMACS command to use for extraction for GROMACS.
-         - args (List[str]): Additional arguments for the GROMACS command for GROMACS.
-         - ensemble_name (str): Name of the ensemble file for GROMACS.
-         - output_name (str): Name of the output file for GROMACS.
-         - on_cluster (bool, optional): Flag indicating if extraction should be done on a cluster for GROMACS.
-         - extract (bool): Flag indicating if extraction should be performed for GROMACS.
-         - extract_template (str): Path to template for extraction for GROMACS.
+        Args:
+          analysis_folder(str):
+            The name of the folder where the analysis will be performed.
+          ensemble(str):
+            The name of the ensemble for which properties will be extracted. Should be xx_ensemble.
+          extracted_properties(List[str]):
+            List of properties to extract for LAMMPS.
+          time_fraction(float):
+            The time fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
+          **kwargs:
+            Arbitrary keyword arguments.
+
+        Keyword Arguments:
+          output_suffix (str):
+            File suffix to analyse for LAMMPS.
+          header (int, optional):
+            The number of header lines from which to extract the keys for the reported values for LAMMPS.
+          header_delimiter (str, otpional):
+            The delimiter used in the header line for LAMMPS.
+          command (str):
+            GROMACS command to use for extraction for GROMACS.
+          args (List[str]):
+            Additional arguments for the GROMACS command for GROMACS.
+          ensemble_name (str):
+            Name of the ensemble file for GROMACS.
+          output_name (str):
+            Name of the output file for GROMACS.
+          on_cluster (bool, optional):
+            Flag indicating if extraction should be done on a cluster for GROMACS.
+          extract (bool):
+            Flag indicating if extraction should be performed for GROMACS.
+          extract_template (str):
+            Path to template for extraction for GROMACS.
 
         Returns:
-         - None
+          None
 
-        The method searches for output files in the specified analysis folder that match the given ensemble.
-        For each group of files with the same temperature and pressure, the properties are extracted using the specified suffix and properties list.
-        The extracted properties are then averaged over all copies and the mean and standard deviation are calculated.
-        The averaged values and the extracted data for each copy are saved as a JSON file in the destination folder.
-        The extracted values are also added to the class's analysis dictionary.
         """
-
         # Define folder for analysis
         sim_folder = f"{self.project_folder}/{analysis_folder}"
 
@@ -539,11 +557,9 @@ class MDSetup:
 
             sub_txt = ", ".join(
                 (
-                    f"{folder_attribute}: {local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "  # noqa: E501
-                    f"{'K' if folder_attribute=='temperature' else
-                    'bar' if folder_attribute=='pressure' else
-                    'kg/m^3' if folder_attribute=='density'
-                    else 'mol/mol'}"
+                    f"{folder_attribute}: "
+                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
+                    f"{UNITS[folder_attribute]}"
                 )
                 for folder_attribute in self.system_setup["folder_attributes"]
             )

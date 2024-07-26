@@ -18,6 +18,16 @@ DEFAULTS = {"gromacs": {"init_step": 0, "initial_cpt": ""}, "lammps": {}}
 # Define precision of folder (e.g.: f"temp_{temperature:.{FOLDER_PRECISION}f}" )
 FOLDER_PRECISION = 1
 
+# Define unit dict
+UNITS = {
+    "temperature": "K",
+    "pressure": "bar",
+    "density": "kg/m^3",
+    "mole_fraction": "mol/mol",
+}
+
+# Define distance conversion (base unit is Angstrom)
+DISTANCE = {"lammps": 1, "gromacs": 1/10}
 
 # Define some error classes
 class SoftwareError(Exception):
@@ -70,16 +80,16 @@ def unique_by_key(
     iterables: List[Dict[str, Any] | List[Any]], key: str | int
 ) -> List[Dict[str, Any]]:
     """
-    Filters a list of dictionaries or other iterables, returning a list containing only 
+    Filters a list of dictionaries or other iterables, returning a list containing only
     the first occurrence of each unique value associated with a specified key.
 
     Args:
-        dicts (List[Dict[str, Any]|List[Any]]): A list of dictionaries or lists from 
+        dicts (List[Dict[str, Any]|List[Any]]): A list of dictionaries or lists from
         which to filter unique items.
         key (str|int): The key in the dictionaries or list used to determine uniqueness.
 
     Returns:
-        List[Dict[str, Any]]: A list of dictionaries that contains only the first 
+        List[Dict[str, Any]]: A list of dictionaries that contains only the first
         dictionary for each unique value found under the specified key.
     """
     seen = []
@@ -94,13 +104,13 @@ def unique_by_key(
 
 def deep_get(obj: Dict[str, Any] | List[Any] | Any, keys: str, default: Any = None):
     """
-    Function that searches an (nested) python object and extract the item at the end of 
+    Function that searches an (nested) python object and extract the item at the end of
     the key chain. Keys are provided as one string and seperated by ".".
 
     Args:
-        obj (Dict[str,Any]|List[Any]|Any): Object from which the (nested) keys 
+        obj (Dict[str,Any]|List[Any]|Any): Object from which the (nested) keys
         are extracted
-        keys (str): Keys to extract. Chain of keys should be seperated by ".". Integers 
+        keys (str): Keys to extract. Chain of keys should be seperated by ".". Integers
         to get list items will be converted from string.
         default (dict, optional): Default return if key is not found. Defaults to {}.
 
@@ -131,13 +141,13 @@ def flatten_list(
     filter_function: Callable[..., bool] = lambda p: True,
 ):
     """
-    Function that flattens a list with sublists, of items. Possibility to filter out 
+    Function that flattens a list with sublists, of items. Possibility to filter out
     certain types is possible via filter function.
 
     Parameters:
-     - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can 
+     - lst (List[List|np.ndarray|float|int|str]): List that should be flatten, can
      contain sublists or numpy arrays.
-     - filter_function (Callable[...,bool]): Callable to filter out certain values if 
+     - filter_function (Callable[...,bool]): Callable to filter out certain values if
      wanted. Defaults to 'lambda p: True', so no filter aplied.
 
     Returns:
