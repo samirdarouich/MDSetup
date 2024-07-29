@@ -1,13 +1,15 @@
-import os, re
+import multiprocessing
+import os
+import re
 import subprocess
+from typing import List
+
 import numpy as np
 import pandas as pd
-import multiprocessing
-
-from typing import List
 from jinja2 import Template
-from ..tools.submission import submit_and_wait
+
 from ..tools.general import add_nan_if_no_brackets, flatten_list, generate_series
+from ..tools.submission import submit_and_wait
 
 
 def read_gromacs_xvg(file_path: str, time_fraction: float = 0.0):
@@ -91,7 +93,7 @@ def read_gromacs_xvg(file_path: str, time_fraction: float = 0.0):
         units[-1:] = [units[-1] for _ in special_properties]
 
     # Only select data that is within (time_fraction,1)*t_max
-    idx = data[0] > time_fraction * data[0][-1]
+    idx = data[0] >= time_fraction * data[0][-1]
 
     # Save data
     property_dict = {}
@@ -111,7 +113,10 @@ def read_gromacs_xvg(file_path: str, time_fraction: float = 0.0):
 
 
 def read_lammps_output(
-    file_path: str, time_fraction: float = 0.0, header: int = 2, header_delimiter: str = ","
+    file_path: str,
+    time_fraction: float = 0.0,
+    header: int = 2,
+    header_delimiter: str = ",",
 ):
     """
     Reads a LAMMPS output file and returns a pandas DataFrame containing the data.
@@ -152,7 +157,7 @@ def read_lammps_output(
     df = pd.read_csv(file_path, comment="#", delimiter=r"\s+", names=lammps_header)
 
     if any(key in df.columns[0].lower() for key in ["time", "step"]):
-        idx = df.iloc[:, 0] > df.iloc[:, 0].max() * time_fraction
+        idx = df.iloc[:, 0] >= df.iloc[:, 0].max() * time_fraction
         return df.loc[idx, :]
     else:
         print(
@@ -249,7 +254,7 @@ def extract_from_gromacs(
         pool.join()
 
     if extract:
-        print(f"Extraction finished!\n\n")
+        print("Extraction finished!\n\n")
 
     files = [os.path.dirname(file) + f"{output_name}.xvg" for file in files]
 
@@ -299,7 +304,7 @@ def extract_from_lammps(
         num_processes -= 1
 
     # Create a pool of processes
-    pool = multiprocessing.Pool(processes = num_processes)
+    pool = multiprocessing.Pool(processes=num_processes)
 
     inputs = [(file, time_fraction, header, header_delimiter) for file in files]
 
