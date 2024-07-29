@@ -12,6 +12,13 @@ import yaml
 # Define supported software
 SOFTWARE_LIST = ["lammps", "gromacs"]
 
+# Define suffix list
+SUFFIX = {
+    "topology": {"lammps": "params","gromacs": "top"},
+    "coordinate": {"lammps": "data","gromacs": "gro"},
+    "input": {"lammps": "input","gromacs": "mdp"}
+}
+
 # Define default settings based on software
 DEFAULTS = {"gromacs": {"init_step": 0, "initial_cpt": ""}, "lammps": {}}
 
@@ -28,6 +35,9 @@ UNITS = {
 
 # Define distance conversion (base unit is Angstrom)
 DISTANCE = {"lammps": 1, "gromacs": 1/10}
+
+# Define time conversion (base unit is nano seconds)
+TIME = {"lammps": 1e6, "gromacs": 1e3}
 
 # Define some error classes
 class SoftwareError(Exception):

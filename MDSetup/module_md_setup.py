@@ -17,6 +17,7 @@ from .tools.general import (
     DISTANCE,
     FOLDER_PRECISION,
     UNITS,
+    SUFFIX,
     KwargsError,
     load_yaml,
     merge_nested_dicts,
@@ -261,8 +262,10 @@ class MDSetup:
 
         # Copy provided force field file to simulation folder and add it to input kwargs
         os.makedirs(sim_folder, exist_ok=True)
+        suffix = SUFFIX['topology'][self.system_setup["software"]]
         kwargs["initial_topology"] = shutil.copy(
-            self.system_setup["paths"]["topology_file"], sim_folder
+            self.system_setup["paths"]["topology_file"], 
+            f"{sim_folder}/init_topology.{suffix}"
         )
 
         for i, (temperature, pressure, density) in enumerate(
@@ -344,13 +347,7 @@ class MDSetup:
 
             else:
                 os.makedirs(build_folder, exist_ok=True)
-                suffix = (
-                    "gro"
-                    if self.system_setup["software"] == "gromacs"
-                    else "data"
-                    if self.system_setup["software"] == "lammps"
-                    else ""
-                )
+                suffix = SUFFIX['coordinate'][self.system_setup["software"]]
                 kwargs["initial_coord"] = shutil.copy(
                     initial_systems[i], f"{build_folder}/init_conf.{suffix}"
                 )

@@ -5,10 +5,12 @@ import numpy as np
 
 from jinja2 import Template
 from .general import KwargsError
+from .general import SUFFIX, TIME
 from typing import List, Dict, Any
 from scipy.constants import Avogadro
 from .submission import submit_and_wait
 from ..forcefield.reader import extract_number_dict_from_mol_files
+
 
 def get_system_volume(
     molar_masses: List[float],
@@ -153,12 +155,7 @@ def generate_initial_configuration(
     bash_file = f"{destination_folder}/build_box.sh"
 
 
-    if software == "gromacs":
-        suffix = "gro"
-    
-    elif software == "lammps":
-
-        suffix = "data"
+    if software == "lammps":
 
         # Check necessary input kwargs
         KwargsError(["build_input_template","force_field_file"], kwargs.keys())
@@ -178,9 +175,10 @@ def generate_initial_configuration(
 
         # Get number of types for atoms, bonds, angles and dihedrals
         mol_files = [ f"{destination_folder}/{p[0]}" for p in non_zero_coord_mol_no ]
-        kwargs["types_no"] = extract_number_dict_from_mol_files( mol_files, **kwargs )
+        kwargs["types_no"] = extract_number_dict_from_mol_files(mol_files, **kwargs)
 
     # Define output coordinate
+    suffix = SUFFIX["coordinate"][software]
     initial_coord = f"{destination_folder}/init_conf.{suffix}"
 
     # Define template settings
@@ -284,21 +282,9 @@ def generate_input_files(
         # Check necessary input kwargs
         KwargsError(["compressibility", "init_step"], kwargs.keys())
 
-        # nano in pico second
-        time_conversion = 1e3
-
-        # Define file suffix based on software
-        suffix = "mdp"
-
     elif software == "lammps":
         # Check necessary input kwargs
         KwargsError(["initial_coord", "initial_topology"], kwargs.keys())
-
-        # nano in femto second
-        time_conversion = 1e6
-
-        # Define file suffix based on software
-        suffix = "input"
 
         # Check if datafile exists
         if not os.path.isfile(kwargs["initial_coord"]):
@@ -319,6 +305,12 @@ def generate_input_files(
     # Define template dictionary
     renderdict = {**kwargs}
 
+    # Define time conversion from ns to software time
+    time_conversion = TIME[software]
+    
+    # Define file suffix based on software
+    suffix = SUFFIX["input"][software]
+    
     # Produce input files for simulation pipeline
     input_files = []
 
