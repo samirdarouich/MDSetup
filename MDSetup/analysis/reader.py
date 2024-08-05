@@ -166,6 +166,11 @@ def read_lammps_output(
         return df
 
 
+def submit_gromacs_extract(bashfile: str) -> None:
+    subprocess.run(["bash", bashfile], capture_output=True)
+    return
+
+
 def extract_from_gromacs(
     files: List[str],
     extracted_properties: List[str],
@@ -242,12 +247,12 @@ def extract_from_gromacs(
             num_processes -= 1
 
         # Create a pool of processes
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        pool = multiprocessing.Pool(processes=num_processes)
+
+        inputs = [(file) for file in bash_file]
 
         # Execute the tasks in parallel
-        pool.map(
-            lambda file: subprocess.run(["bash", file], capture_output=True), bash_files
-        )
+        _ = pool.starmap(submit_gromacs_extract, inputs)
 
         # Close the pool to free up resources
         pool.close()
