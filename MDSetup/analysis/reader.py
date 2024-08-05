@@ -249,7 +249,7 @@ def extract_from_gromacs(
         # Create a pool of processes
         pool = multiprocessing.Pool(processes=num_processes)
 
-        inputs = [(file) for file in bash_file]
+        inputs = [(file,) for file in bash_files]
 
         # Execute the tasks in parallel
         _ = pool.starmap(submit_gromacs_extract, inputs)
