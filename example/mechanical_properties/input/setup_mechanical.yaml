@@ -15,8 +15,8 @@ name: anhydrite
 folder_attributes: [
   temperature, 
   pressure,
-  density,
-  fraction
+  #density,
+  #mole_fraction,
 ]
 
 # Box type (dimension is computed by the type and the density)
@@ -29,7 +29,7 @@ box:
 molecules:
   - name: anhydrite
     smiles: ""
-    number: 0
+    number: 1
 
 # Define paths 
 paths:
@@ -38,18 +38,18 @@ paths:
   topology_file: "anhydrite.params"
 
   # Path to the molecule (coordinate) files
-  coordinates_files:
-    - ""
+  coordinates_files: [
+  ]
 
   # Force field toml files (for moleculegraph)
-  force_field_files: 
-    - ""
+  force_field_files: [
+  ]
 
   # Template files
   molecule_template: ../../../templates/lammps/template_lammps.mol
   topology_template: ../../../templates/lammps/template_lammps.params
   build_template: ../../../templates/lammps/template_lammps.build
-  input_template: ../../../example/lammps/mechanical_properties/input/template_lammps_mechanical.in
+  input_template: template_lammps_mechanical.in
   job_template: ../../../templates/bash/template_job_lmp_pbs.sh
 
 # Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied.
