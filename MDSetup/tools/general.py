@@ -14,9 +14,9 @@ SOFTWARE_LIST = ["lammps", "gromacs"]
 
 # Define suffix list
 SUFFIX = {
-    "topology": {"lammps": "params","gromacs": "top"},
-    "coordinate": {"lammps": "data","gromacs": "gro"},
-    "input": {"lammps": "input","gromacs": "mdp"}
+    "topology": {"lammps": "params", "gromacs": "top"},
+    "coordinate": {"lammps": "data", "gromacs": "gro"},
+    "input": {"lammps": "input", "gromacs": "mdp"},
 }
 
 # Define default settings based on software
@@ -34,10 +34,11 @@ UNITS = {
 }
 
 # Define distance conversion (base unit is Angstrom)
-DISTANCE = {"lammps": 1, "gromacs": 1/10}
+DISTANCE = {"lammps": 1, "gromacs": 1 / 10}
 
 # Define time conversion (base unit is nano seconds)
 TIME = {"lammps": 1e6, "gromacs": 1e3}
+
 
 # Define some error classes
 class SoftwareError(Exception):
@@ -345,18 +346,19 @@ def generate_series(desired_mean, desired_std, size):
 
 
 def update_paths(config: str, base_dir: str):
-    """Recursively update relative paths in the config dictionary to absolute paths"""
+    """Recursively update relative paths in the config dictionary to absolute paths.
+
+    OS is recognizing absolute paths and do not update them.
+    """
     if isinstance(config, dict):
         for key, value in config.items():
             if isinstance(value, str):
-                if value:  # If the path is not an empty string
-                    config[key] = os.path.join(base_dir, value)
+                config[key] = os.path.join(base_dir, value)
             elif isinstance(value, list):
                 config[key] = [os.path.join(base_dir, item) for item in value]
             elif isinstance(value, dict):
                 update_paths(value, base_dir)
 
     elif isinstance(config, str):
-        if config:
-            os.path.join(base_dir, config)
+        config = os.path.join(base_dir, config)
     return config

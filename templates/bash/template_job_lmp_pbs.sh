@@ -16,7 +16,6 @@ cd $WORKING_PATH
 
 echo "This is the working path: $WORKING_PATH"
 
-
 # Define the names of each simulation step taken. The folder as well as the output files will be named like this
 {% for ensemble_name, ensemble in ensembles.items() %}
 

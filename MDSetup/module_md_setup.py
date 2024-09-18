@@ -31,7 +31,7 @@ from .tools.systemsetup import (
     get_system_volume,
 )
 
-# Todo: check for all necessary keys in setup
+# Todo: create pydantic config files for input
 
 
 class MDSetup:
