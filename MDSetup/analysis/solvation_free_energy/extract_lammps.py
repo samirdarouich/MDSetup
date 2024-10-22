@@ -1,17 +1,15 @@
-import re
 import logging
-import numpy as np
-import pandas as pd
-
+import re
 from typing import List
+
+import pandas as pd
+from alchemlyb.preprocessing import decorrelate_dhdl, decorrelate_u_nk
 from scipy.constants import R
-from .visualize import plot_data
-from .reader import read_lammps_output
-from alchemlyb.estimators import BAR, MBAR, TI
-from alchemlyb.preprocessing import decorrelate_u_nk, decorrelate_dhdl
+
+from ..reader import read_lammps_output
 
 # Prevent alchemlyb correlation info to be printed to screen
-logging.getLogger("alchemlyb").setLevel("WARNING")
+logging.getLogger("alchemlyb.preprocessing.subsampling").disabled = True
 
 ## To do:
 # Check pV contribution
@@ -70,7 +68,7 @@ def extract_combined_states(files: List[str], precision: int = 5):
 
 
 def extract_u_nk(
-    file_path: str, T: float, fraction: float = 0.0, decorrelate: bool = False
+    file_path: str, T: float, time_fraction: float = 0.0, decorrelate: bool = False
 ):
     """
     Extracts the reduced potential energy values for different lambda states from a LAMMPS output file.
@@ -78,7 +76,7 @@ def extract_u_nk(
     Parameters:
      - file_path (str): The path to the LAMMPS output file.
      - T (float): The temperature in Kelvin.
-     - fraction (float, optional): The fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
+     - time_fraction (float, optional): The time_fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
      - decorrelate (bool, optional): Decorrelate dUdl values using alchempylb. Defaults to False.
 
     Returns:
@@ -97,7 +95,7 @@ def extract_u_nk(
     lambdas, statevec = extract_current_state(file_path)
 
     # Read in free energy output from LAMMPS
-    df = read_lammps_output(file_path, fraction=fraction)
+    df = read_lammps_output(file_path, time_fraction=time_fraction)
 
     # Get the time
     times = df[df.columns[0]]
@@ -151,13 +149,16 @@ def extract_u_nk(
 
     # Decorrelate the samples
     if decorrelate:
-        u_k = decorrelate_u_nk(u_k)
+        try:
+            u_k = decorrelate_u_nk(u_k)
+        except Exception as e:
+            print(f"Can't decorrelate. Reason: {e}")
 
     return u_k
 
 
 def extract_dUdl(
-    file_path: str, T: float, fraction: float = 0.0, decorrelate: bool = False
+    file_path: str, T: float, time_fraction: float = 0.0, decorrelate: bool = False
 ):
     """
     Extracts the derivative of the reduced potential values du/dl from a LAMMPS output file.
@@ -165,7 +166,7 @@ def extract_dUdl(
     Parameters:
      - file_path (str): The path to the LAMMPS output file.
      - T (float): The temperature in Kelvin.
-     - fraction (float, optional): The fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
+     - time_fraction (float, optional): The time_fraction of data to keep based on the maximum value of the first column. Defaults to 0.0.
      - decorrelate (bool, optional): Decorrelate dUdl values using alchempylb. Defaults to False.
 
     Returns:
@@ -188,7 +189,7 @@ def extract_dUdl(
     lambdas, statevec = extract_current_state(file_path)
 
     # Read in free energy output from LAMMPS
-    df = read_lammps_output(file_path, fraction=fraction)
+    df = read_lammps_output(file_path, time_fraction=time_fraction)
 
     # Get the time
     times = df[df.columns[0]]
@@ -240,159 +241,9 @@ def extract_dUdl(
 
     # Decorrelate the samples
     if decorrelate:
-        u_k = decorrelate_dhdl(u_k)
+        try:
+            u_k = decorrelate_dhdl(u_k)
+        except Exception as e:
+            print(f"Can't decorrelate. Reason: {e}")
 
     return u_k
-
-
-class TI_spline:
-    def __init__(self) -> None:
-        pass
-
-
-def get_free_energy_difference(
-    fep_files: List[str],
-    T: float,
-    method: str = "MBAR",
-    fraction: float = 0.0,
-    decorrelate: bool = True,
-    coupling: bool = True,
-):
-    """
-    Calculate the free energy difference using different methods.
-
-    Parameters:
-     - fep_files (List[str]): A list of file paths to the FEP output files.
-     - T (float): The temperature in Kelvin.
-     - method (str, optional): The method to use for estimating the free energy difference. Defaults to "MBAR".
-     - fraction (float, optional): The fraction of data to be discarded from the beginning of the simulation. Defaults to 0.0.
-     - decorrelate (bool, optional): Whether to decorrelate the data before estimating the free energy difference. Defaults to True.
-     - coupling (bool, optional): If coupling (True) or decoupling (False) is performed. If decoupling,
-                                  multiply free energy results *-1 to get solvation free energy. Defaults to True.
-    Returns:
-     - df (pd.DataFrame): Pandas dataframe with mean, std and unit of the free energy difference
-
-    Raises:
-     - KeyError: If the specified method is not implemented.
-
-    Notes:
-     - The function supports the following methods: "MBAR", "BAR", "TI", and "TI_spline".
-     - The function uses the 'extract_u_nk' function for "MBAR" and "BAR" methods, and the 'extract_dUdl' function for "TI" and "TI_spline" methods.
-     - The function concatenates the data from all FEP output files into a single DataFrame.
-     - The function fits the free energy estimator using the combined DataFrame.
-     - The function extracts the mean and standard deviation of the free energy difference from the fitted estimator.
-
-    """
-
-    if method in ["MBAR", "BAR"]:
-        # Get combined df for all lambda states
-        combined_df = pd.concat(
-            [
-                extract_u_nk(file, T=T, fraction=fraction, decorrelate=decorrelate)
-                for file in fep_files
-            ]
-        )
-
-        # Get free energy estimator
-        FE = MBAR() if method == "MBAR" else BAR()
-
-    elif method in ["TI", "TI_spline"]:
-        # Get combined df for all lambda states
-        combined_df = pd.concat(
-            [
-                extract_dUdl(file, T=T, fraction=fraction, decorrelate=decorrelate)
-                for file in fep_files
-            ]
-        )
-
-        # Get free energy estimator
-        FE = TI() if method == "TI" else TI_spline()
-
-    else:
-        raise KeyError(
-            f"Specified free energy method '{method}' is not implemented. Available are: 'MBAR', 'BAR', 'TI' or 'TI_spline' "
-        )
-
-    # Get free energy difference
-    FE.fit(combined_df)
-
-    # Extract mean and std
-    mean, std = FE.delta_f_.iloc[0, -1], FE.d_delta_f_.iloc[0, -1]
-
-    # In case decoupling is performed, negate the value to get solvation free energy
-    if not coupling:
-        mean *= -1
-
-    # BAR only provides the standard deviation from adjacent intermediates. Hence, to get the global std propagate the error
-    if method == "BAR":
-        std = np.sqrt(
-            (
-                np.array(
-                    [
-                        FE.d_delta_f_.iloc[i, i + 1]
-                        for i in range(FE.d_delta_f_.shape[0] - 1)
-                    ]
-                )
-                ** 2
-            ).sum()
-        )
-
-    # Convert from dimensionless to kJ/mol
-    df = pd.DataFrame(
-        {
-            "property": "solvation_free_energy",
-            "mean": mean * R * T / 1000,
-            "std": std * R * T / 1000,
-            "unit": "kJ/mol",
-        },
-        index=[0],
-    )
-
-    return df
-
-
-def visualize_dudl(
-    fep_files: List[str],
-    T: float,
-    fraction: float = 0.0,
-    decorrelate: bool = True,
-    save_path: str = "",
-):
-    # Get combined df for all lambda states
-    combined_df = pd.concat(
-        [
-            extract_dUdl(file, T=T, fraction=fraction, decorrelate=decorrelate)
-            for file in fep_files
-        ]
-    )
-
-    # Extract vdW and Coulomb portion
-    vdw_dudl = combined_df.groupby("vdw-lambda")["vdw"].agg(["mean", "std"])
-    coul_dudl = combined_df.groupby("coul-lambda")["coul"].agg(["mean", "std"])
-
-    # Plot vdW part
-    datas = [
-        [vdw_dudl.index.values, vdw_dudl["mean"].values, None, vdw_dudl["std"].values]
-    ]
-    set_kwargs = {
-        "xlabel": "$\lambda_\mathrm{vdW}$",
-        "ylabel": "$ \\langle \\frac{\partial U}{\partial \lambda} \\rangle_{\lambda_{\mathrm{vdW}}} \ / \ (k_\mathrm{B}T)$",
-        "xlim": (0, 1),
-    }
-    plot_data(datas, save_path=f"{save_path}/dudl_vdw.png", set_kwargs=set_kwargs)
-
-    # Plot Coulomb part
-    datas = [
-        [
-            coul_dudl.index.values,
-            coul_dudl["mean"].values,
-            None,
-            coul_dudl["std"].values,
-        ]
-    ]
-    set_kwargs = {
-        "xlabel": "$\lambda_\mathrm{coul}$",
-        "ylabel": "$ \\langle \\frac{\partial U}{\partial \lambda} \\rangle_{\lambda_{\mathrm{coul}}} \ / \ (k_\mathrm{B}T)$",
-        "xlim": (0, 1),
-    }
-    plot_data(datas, save_path=f"{save_path}/dudl_coul.png", set_kwargs=set_kwargs)

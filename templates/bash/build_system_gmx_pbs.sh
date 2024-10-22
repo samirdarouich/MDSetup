@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -q tiny
-#PBS -l nodes=1:ppn=1
+#PBS -l nodes=1:ppn=14
 #PBS -l walltime=00:20:00
 #PBS -N build_system
 #PBS -o {{folder}}/build_log.o 

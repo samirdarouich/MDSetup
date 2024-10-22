@@ -261,7 +261,7 @@ def extract_from_gromacs(
     if extract:
         print("Extraction finished!\n\n")
 
-    files = [os.path.dirname(file) + f"{output_name}.xvg" for file in files]
+    files = [f"{os.path.dirname(file)}/{output_name}.xvg" for file in files]
 
     extracted_df_list = [
         read_gromacs_xvg(file_path=file, time_fraction=time_fraction) for file in files

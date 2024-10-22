@@ -7,24 +7,19 @@ from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
-from rdkit import Chem
-from rdkit.Chem.Descriptors import MolWt
 
+from .analysis.analysis import Analysis
 from .analysis.reader import extract_from_gromacs, extract_from_lammps
 from .forcefield import forcefield
 from .tools.general import (
     DEFAULTS,
-    DISTANCE,
-    FOLDER_PRECISION,
-    UNITS,
     SUFFIX,
     KwargsError,
-    load_yaml,
     merge_nested_dicts,
-    update_paths,
     work_json,
 )
 from .tools.systemsetup import (
+    change_topology,
     generate_initial_configuration,
     generate_input_files,
     generate_job_file,
@@ -34,8 +29,9 @@ from .tools.systemsetup import (
 # Todo: create pydantic config files for input
 
 
-class MDSetup:
-    """This class sets up structured and FAIR molecular dynamic simulations. It also has the capability to build a system based on a list of molecules."""
+class MDSetup(Analysis):
+    """This class sets up structured and FAIR molecular dynamic simulations. It also has
+    the capability to build a system based on a list of molecules."""
 
     def __init__(
         self,
@@ -65,70 +61,12 @@ class MDSetup:
         Returns:
             None
         """
-        # Open the yaml files and extract the necessary information
-        self.system_setup = load_yaml(system_setup)
-        self.simulation_default = load_yaml(simulation_default)
-        self.simulation_ensemble = load_yaml(simulation_ensemble)
-        self.simulation_sampling = (
-            load_yaml(simulation_sampling) if simulation_sampling else {}
-        )
-
-        # Check for input length
-        lengths = [
-            len(self.system_setup[key])
-            for key in ["temperature", "pressure", "density"]
-        ]
-        assert all(length == lengths[0] for length in lengths), (
-            "Make sure that the same number of state points are provided for "
-            "temperature, pressure and density"
-        )
-
-        # Define state folder name
-        self.state_folder = "_".join(
-            [
-                f"{folder_attribute[:4]}_%.{FOLDER_PRECISION}f"
-                for folder_attribute in self.system_setup["folder_attributes"]
-            ]
-        )
-
-        # Convert all paths provided in system setup to absolute paths
-        main_path = os.path.dirname(os.path.abspath(system_setup))
-        self.system_setup["folder"] = update_paths(
-            self.system_setup["folder"], main_path
-        )
-        update_paths(self.system_setup["paths"], main_path)
-
-        # Check for all necessary keys
-
-        # Print software
-        print(f"MD input will be generated for '{self.system_setup['software']}'!")
-
-        # Save molecules in the system (sort out molecules that are not present in system)
-        self.system_molecules = [
-            mol for mol in self.system_setup["molecules"] if mol["number"] > 0
-        ]
-
-        # Get the name (residue) list
-        self.residues = [mol["name"] for mol in self.system_molecules]
-
-        # Get molecular mass and number for each molecule
-        self.molar_masses = [
-            MolWt(Chem.MolFromSmiles(mol["smiles"])) for mol in self.system_molecules
-        ]
-        self.molecule_numbers = [mol["number"] for mol in self.system_molecules]
-
-        # Get conversion from AA to nm/AA
-        self.distance_conversion = DISTANCE[self.system_setup["software"]]
-
-        # Submission command for the cluster
-        self.submission_command = submission_command
-
-        # Create an analysis dictionary containing all files
-        self.analysis_dictionary = {}
-
-        # Define project folder
-        self.project_folder = (
-            f"{self.system_setup['folder']}/{self.system_setup['name']}"
+        super().__init__(
+            system_setup=system_setup,
+            simulation_default=simulation_default,
+            simulation_ensemble=simulation_ensemble,
+            submission_command=submission_command,
+            simulation_sampling=simulation_sampling,
         )
 
     def write_topology(self, verbose: bool = False) -> None:
@@ -262,11 +200,18 @@ class MDSetup:
 
         # Copy provided force field file to simulation folder and add it to input kwargs
         os.makedirs(sim_folder, exist_ok=True)
-        suffix = SUFFIX['topology'][self.system_setup["software"]]
+        suffix = SUFFIX["topology"][self.system_setup["software"]]
         kwargs["initial_topology"] = shutil.copy(
-            self.system_setup["paths"]["topology_file"], 
-            f"{sim_folder}/init_topology.{suffix}"
+            self.system_setup["paths"]["topology_file"],
+            f"{sim_folder}/init_topology.{suffix}",
         )
+
+        if self.system_setup["software"] == "gromacs":
+            change_topology(
+                initial_topology=kwargs["initial_topology"],
+                system_molecules=self.system_molecules,
+                system_name=self.system_setup["name"],
+            )
 
         for i, (temperature, pressure, density) in enumerate(
             zip(
@@ -280,26 +225,22 @@ class MDSetup:
             # Compute mole fraction of component 1
             mole_fraction = self.molecule_numbers[0] / sum(self.molecule_numbers)
 
-            # Get local variables
-            local_vars = locals()
-
-            # Define state conditions
-            state_cond = self.state_folder % tuple(
-                local_vars[folder_attribute]
-                for folder_attribute in self.system_setup["folder_attributes"]
-            )
-
-            sub_txt = ", ".join(
-                (
-                    f"{folder_attribute}: "
-                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
-                    f"{UNITS[folder_attribute]}"
-                )
-                for folder_attribute in self.system_setup["folder_attributes"]
-            )
-
             # Define folder with defined state attributes
-            state_folder = f"{sim_folder}/" + state_cond
+            state_cond = self.define_state_cond(
+                temperature=temperature,
+                pressure=pressure,
+                density=density,
+                mole_fraction=mole_fraction,
+            )
+
+            state_folder = f"{sim_folder}/{state_cond}"
+
+            state_text = self.define_state_text(
+                temperature=temperature,
+                pressure=pressure,
+                density=density,
+                mole_fraction=mole_fraction,
+            )
 
             # Build system with MD software if none is provided
             build_folder = f"{state_folder}/build"
@@ -307,7 +248,7 @@ class MDSetup:
             if not initial_systems:
                 print(
                     "\nBuilding system based on provided molecule numbers "
-                    "and coordinate files!\n"
+                    f"and coordinate files for {state_text}!\n"
                 )
 
                 # Get intial box lenghts using density estimate
@@ -347,13 +288,13 @@ class MDSetup:
 
             else:
                 os.makedirs(build_folder, exist_ok=True)
-                suffix = SUFFIX['coordinate'][self.system_setup["software"]]
+                suffix = SUFFIX["coordinate"][self.system_setup["software"]]
                 kwargs["initial_coord"] = shutil.copy(
                     initial_systems[i], f"{build_folder}/init_conf.{suffix}"
                 )
 
                 print(
-                    f"\nIntial system provided for {sub_txt} at: {initial_systems[i]}\n"
+                    f"\nIntial system provided for {state_text} at: {initial_systems[i]}\n"
                 )
 
                 kwargs["restart_flag"] = ".restart" in kwargs[
@@ -428,19 +369,14 @@ class MDSetup:
             # Compute mole fraction of component 1
             mole_fraction = self.molecule_numbers[0] / sum(self.molecule_numbers)
 
-            # Get local variables
-            local_vars = locals()
-
-            sub_txt = ", ".join(
-                (
-                    f"{folder_attribute}: "
-                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
-                    f"{UNITS[folder_attribute]}"
-                )
-                for folder_attribute in self.system_setup["folder_attributes"]
+            state_text = self.define_state_text(
+                temperature=temperature,
+                pressure=pressure,
+                density=density,
+                mole_fraction=mole_fraction,
             )
 
-            print(f"\nSubmitting simulations at {sub_txt}.\n")
+            print(f"\nSubmitting simulations at {state_text}.\n")
 
             for job_file in job_files:
                 print(f"Submitting job: {job_file}")
@@ -532,13 +468,21 @@ class MDSetup:
             # Compute mole fraction of component 1
             mole_fraction = self.molecule_numbers[0] / sum(self.molecule_numbers)
 
-            # Get local variables
-            local_vars = locals()
+            # Define state conditions
+            state_cond = self.define_state_cond(
+                temperature=temperature,
+                pressure=pressure,
+                density=density,
+                mole_fraction=mole_fraction,
+            )
 
-            # Define folder with defined state attributes
-            state_folder = f"{sim_folder}/" + self.state_folder % tuple(
-                local_vars[folder_attribute]
-                for folder_attribute in self.system_setup["folder_attributes"]
+            state_folder = f"{sim_folder}/{state_cond}"
+
+            state_text = self.define_state_text(
+                temperature=temperature,
+                pressure=pressure,
+                density=density,
+                mole_fraction=mole_fraction,
             )
 
             # Search for available copies
@@ -549,19 +493,14 @@ class MDSetup:
 
             if not files:
                 raise KeyError(
-                    f"No files found machting the ensemble: {ensemble} in folder\n:   {state_folder}"
+                    f"No files found machting the ensemble: {ensemble} in folder\n: "
+                    f"{state_folder}"
                 )
 
-            sub_txt = ", ".join(
-                (
-                    f"{folder_attribute}: "
-                    f"{local_vars[folder_attribute]:.{FOLDER_PRECISION}f} "
-                    f"{UNITS[folder_attribute]}"
-                )
-                for folder_attribute in self.system_setup["folder_attributes"]
+            print(
+                "\nAnalysis for the following conditions and files: "
+                f"{state_text}\n   " + "\n   ".join(files) + "\n"
             )
-
-            print(f"{sub_txt}\n   " + "\n   ".join(files) + "\n")
 
             if self.system_setup["software"] == "gromacs":
                 extracted_df_list = extract_from_gromacs(
@@ -636,13 +575,18 @@ class MDSetup:
                 ensemble: {
                     "data": json_data,
                     "paths": files,
-                    "fraction_discarded": time_fraction,
+                    "time_fraction_discarded": time_fraction,
                 }
             }
 
             # Add state there
             for folder_attribute in self.system_setup["folder_attributes"]:
-                extracted_data[folder_attribute] = local_vars[folder_attribute]
+                extracted_data[folder_attribute] = {
+                    "temperature": temperature,
+                    "pressure": pressure,
+                    "density": density,
+                    "mole_fraction": mole_fraction,
+                }[folder_attribute]
 
             work_json(json_path, extracted_data, "append")
 

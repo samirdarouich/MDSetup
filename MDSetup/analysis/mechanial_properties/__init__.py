@@ -1,0 +1,1 @@
+from .mechanical_properties import analysis_mechanical_proerties

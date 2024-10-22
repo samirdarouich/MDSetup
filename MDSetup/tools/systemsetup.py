@@ -1,15 +1,14 @@
 import os
 import subprocess
+from typing import Any, Dict, List
+
 import numpy as np
-
-
 from jinja2 import Template
-from .general import KwargsError
-from .general import SUFFIX, TIME
-from typing import List, Dict, Any
 from scipy.constants import Avogadro
-from .submission import submit_and_wait
+
 from ..forcefield.reader import extract_number_dict_from_mol_files
+from .general import SUFFIX, TIME, KwargsError
+from .submission import submit_and_wait
 
 
 def get_system_volume(
@@ -20,7 +19,7 @@ def get_system_volume(
     box_type: str = "cubic",
     z_x_relation: float = 1.0,
     z_y_relation: float = 1.0,
-    precision: int = 3
+    precision: int = 3,
 ):
     """
     Calculate the volume of a system and the dimensions of its bounding box based on molecular masses, numbers and density.
@@ -30,7 +29,7 @@ def get_system_volume(
     - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
     - density (float): The density of the mixture in kg/m^3.
     - unit_conversion (float): Unit conversion from Angstrom to xx.
-    - box_type (str, optional): The type of box to calculate dimensions for. 
+    - box_type (str, optional): The type of box to calculate dimensions for.
                                 Currently, only 'cubic' and 'orthorhombic' are implemented.
     - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
     - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
@@ -92,8 +91,78 @@ def get_system_volume(
             f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'."
         )
 
-    box = { "type": box_type, "dimensions": dimensions }
+    box = {"type": box_type, "dimensions": dimensions}
     return box
+
+
+def change_topology(
+    initial_topology: str,
+    system_molecules: List[Dict[str, str | int]],
+    system_name: str,
+):
+    """
+    Change the number of molecules in a topology file.
+
+    Parameters:
+    - initial_topology (str): The path to the topology file.
+    - system_molecules (List[Dict[str, str|int]]):
+      List with dictionaries with numbers and names of the molecules.
+    - system_name (str): Name of the new system.
+
+    Description:
+    This function reads the content of the topology file specified by 'topology_path'
+    and searches for the section containing the number of molecules. It then finds the
+    line containing the molecule and changes the number to the specified one.
+
+    Example:
+    change_topo('topology.txt', {'water':5}, "pure_water")
+    """
+    with open(initial_topology) as f:
+        lines = [line for line in f]
+
+    # Change system name accordingly
+    system_str_idx = [
+        i
+        for i, line in enumerate(lines)
+        if "[ system ]" in line and not line.startswith(";")
+    ][0] + 1
+    system_end_idx = [
+        i
+        for i, line in enumerate(lines)
+        if (line.startswith("[") or i == len(lines) - 1) and i > system_str_idx
+    ][0]
+
+    for i, line in enumerate(lines[system_str_idx:system_end_idx]):
+        if line and not line.startswith(";"):
+            lines[i + system_str_idx] = f"{system_name}\n\n"
+            break
+
+    # Change molecule numbers
+    molecule_str_idx = [
+        i
+        for i, line in enumerate(lines)
+        if "[ molecules ]" in line and not line.startswith(";")
+    ][0] + 1
+    molecule_end_idx = [
+        i
+        for i, line in enumerate(lines)
+        if (line.startswith("[") or i == len(lines) - 1) and i > molecule_str_idx
+    ][0] + 1
+
+    for i, line in enumerate(lines[molecule_str_idx:molecule_end_idx]):
+        if i == 0:
+            lines[molecule_str_idx + i] = "; Compound        #mols\n"
+        elif i - 1 < len(system_molecules):
+            lines[molecule_str_idx + i] = (
+                f"{system_molecules[i-1]['name']}   {system_molecules[i-1]['number']}\n"
+            )
+        else:
+            lines[molecule_str_idx + i] = ""
+
+    with open(initial_topology, "w") as f:
+        f.writelines(lines)
+
+    return
 
 
 def generate_initial_configuration(
@@ -102,7 +171,7 @@ def generate_initial_configuration(
     software: str,
     coordinate_paths: List[str],
     molecules_list: List[Dict[str, str | int]],
-    box: Dict[str, str|float],
+    box: Dict[str, str | float],
     on_cluster: bool = False,
     initial_system: str = "",
     n_try: int = 10000,
@@ -118,7 +187,7 @@ def generate_initial_configuration(
      - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
      - coordinate_paths (List[str]): List of paths to coordinate files for each molecule.
      - molecules_list (List[Dict[str, str|int]]): List with dictionaries with numbers and names of the molecules.
-     - box (Dict[str,str|float]): Dictionary with "box_type" and "dimensions" as keys. 
+     - box (Dict[str,str|float]): Dictionary with "box_type" and "dimensions" as keys.
      - on_cluster (bool, optional): If the build should be submited to the cluster. Defaults to "False".
      - initial_system (str, optional): Path to initial system, if initial system should be used to add molecules rather than new box. Defaults to "".
      - n_try (int, optional): Number of attempts to insert molecules. Defaults to 10000.
@@ -154,27 +223,29 @@ def generate_initial_configuration(
     # Define output bash file
     bash_file = f"{destination_folder}/build_box.sh"
 
-
     if software == "lammps":
-
         # Check necessary input kwargs
-        KwargsError(["build_input_template","force_field_file"], kwargs.keys())
+        KwargsError(["build_input_template", "force_field_file"], kwargs.keys())
 
         if not os.path.isfile(kwargs["build_input_template"]):
-            raise FileNotFoundError(f"LAMMPS build template file { kwargs['build_input_template'] } not found.")
+            raise FileNotFoundError(
+                f"LAMMPS build template file { kwargs['build_input_template'] } not found."
+            )
 
         if not os.path.isfile(kwargs["force_field_file"]):
-            raise FileNotFoundError(f"LAMMPS force field file { kwargs['force_field_file'] } not found.")
+            raise FileNotFoundError(
+                f"LAMMPS force field file { kwargs['force_field_file'] } not found."
+            )
 
         lmp_build_file = f"{destination_folder}/build_box.in"
 
-        kwargs["build_input_file"] = os.path.basename( lmp_build_file )
+        kwargs["build_input_file"] = os.path.basename(lmp_build_file)
         kwargs["force_field_file"] = os.path.relpath(
-                kwargs["force_field_file"], destination_folder
+            kwargs["force_field_file"], destination_folder
         )
 
         # Get number of types for atoms, bonds, angles and dihedrals
-        mol_files = [ f"{destination_folder}/{p[0]}" for p in non_zero_coord_mol_no ]
+        mol_files = [f"{destination_folder}/{p[0]}" for p in non_zero_coord_mol_no]
         kwargs["types_no"] = extract_number_dict_from_mol_files(mol_files, **kwargs)
 
     # Define output coordinate
@@ -194,8 +265,7 @@ def generate_initial_configuration(
 
     # Write LAMMPS input file
     if software == "lammps":
-
-        with open( kwargs["build_input_template"] ) as f:
+        with open(kwargs["build_input_template"]) as f:
             template_lmp = Template(f.read())
 
         with open(lmp_build_file, "w") as f:
@@ -307,10 +377,10 @@ def generate_input_files(
 
     # Define time conversion from ns to software time
     time_conversion = TIME[software]
-    
+
     # Define file suffix based on software
     suffix = SUFFIX["input"][software]
-    
+
     # Produce input files for simulation pipeline
     input_files = []
 
@@ -381,9 +451,9 @@ def generate_input_files(
                 )
                 renderdict["restart_flag"] = False
             else:
-                renderdict[
-                    "initial_coord"
-                ] = f"../{ensemble_names[j-1]}/{ensembles[j-1]}.restart"
+                renderdict["initial_coord"] = (
+                    f"../{ensemble_names[j-1]}/{ensembles[j-1]}.restart"
+                )
                 renderdict["restart_flag"] = True
 
         # Simulation time is provided in nano seconds and dt in pico/fico seconds, hence multiply with factor 1e3/1e6
@@ -493,7 +563,7 @@ def generate_job_file(
         )
 
         # Check if topology file exists
-        if not os.path.isfile(kwargs['initial_topology']):
+        if not os.path.isfile(kwargs["initial_topology"]):
             raise FileNotFoundError(
                 f"Topology file { kwargs['initial_topology'] } not found."
             )
@@ -520,7 +590,9 @@ def generate_job_file(
         cord_relative = [
             f"../{ensemble_names[j-1]}/{ensembles[j-1]}.gro"
             if j > 0
-            else os.path.relpath(kwargs["initial_coord"], f"{destination_folder}/{step}")
+            else os.path.relpath(
+                kwargs["initial_coord"], f"{destination_folder}/{step}"
+            )
             for j, step in enumerate(job_file_settings["ensembles"].keys())
         ]
 
@@ -546,27 +618,27 @@ def generate_job_file(
         for j, step in enumerate(ensemble_names):
             # If first or preceeding step is energy minimization, or if there is no cpt file to read in
             if ensembles[j - 1] == "em" or ensembles[j] == "em" or not cpt_relative[j]:
-                job_file_settings["ensembles"][step][
-                    "grompp"
-                ] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -o {out_relative[j]}"
+                job_file_settings["ensembles"][step]["grompp"] = (
+                    f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -o {out_relative[j]}"
+                )
             else:
-                job_file_settings["ensembles"][step][
-                    "grompp"
-                ] = f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -t {cpt_relative[j]} -o {out_relative[j]}"
+                job_file_settings["ensembles"][step]["grompp"] = (
+                    f"grompp -f {mdp_relative[j]} -c {cord_relative[j]} -p {topo_relative[j]} -t {cpt_relative[j]} -o {out_relative[j]}"
+                )
 
             # Define mdrun command
             if j == 0 and kwargs["initial_cpt"] and kwargs["init_step"] > 0:
                 # In case extension of the first simulation in the pipeline is wanted
-                job_file_settings["ensembles"][step][
-                    "grompp"
-                ] = f"grompp -f {mdp_relative[j]} -c {ensembles[j]}.gro -p {topo_relative[j]} -t {ensembles[j]}.cpt -o {out_relative[j]}"
-                job_file_settings["ensembles"][step][
-                    "mdrun"
-                ] = f"mdrun -deffnm {ensembles[j]} -cpi {ensembles[j]}.cpt"
+                job_file_settings["ensembles"][step]["grompp"] = (
+                    f"grompp -f {mdp_relative[j]} -c {ensembles[j]}.gro -p {topo_relative[j]} -t {ensembles[j]}.cpt -o {out_relative[j]}"
+                )
+                job_file_settings["ensembles"][step]["mdrun"] = (
+                    f"mdrun -deffnm {ensembles[j]} -cpi {ensembles[j]}.cpt"
+                )
             else:
-                job_file_settings["ensembles"][step][
-                    "mdrun"
-                ] = f"mdrun -deffnm {ensembles[j]}"
+                job_file_settings["ensembles"][step]["mdrun"] = (
+                    f"mdrun -deffnm {ensembles[j]}"
+                )
 
     elif software == "lammps":
         # Relative paths for each input file for each simulation ensemble
