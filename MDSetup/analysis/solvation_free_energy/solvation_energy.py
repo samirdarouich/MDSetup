@@ -221,7 +221,7 @@ def analysis_solvation_free_energy(
             )
 
         print(
-            "\nAnalysis for the following conditions and files:"
+            "\nAnalysis for the following conditions and files: "
             f"{state_text}\n   " + "\n   ".join(files) + "\n"
         )
 
@@ -299,12 +299,14 @@ def analysis_solvation_free_energy(
 
         extracted_data = {
             ensemble: {
-                "data": json_data,
-                "paths": files,
-                "time_fraction_discarded": time_fraction,
-                "decorrelate": decorrelate,
-                "combined_states": combined_states,
-                "coupling": coupling,
+                method: {
+                    "data": json_data,
+                    "paths": files,
+                    "time_fraction_discarded": time_fraction,
+                    "decorrelate": decorrelate,
+                    "combined_states": combined_states,
+                    "coupling": coupling,
+                }
             }
         }
 

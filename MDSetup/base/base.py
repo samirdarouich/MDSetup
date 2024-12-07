@@ -108,27 +108,7 @@ class BaseSetup:
         )
 
     def define_state_cond_list(self):
-        state_conds = []
-        for i, (temperature, pressure, density) in enumerate(
-            zip(
-                self.system_setup["temperature"],
-                self.system_setup["pressure"],
-                self.system_setup["density"],
-            )
-        ):
-            # Compute mole fraction of component 1
-            mole_fraction = self.molecule_numbers[0] / sum(self.molecule_numbers)
-
-            # Define folder with defined state attributes
-            state_conds.append(
-                self.define_state_cond(
-                    temperature=temperature,
-                    pressure=pressure,
-                    density=density,
-                    mole_fraction=mole_fraction,
-                )
-            )
-        return state_conds
+        return [ self.define_state_cond(**state) for state in self.loop_through_states()]
 
     def define_state_text(self, **state_attributes):
         return ", ".join(
@@ -139,3 +119,22 @@ class BaseSetup:
             )
             for folder_attribute in self.system_setup["folder_attributes"]
         )
+
+    def loop_through_states(self):
+        for i, (temperature, pressure, density) in enumerate(
+            zip(
+                self.system_setup["temperature"],
+                self.system_setup["pressure"],
+                self.system_setup["density"],
+            )
+        ):
+            # Compute mole fraction of component 1
+            mole_fraction = self.molecule_numbers[0] / (sum(self.molecule_numbers))
+
+            yield {
+                "i": i,
+                "temperature": temperature,
+                "pressure": pressure,
+                "density": density,
+                "mole_fraction": mole_fraction,
+            }
