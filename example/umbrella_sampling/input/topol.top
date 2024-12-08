@@ -1,0 +1,56 @@
+;
+;	File 'topol.top' was generated
+;	By user: st_ac137577 (901099)
+;	On host: login01.binac.uni-tuebingen.de
+;	At date: Sat Dec  7 08:33:55 2024
+;
+;	This is a standalone topology file
+;
+;	Created by:
+;	                    :-) GROMACS - gmx pdb2gmx, 2022.4 (-:
+;	
+;	Executable:   /opt/bwhpc/common/chem/gromacs/2022.4/bin/gmx
+;	Data prefix:  /opt/bwhpc/common/chem/gromacs/2022.4
+;	Working dir:  /beegfs/work/st_ac137577/US_workflow
+;	Command line:
+;	  gmx pdb2gmx -f 2BEG_model1_capped.pdb -ignh -ter -o complex.gro
+;	Force field was read from the standard GROMACS share directory.
+;
+
+; Include forcefield parameters
+#include "gromos53a6.ff/forcefield.itp"
+
+; Include chain topologies
+#include "/home/st/st_st/st_ac137577/workspace/software/MDSetup/example/umbrella_sampling/input/topol_Protein_chain_A.itp"
+#include "/home/st/st_st/st_ac137577/workspace/software/MDSetup/example/umbrella_sampling/input/topol_Protein_chain_B.itp"
+#include "/home/st/st_st/st_ac137577/workspace/software/MDSetup/example/umbrella_sampling/input/topol_Protein_chain_C.itp"
+#include "/home/st/st_st/st_ac137577/workspace/software/MDSetup/example/umbrella_sampling/input/topol_Protein_chain_D.itp"
+#include "/home/st/st_st/st_ac137577/workspace/software/MDSetup/example/umbrella_sampling/input/topol_Protein_chain_E.itp"
+
+; Include water topology
+#include "gromos53a6.ff/spc.itp"
+
+#ifdef POSRES_WATER
+; Position restraint for each water oxygen
+[ position_restraints ]
+;  i funct       fcx        fcy        fcz
+   1    1       1000       1000       1000
+#endif
+
+; Include topology for ions
+#include "gromos53a6.ff/ions.itp"
+
+[ system ]
+; Name
+Gallium Rubidium Oxygen Manganese Argon Carbon Silicon t=   0.00000 in water
+
+[ molecules ]
+; Compound        #mols
+Protein_chain_A     1
+Protein_chain_B     1
+Protein_chain_C     1
+Protein_chain_D     1
+Protein_chain_E     1
+SOL         10675
+NA               31
+CL               21

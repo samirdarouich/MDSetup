@@ -1,0 +1,20 @@
+# Define all GROMACS free energy settings
+
+# Compute energy difference to all other lambdas (-1) or just to neighbors (1)
+calc_lambda_neighbors: -1
+
+# (Beutler) Soft core potential settings
+sc_alpha: 0.5
+sc_power: 1
+sc_r_power: 6
+sc_coul: 'no'
+
+# Define if coupling (none to vdw-q) or decoupling (vdw-q to none)
+couple_lambda0: vdw-q
+couple_lambda1: none
+
+# Frequency of free energy output
+nstdhdl: 100
+
+# Combined lambda states
+combined_lambdas: [0.00, 0.25, 0.50, 0.75, 1.00, 1.05, 1.10, 1.20, 1.30, 1.40, 1.50, 1.60, 1.65, 1.70, 1.75, 1.80, 1.85, 1.90, 1.95, 2.00 ]

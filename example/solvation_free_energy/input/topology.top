@@ -1,0 +1,19 @@
+[ atomtypes ]
+;type, atomic_number, mass, charge, ptype, sigma, epsilon
+HO            1         1.00800000         0.00000000 A        1.99600000e-02     4.18000000e-03
+OH            8        16.00000000         0.00000000 A        3.06647000e-01     8.80314000e-01
+CCO2        CCO2       12.0107             0.700 A             0.280              0.224 
+OCO2        OCO2       15.9994             -0.350 A            0.305              0.657 
+MCO         MCO        0.0000              0.000 A              0.000             0.000
+
+; Include water topology
+#include "tip4pew.itp"
+
+[ system ]
+; Name
+water
+
+[ molecules ]
+; Compound        #mols
+SOL                300
+CO2                0

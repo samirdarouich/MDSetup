@@ -1,0 +1,89 @@
+# General definitions of the system
+
+# Define software to use (no capitals)
+software: gromacs
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: ../
+
+# System name
+name: amyloid_fibrils
+
+# Folder name (define which elements of the statepoint should be writen to the folder name)
+# fraction is computed with respect to first provided molecule.
+# If one statepoint is not wanted comment it out
+folder_attributes: [
+  temperature, 
+  pressure,
+  #density,
+  #mole_fraction,
+]
+
+# Box type (dimension is computed by the type and the density)
+box: 
+  type: cubic
+  z_x_relation: 1.0
+  z_y_relation: 1.0
+
+# Define the components
+molecules:
+  - name: Protein_chain_A
+    smiles: ""
+    number: 1
+  - name: Protein_chain_B
+    smiles: ""
+    number: 1
+  - name: Protein_chain_C
+    smiles: ""
+    number: 1
+  - name: Protein_chain_D
+    smiles: ""
+    number: 1
+  - name: Protein_chain_E
+    smiles: ""
+    number: 1
+  - name: Sol
+    smiles: ""
+    number: 10675
+  - name: NA
+    smiles: ""
+    number: 31
+  - name: CL
+    smiles: ""
+    number: 21
+
+# Define paths 
+paths:
+
+  # Path to the lammps force field (topology) file
+  topology_file: "topol.top"
+
+  # Path to the molecule (coordinate) files
+  coordinates_files: [
+  ]
+
+  # Force field toml files (for moleculegraph)
+  force_field_files: [
+  ]
+
+  # Template files
+  input_template: ../../../templates/gromacs/template_gromacs.mdp
+  job_template: job_gmx_pbs.sh
+
+# Define the temperature (K), pressure (bar) and density (estimate, kg/m3) for each system that should be studied.
+# Density is not important if initial system is provided.
+temperature:
+  - 298.0
+  - 310.0
+
+pressure:
+  - 1.01325
+  - 1.01325
+
+compressibility:
+  - 4e-5
+  - 4e-5
+
+density: 
+  - 1000.0
+  - 1000.0

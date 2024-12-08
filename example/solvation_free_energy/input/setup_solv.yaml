@@ -1,0 +1,80 @@
+# General definitions of the system
+
+# Define software to use (no capitals)
+software: gromacs
+
+# Simulation folder (simulations will be saved in this folder + the system name)
+folder: ../
+
+# System name
+name: water
+
+# Folder name (define which elements of the statepoint should be writen to the folder name)
+# mole fraction is computed with respect to first provided molecule.
+# If one statepoint is not wanted comment it out
+folder_attributes: [
+  temperature, 
+  pressure,
+  #density,
+  mole_fraction
+]
+
+# Box type (dimension is computed by the type and the density)
+box: 
+  box_type: orthorhombic
+  z_x_relation: 2.7934
+  z_y_relation: 2.7934
+
+# Define the components
+# In case of GROMACS add 'nrexcl', which defines the number
+# of bonded interactions that are excluded for the molecule
+# e.g.: nrexcl=3, means excluding bonded, angle and dihedral interactions
+molecules:
+  - name: SOL
+    smiles: "O"
+    number: 3000
+    nrexcl: 0
+
+
+# Provide coordinates files (gro or pdb) for each molecule, and the topology.
+# If this is left empty, moleculegraph will be used to generate a topology folder at the system folder.
+paths:
+  topology_file: topology.top
+  
+  coordinates_files: 
+    - tip4p.gro
+  
+  # Force field toml files (if topology file should be created)
+  force_field_files: [
+  ]
+
+  # Template files
+  build_template: ../../../templates/bash/build_system_gmx_pbs.sh
+  input_template: ../../../templates/gromacs/template_gromacs.mdp
+  job_template: ../../../templates/bash/job_gmx_pbs.mdp
+
+# Define the temperature (K), pressure (bar) (and compressibility used for barostat), and estimated density for each system that should be studied
+temperature:
+  - 278.15
+  - 298.15
+  - 318.15
+  - 338.15
+
+pressure:
+  - 1.0
+  - 1.0
+  - 1.0
+  - 1.0
+
+compressibility:
+  - 4e-5
+  - 4e-5
+  - 4e-5
+  - 4e-5
+
+
+density:
+  - 982
+  - 999
+  - 997
+  - 988

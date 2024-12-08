@@ -1,4 +1,5 @@
-; mdp file automaticly created by pyGROMACS
+; mdp file automaticly created by MDSetup
+
 
 ;====================================
 ;    integrator
@@ -10,45 +11,29 @@ emtol                    = 1000.0
 emstep                   = {{system.emstep}}
 nsteps                   = {{system.nsteps}} 
 nstlist                  = 1
-{%- else %}
-integrator               = {{system.integrator}}
-tinit                    = {{system.tinit}}
-init-step                = {{system.init_step}} 
-dt                       = {{system.dt}}
-comm_grps                = {{system.comm_grps}}
-nsteps                   = {{system.nsteps}} 
-nstxout                  = {{system.nstxout}}
-nstvout                  = {{system.nstvout}}
-nstfout                  = {{system.nstfout}}
-nstlog                   = {{system.nstlog}}
-nstenergy                = {{system.energy}}
-nstcalcenergy            = {{system.calc_energy}}
-energygrps               = {{system.energygrps}}
-nstlist                  = {{system.nstlist}}
-{%- endif %}
 pbc                      = {{system.pbc}}
+{%- else %}
+{%- for key, value in system.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
+{%- endif %}
+
 
 ;====================================
 ;    non-bonded
 ;====================================
-cutoff-scheme            = {{nonbonded.cutoff_scheme}}
-rlist                    = {{nonbonded.rlist}}
-coulombtype              = {{nonbonded.coulombtype}}
-rcoulomb                 = {{nonbonded.rcoulomb}}
-pme_order                = {{nonbonded.pme_order}}          
-vdwtype                  = {{nonbonded.vdwtype}}
-rvdw                     = {{nonbonded.rvdw}}
-DispCorr                 = {{nonbonded.disp_corr}}
+{%- for key, value in nonbonded.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 
 {%- if ensemble.t is defined %}
 
 ;====================================
 ;     T-coupling:
 ;====================================
-tcoupl                   = {{ensemble.t.tcoupl}}
-tc-grps                  = {{ensemble.t.tc_grps}}
-tau_t                    = {{ensemble.t.tau_t}}
-ref_t                    = {{ensemble.t.ref_t}}
+{%- for key, value in ensemble.t.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 {%- endif %}
 
 {%- if ensemble.p is defined %}
@@ -56,11 +41,9 @@ ref_t                    = {{ensemble.t.ref_t}}
 ;====================================
 ;     P-coupling:
 ;====================================
-Pcoupl                   = {{ensemble.p.pcoupl}}
-pcoupltype               = {{ensemble.p.pcoupltype}}
-tau_p                    = {{ensemble.p.tau_p}}
-ref_p                    = {{ensemble.p.ref_p}}
-compressibility          = {{ensemble.p.compressibility}}
+{%- for key, value in ensemble.p.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 {%- endif %}
 
 {%- if ensemble.t is defined %}
@@ -69,22 +52,22 @@ compressibility          = {{ensemble.p.compressibility}}
 ;  initial velocities
 ;====================================
 {%- if restart_flag == "no" %}
-gen_vel                  = yes
-gen_temp                 = {{ensemble.t.ref_t}} 
-gen_seed                 = {{seed}}
+gen-vel                  = yes
+gen-temp                 = {{ensemble.t.ref_t.split()[0]}} 
+gen-seed                 = {{seed}}
 {%- else %}
 continuation             = {{restart_flag}}
 {%- endif %}
 {%- endif %}
 
-{%- if constraints.constraints is not none %}
+{%- if constraints is defined %}
 
 ;====================================
 ;     constraints
 ;====================================
-constraints              = {{constraints.constraints}}
-lincs_order              = {{constraints.lincs_order}}
-lincs_iter               = {{constraints.lincs_iter}}
+{%- for key, value in constraints.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 {%- endif %}
 
 {%- if nemd is defined %}
@@ -92,7 +75,9 @@ lincs_iter               = {{constraints.lincs_iter}}
 ;====================================
 ;                NEMD
 ;====================================
-cos-acceleration	     = {{nemd.cos_acceleration}}
+{%- for key, value in nemd.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 {%- endif %}
 
 {%- if annealing is defined %}
@@ -100,10 +85,9 @@ cos-acceleration	     = {{nemd.cos_acceleration}}
 ;====================================
 ;             annealing
 ;====================================
-annealing                = {{annealing.type}}  
-annealing_npoints        = {{annealing.npoints}}       
-annealing_time           = {{annealing.time_start}} {{annealing.time_end}} 
-annealing_temp           = {{annealing.temp_start}} {{annealing.temp_end}} 
+{%- for key, value in annealing.items() %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endfor %}
 {%- endif %}
 
 {%- if free_energy is defined %}
@@ -128,4 +112,17 @@ couple-moltype            = {{free_energy.couple_moltype}}
 couple-lambda0            = {{free_energy.couple_lambda0}}
 couple-lambda1            = {{free_energy.couple_lambda1}}
 nstdhdl                   = {{free_energy.nstdhdl}}
+{%- endif %}
+
+{%- if umbrella_sampling is defined %}
+
+;====================================
+; Umbrella sampling control
+;====================================
+pull                    = yes
+{%- for key, value in umbrella_sampling.items() %}
+{%- if key.startswith('pull') %}
+{{ key.replace('_', '-').ljust(24) }} = {{ value }}
+{%- endif %}
+{%- endfor %}
 {%- endif %}

@@ -1,0 +1,40 @@
+# Define the CV for umbrella sampling
+cv:
+  selection: "com of group Chain_A plus com of group Chain_B"
+  start: 0.5
+  end: 5.0
+  num_frames: 23
+
+# Define the groups (check gmx make_ndx for more information)
+groups:
+  - name: Chain_A
+    selection: r 1-27
+  - name: Chain_B
+    selection: r 28-54
+
+# Define number of reaction coordinates
+pull_ncoords: 1
+
+# Define number of groups (defined by index file)
+pull_ngroups: 2
+pull_group1_name: Chain_A
+pull_group2_name: Chain_B
+
+# Method (in steered MD this can also be something else)
+pull_coord1_type: umbrella
+
+# Dinstance in Z direction
+pull_coord1_geometry: distance
+pull_coord1_dim: N N Y
+
+# Reaction coordinate connects group 1 and 2
+pull_coord1_groups: 1 2
+
+# Define the reference distance by COM at initial configuration
+pull_coord1_start: 'yes'
+
+# Velocity for pulling (needed in steered MD)
+pull_coord1_rate: 0.0
+
+# Force constant for umbrella sampling
+pull_coord1_k: 1000

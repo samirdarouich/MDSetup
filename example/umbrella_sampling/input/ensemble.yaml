@@ -1,0 +1,49 @@
+# Define ensemble settings for each ensemble
+
+# Energy minimization (no further settings needed here)
+em:
+  em:
+    null
+
+# NVT ensemble
+nvt:
+  t:
+    tcoupl: v-rescale
+    tc_grps: System
+    tau_t: 1.0
+
+# NPT equilibration
+npt_equilibration:
+  t:
+    tcoupl: Berendsen
+    tc_grps: "Protein   Non-Protein"
+    tau_t: "0.1       0.1"
+  p:
+    pcoupl: berendsen
+    pcoupltype: isotropic
+    tau_p: 2.0
+    refcoord_scaling: com
+
+# steered_md
+steered_md:
+  t:
+    tcoupl: Nose-Hoover
+    tc_grps: "Protein   Non-Protein"
+    tau_t: "1.0       1.0"
+  p:
+    pcoupl: Parrinello-Rahman
+    pcoupltype: isotropic
+    tau_p: 1.0
+    refcoord_scaling: com
+
+# umbrella sampling production
+npt_production:
+  t:
+    tcoupl: Nose-Hoover
+    tc_grps: "Protein   Non-Protein"
+    tau_t: "1.0       1.0"
+  p:
+    pcoupl: Parrinello-Rahman
+    pcoupltype: isotropic
+    tau_p: 1.0
+    refcoord_scaling: com

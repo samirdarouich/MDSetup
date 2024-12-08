@@ -1,0 +1,40 @@
+# Make sure to use the same keys an expected by GROMACS. For keys with "-" use "_".
+
+system:
+  integrator: md
+  dt: 0.002
+  tinit: 0
+  init_step: 0
+  emstep: 0.01
+  nstxout: 5000
+  nstvout: 5000
+  nstfout: 500
+  nstxout_compressed: 500
+  nstlog: 1000
+  nstenergy: 1000
+  nstcalcenergy: 100
+  energygrps: System
+  nstlist: 5
+  pbc: xyz
+  define: -DPOSRES
+  comm_grps: system
+  comm_mode: Linear
+  nstcomm: 10
+
+nonbonded:
+  cutoff_scheme: Verlet
+  rlist: 1.4
+  rvdw: 1.4
+  rcoulomb: 1.4
+  coulombtype: PME
+  pme_order: 4
+  vdwtype: cut-off
+  dispcorr: enerPres
+  fourierspacing: 0.16
+
+# Define constraints if needed, otherwise set "null"
+constraints:
+  constraint_algorithm: lincs
+  constraints: all-bonds
+  lincs_order: 4
+  lincs_iter: 1
