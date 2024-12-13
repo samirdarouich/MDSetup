@@ -268,7 +268,7 @@ def gmx_wham_analysis(
     plt.xlabel("CV")
     plt.ylabel(f"PMF ({unit}/mol)")
     plt.savefig(
-        f"{folder}/pmf.png",
+        f"{folder}/pmf_{temperature}.png",
         bbox_inches="tight",
         dpi=300,
     )
@@ -284,7 +284,7 @@ def gmx_wham_analysis(
     plt.xlabel("CV")
     plt.ylabel("count")
     plt.savefig(
-        f"{folder}/histo.png",
+        f"{folder}/histo_{temperature}.png",
         bbox_inches="tight",
         dpi=300,
     )
