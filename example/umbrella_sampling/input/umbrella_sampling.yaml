@@ -30,8 +30,8 @@ pull_coord1_dim: N N Y
 # Reaction coordinate connects group 1 and 2
 pull_coord1_groups: 1 2
 
-# Define the reference distance by COM at initial configuration
-pull_coord1_start: 'yes'
+# Define the reference distance by COM at initial configuration (if no, define each initial cv by providing: 'pull_coord1_init')
+pull_coord1_start: 'no'
 
 # Velocity for pulling (nm per ps, needed in steered MD)
 pull_coord1_rate: 0.0

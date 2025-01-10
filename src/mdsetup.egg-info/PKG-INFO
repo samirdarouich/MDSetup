@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: mdsetup
 Version: 0.0.1
 Summary: This tool allows to setup and analyze molecular dynamic (MD) simulations for LAMMPS and GROMACS

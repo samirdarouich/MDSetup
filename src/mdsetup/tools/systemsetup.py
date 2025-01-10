@@ -402,15 +402,17 @@ def generate_input_files(
         if software == "gromacs":
             # Add temperature of sim to ensemble settings
             if "t" in ensemble_settings.keys():
-                if isinstance(ensemble_settings["t"]["tau_t"],str):
+                if isinstance(ensemble_settings["t"]["tau_t"], str):
                     no_coupl = len(ensemble_settings["t"]["tau_t"].split())
                 else:
                     no_coupl = 1
-                ensemble_settings["t"]["ref_t"] = "   ".join([str(temperature)] * no_coupl)
+                ensemble_settings["t"]["ref_t"] = "   ".join(
+                    [str(temperature)] * no_coupl
+                )
 
             # Add pressure and compressibility to ensemble settings
             if "p" in ensemble_settings.keys():
-                if isinstance(ensemble_settings["p"]["tau_p"],str):
+                if isinstance(ensemble_settings["p"]["tau_p"], str):
                     no_coupl = len(ensemble_settings["p"]["tau_p"].split())
                 else:
                     no_coupl = 1
@@ -641,10 +643,10 @@ def generate_job_file(
                 )
 
             # Define mdrun command
-            if j == 0 and kwargs["initial_cpt"] and kwargs["init_step"] > 0:
+            if j == 0 and kwargs.get("time_to_extend", 0.0) > 0:
                 # In case extension of the first simulation in the pipeline is wanted
                 job_file_settings["ensembles"][step]["grompp"] = (
-                    f"grompp -f {mdp_relative[j]} -c {ensembles[j]}.gro -r {ensembles[j]} -p {topo_relative[j]} -t {ensembles[j]}.cpt -o {out_relative[j]}"
+                    f"convert-tpr -s {ensembles[j]}.tpr -extend {kwargs['time_to_extend']*1000} -o {ensembles[j]}.tpr"
                 )
                 job_file_settings["ensembles"][step]["mdrun"] = (
                     f"mdrun -deffnm {ensembles[j]} -cpi {ensembles[j]}.cpt"

@@ -19,6 +19,7 @@ def create_index_file(
     index_file: str,
     selections: List[str],
     names: List[str],
+    old_index_file: Optional[str] = None,
 ):
     """
     Creates an index file for molecular dynamics simulations based on a template.
@@ -29,6 +30,7 @@ def create_index_file(
         index_file (str): Path where the generated index file will be saved.
         selections (List[str]): List of selection strings for the index file.
         names (List[str]): List of names corresponding to the selections.
+        old_index_file (Optional[str], optional): Path to an old index file to be used.
 
     Returns:
         str: Path to the generated index file.
@@ -42,6 +44,7 @@ def create_index_file(
         "structure": structure,
         "selections": selections,
         "names": names,
+        "old_index_file": old_index_file,
     }
 
     with open(template_index) as f:

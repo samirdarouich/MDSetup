@@ -30,7 +30,6 @@ done
 commands+="q"
 
 # Call GROMACS
-echo -e "$commands" | gmx  make_ndx -f {{structure}} -o {{index_file}}
-
+echo -e "$commands" | gmx  make_ndx -f {{structure}} -o {{index_file}}  {% if not old_index_file is none %} -n {{old_index_file}} {% endif %}
 # Delete old .ndx files
 rm -f \#*.ndx.*#

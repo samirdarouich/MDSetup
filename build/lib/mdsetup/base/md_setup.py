@@ -288,6 +288,13 @@ class MDSetup(BaseSetup):
                             initial_systems[i].rsplit(".", 1)[0] + ".cpt",
                             f"{build_folder}/init_conf.cpt",
                         )
+                if kwargs.get("time_to_extend", 0.0) > 0:
+                    print(
+                        "Extending existing simulation of the first ensemble provided. "
+                        "Provided simulation time and gro file will be ignored for the "
+                        "first ensemble. Simulation will be extended for "
+                        f"{kwargs['time_to_extend']} ns.\n"
+                    )
 
             # Add compressibility to GROMACS input
             if self.system_setup["software"] == "gromacs":

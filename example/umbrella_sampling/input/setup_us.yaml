@@ -74,16 +74,16 @@ paths:
 # Density is not important if initial system is provided.
 temperature:
   - 298.0
-  - 310.0
+  #- 310.0
 
 pressure:
   - 1.01325
-  - 1.01325
+  #- 1.01325
 
 compressibility:
   - 4e-5
-  - 4e-5
+  #- 4e-5
 
 density: 
   - 1000.0
-  - 1000.0
+  #- 1000.0

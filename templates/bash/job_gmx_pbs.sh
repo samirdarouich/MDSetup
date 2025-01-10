@@ -30,7 +30,7 @@ echo ""
 mkdir -p {{ensemble_name}}
 cd {{ensemble_name}}
 
-gmx {{ensemble.grompp}}
+{% if not ensemble.grompp is none %} gmx {{ensemble.grompp}} {% endif %}
 
 gmx {{ensemble.mdrun}}
 
