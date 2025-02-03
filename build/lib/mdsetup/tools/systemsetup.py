@@ -17,7 +17,7 @@ def get_system_volume(
     molecule_numbers: List[int],
     density: float,
     unit_conversion: float,
-    box_type: str = "cubic",
+    type: str = "cubic",
     z_x_relation: float = 1.0,
     z_y_relation: float = 1.0,
     precision: int = 3,
@@ -30,7 +30,7 @@ def get_system_volume(
     - molecule_numbers (List[int]): A list containing the number of molecules of each type in the system.
     - density (float): The density of the mixture in kg/m^3.
     - unit_conversion (float): Unit conversion from Angstrom to xx.
-    - box_type (str, optional): The type of box to calculate dimensions for.
+    - type (str, optional): The type of box to calculate dimensions for.
                                 Currently, only 'cubic' and 'orthorhombic' are implemented.
     - z_x_relation (float, optional): Relation of z to x length. z = z_x_relation*x. Defaults to 1.0.
     - z_y_relation (float, optional): Relation of z to y length. z = z_y_relation*y. Defaults to 1.0.
@@ -40,7 +40,7 @@ def get_system_volume(
     - dict: A dictionary with keys 'box_x', 'box_y', and 'box_z', each containing a list with the negative and positive half-lengths of the box in Angstroms.
 
     Raises:
-    - KeyError: If the `box_type` is not 'cubic' or 'orthorhombic', since other box types are not implemented yet.
+    - KeyError: If the `type` is not 'cubic' or 'orthorhombic', since other box types are not implemented yet.
     """
     # Account for mixture density
     molar_masses = np.array(molar_masses)
@@ -61,7 +61,7 @@ def get_system_volume(
     volume = mass / density * 1e30
 
     # Compute box lenghts (in Angstrom) using the volume V=m/rho
-    if box_type == "cubic":
+    if type == "cubic":
         # Cubix box: L/2 = V^(1/3) / 2
         boxlen = volume ** (1 / 3) / 2 * unit_conversion
 
@@ -70,9 +70,9 @@ def get_system_volume(
             "box_y": [round(-boxlen, precision), round(boxlen, precision)],
             "box_z": [round(-boxlen, precision), round(boxlen, precision)],
         }
-        box_type = "block"
+        type = "block"
 
-    elif box_type == "orthorhombic":
+    elif type == "orthorhombic":
         # Orthorhombic: V = x * y * z, with x = z / z_x_relation and y = z / z_y_relation
         # V = z^3 * 1 / z_x_relation * 1 / z_y_relation
         # z = (V*z_x_relation*z_y_relation)^(1/3)
@@ -85,14 +85,14 @@ def get_system_volume(
             "box_y": [round(-y / 2, precision), round(y / 2, precision)],
             "box_z": [round(-z / 2, precision), round(z / 2, precision)],
         }
-        box_type = "block"
+        type = "block"
 
     else:
         raise KeyError(
-            f"Specified box type '{box_type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'."
+            f"Specified box type '{type}' is not implemented yet. Available are: 'cubic', 'orthorhombic'."
         )
 
-    box = {"type": box_type, "dimensions": dimensions}
+    box = {"type": type, "dimensions": dimensions}
     return box
 
 
@@ -188,7 +188,7 @@ def generate_initial_configuration(
      - software (str): The simulation software to format the output for ('gromacs' or 'lammps').
      - coordinate_paths (List[str]): List of paths to coordinate files for each molecule.
      - molecules_list (List[Dict[str, str|int]]): List with dictionaries with numbers and names of the molecules.
-     - box (Dict[str,str|float]): Dictionary with "box_type" and "dimensions" as keys.
+     - box (Dict[str,str|float]): Dictionary with "type" and "dimensions" as keys.
      - on_cluster (bool, optional): If the build should be submited to the cluster. Defaults to "False".
      - initial_system (str, optional): Path to initial system, if initial system should be used to add molecules rather than new box. Defaults to "".
      - n_try (int, optional): Number of attempts to insert molecules. Defaults to 10000.
@@ -330,7 +330,8 @@ def generate_input_files(
      - initial_coord (str): Absolute path of LAMMPS data file for LAMMPS.
      - initial_topology (str): Absolute path of LAMMPS force field file for LAMMPS.
      - compressibility (float): Compressibility of the system for GROMACS.
-     - init_step (int): Initial step to continue simulation for GROMACS.
+     - restart_flag (bool): Flag to indicate if the simulation is a continuation of a
+        previous one.
 
     Raises:
      - KeyError: If an invalid ensemble is specified.
@@ -351,7 +352,7 @@ def generate_input_files(
 
     if software == "gromacs":
         # Check necessary input kwargs
-        KwargsError(["compressibility", "init_step"], kwargs.keys())
+        KwargsError(["compressibility","restart_flag"], kwargs.keys())
 
     elif software == "lammps":
         # Check necessary input kwargs
@@ -428,14 +429,17 @@ def generate_input_files(
             # Overwrite the ensemble settings
             renderdict["ensemble"] = ensemble_settings
 
-            # Define if restart
-            renderdict["restart_flag"] = (
-                "no" if ensemble == "em" or ensembles[j - 1] == "em" else "yes"
-            )
-
-            # Add extension to first system (if wanted)
-            if j == 0 and kwargs["init_step"] > 0:
-                renderdict["system"]["init_step"] = kwargs["init_step"]
+            # Define if velocity should be created
+            restart_flag = "yes"
+            if j == 0:
+                # Dont create velocity if EM is the first ensemble or its a restart from
+                # Dont create velocity if its a restart from a previous simulation with
+                # checkpoint file or a continuation of a previous simulation.
+                if ensemble == "em" or not kwargs.get("restart_flag", False) or kwargs.get("initial_cpt",None) or kwargs.get("init_step",0.0) > 0:
+                    restart_flag = "no"
+            elif ensembles[j-1] == "em":
+                restart_flag = "no"
+            renderdict["restart_flag"] = restart_flag
 
         elif software == "lammps":
             # Add ensemble variables
